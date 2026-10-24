@@ -10,6 +10,12 @@ import { MAPS } from './maps.js';
 export const DEFAULT_MAP = 'Village10';
 const BOT_NAMES = ['컴퓨터1', '컴퓨터2', '컴퓨터3', '컴퓨터4', '컴퓨터5', '컴퓨터6', '컴퓨터7'];
 
+// Decorations a player wears (shop ids): hat A0015, balloon Bomb001, pet Pet001.
+function cleanLook(l) {
+  const ok = (v, re) => (typeof v === 'string' && re.test(v) ? v : null);
+  return { hat: ok(l.hat, /^[A-Z]\d{1,5}$/), bomb: ok(l.bomb, /^Bomb\d{1,4}$/), pet: ok(l.pet, /^Pet\d{1,4}$/) };
+}
+
 export class RoomCore {
   constructor({ code, title, send, broadcast, onChange = () => {} }) {
     Object.assign(this, { code, send, broadcast, onChange });
@@ -34,7 +40,7 @@ export class RoomCore {
     return {
       code: this.code, title: this.title, mode: this.mode, map: this.mapId, host: this.host, phase: this.phase,
       slots: this.slots.map((s) => ({ open: s.open, id: s.id })),
-      members: [...this.members.values()].map(({ id, name, char, color, ready, bot, slot }) => ({ id, name, char, color, ready, bot, slot })),
+      members: [...this.members.values()].map(({ id, name, char, color, ready, bot, slot, look }) => ({ id, name, char, color, ready, bot, slot, look })),
     };
   }
 
@@ -115,6 +121,7 @@ export class RoomCore {
         if (this.phase !== 'room') return;
         if (msg.char && CHARACTERS.some((c) => c.id === msg.char)) m.char = msg.char;
         if (Number.isInteger(msg.color) && msg.color >= 0 && msg.color < TEAMS.length) m.color = msg.color;
+        if (msg.look && typeof msg.look === 'object') m.look = cleanLook(msg.look);
         if (!host) m.ready = false;
         this.changed(); break;
       case 'ready':
@@ -201,7 +208,7 @@ export class RoomCore {
     const map = MAPS.find((x) => x.id === this.mapId) || MAPS[0];
     const seed = (Math.random() * 2 ** 31) | 0;
     const list = this.players().map((m) => ({ id: m.id, name: m.name, char: m.char, color: m.color,
-      team: this.mode === 'team' ? m.color : m.slot, bot: m.bot }));
+      team: this.mode === 'team' ? m.color : m.slot, bot: m.bot, look: m.look || null }));
     this.game = createGame({ map, players: list, seed, mode: this.mode });
     this.phase = 'game';
     this.inputs.clear(); this.bots.clear();

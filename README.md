@@ -31,6 +31,10 @@ npm test                                                # 모든 맵에서 컴�
 npm run release
 ```
 
+상점의 꾸미기(머리장식 772개, 물풍선 527개)와 탈것 그림은 마지막 패치에 없는 `CharTE`·`FxMonster` 팩에 있어서,
+`npm run release`가 archive.org의 전체 설치본에서 필요한 부분만 받아 `crazyarcade/.cache/extra/`에 둡니다(처음 한 번 100MB 정도).
+따로 받으려면 `node crazyarcade/tools/fetch-extra.mjs`.
+
 처음 한 번은 `npx wrangler login`(브라우저 로그인)이 필요합니다. Pages 프로젝트 `taesu-crazyarcade`는 처음 실행할 때 만들어지고,
 주소는 `https://taesu-crazyarcade.pages.dev`입니다. 소리를 아이폰에서도 틀려면 `brew install ffmpeg`가 있어야 합니다.
 
@@ -64,6 +68,8 @@ Durable Objects는 무료 플랜에서도 SQLite 방식 클래스로 쓸 수 있
 | `crazyarcade/js/scene-game.js` | 게임 화면, 내 캐릭터 예측·보정, 다른 사람 보간, PC판 화면 그대로의 오른쪽 패널 |
 | `crazyarcade/js/scene-menus.js` | 로그인(닉네임) → 로비(방 목록) → 대기방 (PC판 배경·버튼 그대로) |
 | `crazyarcade/js/input.js` | 키보드 + 크아M식 터치 조작 |
+| `crazyarcade/js/scene-shop.js` | 상점: 캐릭터·머리장식·물풍선·펫을 게임에서 모은 루찌로 사기, 착용 |
+| `crazyarcade/js/wallet.js` | 루찌·보유·착용 (이 브라우저에 저장) |
 | `crazyarcade/tools/ca-formats.mjs` | PatchData `.idx/.idd`, 암호화된 항목(맵·표) 풀기, 스프라이트, RLE 픽셀 해석 |
 | `crazyarcade/tools/convert-assets.mjs` | 원본 → PNG 시트 + JSON, JPEG 배경, MP3/Ogg |
 | `server/worker.js` | Durable Object `Room`(방마다 하나, 초당 30틱) · `Lobby`(방 목록) |

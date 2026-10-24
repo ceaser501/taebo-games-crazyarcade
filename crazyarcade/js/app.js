@@ -5,6 +5,8 @@ import * as input from './input.js';
 import { unlock, preload, stopMusic } from './audio.js';
 import { LoginScene, LobbyScene, RoomScene } from './scene-menus.js';
 import { GameScene } from './scene-game.js';
+import { ShopScene } from './scene-shop.js';
+import * as W from './wallet.js';
 import { Online, Practice, listRooms, randomCode } from './net.js';
 
 // `SITE_PASSWORD=... npm run build` puts a simple password screen in front (hash only).
@@ -30,6 +32,13 @@ const app = {
   isHost() { return this.room && this.room.host === this.me; },
 
   toLogin() { this.disconnect(); this.setScene(new LoginScene(this)); },
+  // The shop opens over the lobby or the waiting room and goes back to it.
+  toShop() {
+    const inRoom = !!this.conn;
+    const me = this.room && this.room.members.find((m) => m.id === this.me);
+    this.setScene(new ShopScene(this, () => this.setScene(inRoom && this.conn ? new RoomScene(this) : new LobbyScene(this)), me && me.char));
+  },
+  lookChanged() { if (this.conn) this.send({ t: 'set', look: W.look() }); },
   toLobby() { this.disconnect(); this.setScene(new LobbyScene(this)); },
   listRooms() { return listRooms(); },
 
@@ -64,11 +73,20 @@ const app = {
 
   onMessage(m) {
     switch (m.t) {
-      case 'welcome': this.me = m.you; this.room = m.room; this.roomTitle = m.room.title; break;
+      case 'welcome': {
+        this.me = m.you; this.room = m.room; this.roomTitle = m.room.title;
+        // Wear our decorations; trade a character we do not own for a free one.
+        const mine = m.room.members.find((x) => x.id === m.you);
+        const set = { t: 'set', look: W.look() };
+        if (mine && !W.owns('char', mine.char)) set.char = W.FREE_CHARS[mine.slot % W.FREE_CHARS.length];
+        this.send(set);
+        break;
+      }
       case 'room':
         this.room = m.room; this.roomTitle = m.room.title;
         break;
       case 'start':
+        if (this.scene instanceof ShopScene) this.toast('게임이 시작됐어요!');
         this.setScene(new GameScene(this, this.conn, m, this.me));
         break;
       case 'back':

@@ -9,6 +9,7 @@ import { sfx, playMusic, stopMusic } from './audio.js';
 import { COLS, ROWS, TILE, HZ, FLAME, TEAMS, ITEMS, RIDES, PUNCH_TICKS, charById } from './shared/const.js';
 import { createGame, walk, cellOf, DIR_NAMES, DIRS } from './shared/sim.js';
 import { mapById } from './shared/room.js';
+import * as Wallet from './wallet.js';
 
 const MX = 20, MY = 40; // map origin on the 800×600 screen
 const INTERP = 3; // ticks others are drawn behind the newest snapshot
@@ -36,6 +37,9 @@ export class GameScene {
     this.hist = []; this.lastSent = { d: -1 }; this.pendingBombs = []; this.darts = [];
     this.snapTick = 0; this.snapTime = 0; this.result = null; this.endAt = 0;
     this.floorCanvas = null;
+    // Shop decorations each player wears: { hat, bomb, pet } by player id; pets trail behind.
+    this.looks = new Map(start.players.map((p) => [p.id, p.look || {}]));
+    this.trails = new Map();
     this.ready = this.load();
     input.enable(true);
     this.off = conn.on ? null : null;
@@ -43,6 +47,7 @@ export class GameScene {
 
   async load() {
     const chars = [...new Set(this.g.players.map((p) => p.char))];
+    Wallet.loadLook({}).then(() => Promise.all([...this.looks.values()].map((l) => Wallet.loadLook(l))));
     await Promise.all([...this.map.sets.map((t) => A.loadGroup(`tile_${t}`)), A.loadGroup('game'), A.loadBg('game'), ...chars.map((c) => A.loadGroup(`char_${c}`))]);
     this.buildFloor();
     playMusic(this.map.bgm);
@@ -134,6 +139,8 @@ export class GameScene {
         const won = e.team !== null && mine && mine.team === e.team;
         this.result = e.team === null ? 'draw' : won ? 'win' : mine ? 'lose' : 'win';
         this.endAt = performance.now();
+        // Lucci: the coins picked up this round plus a bonus by the result.
+        if (mine && !this.paid) { this.paid = (mine.lucci || 0) + Wallet.ROUND_BONUS[this.result]; Wallet.earn(this.paid); }
         stopMusic();
         playMusic(this.result === 'win' ? 'Ntc_Win' : this.result === 'lose' ? 'Ntc_Lose' : 'Ntc_Draw');
         break;
@@ -173,7 +180,7 @@ export class GameScene {
     const c = cellOf(p.x), r = cellOf(p.y);
     const mine = this.g.bombs.filter((b) => b.owner === p.id).length + this.pendingBombs.length;
     if (mine >= p.bombs || this.g.bombs.some((b) => b.c === c && b.r === r)) return;
-    this.pendingBombs.push({ c, r, at: performance.now() });
+    this.pendingBombs.push({ c, r, at: performance.now(), owner: p.id });
   }
 
   // Where another player is drawn: INTERP ticks behind the newest snapshot, interpolated.
@@ -280,7 +287,8 @@ export class GameScene {
 
   // A balloon where it is: sliding (off along its direction) or in the air after a punch.
   drawBomb(c, b, now) {
-    const sprite = 'Bomb/Bomb00';
+    const skin = this.looks.get(b.owner || this.me)?.bomb;
+    const sprite = skin && A.has(`BombDeco/${skin}`) ? `BombDeco/${skin}` : 'Bomb/Bomb00';
     const n = Math.max(1, A.frames(sprite));
     let x = b.c * TILE, y = b.r * TILE + TILE - 1, lift = 0;
     if (b.fly) {
@@ -361,6 +369,8 @@ export class GameScene {
       const n = A.frames(ship);
       if (!n || !A.draw(c, ship, v.moving ? [0, 1, 2, 3, 2, 1][Math.floor(now / 100) % 6] % n : 0, ax, ay)) A.draw(c, ITEMS[p.ride]?.sprite || 'Item/Owl', 0, ax, ay + 2);
     }
+    const look = this.looks.get(p.id) || {};
+    if (look.pet && p.state !== 'dead') this.drawPet(c, p, v, look.pet, now);
     if (!A.drawChar(c, ch, action, frame, ax, ay, team, alpha)) {
       c.fillStyle = TEAMS[team]?.css || '#f44'; c.beginPath(); c.arc(v.x, v.y - 8, 15, 0, Math.PI * 2); c.fill();
     }
@@ -370,11 +380,33 @@ export class GameScene {
       const bf = age < 200 ? Math.floor(age / 70) : left < 1 ? 7 + (Math.floor(now / 120) % 2) : 6;
       A.draw(c, 'Bomb/Bubble00', bf, ax, ay - 6, 0.92);
     }
+    // A hat from the shop follows the walking frames (four per direction).
+    if (look.hat && action.startsWith('Walk')) {
+      const hat = `CharDeco/CharDeco_${look.hat}${dirName}`;
+      const n = A.frames(hat);
+      if (n) A.draw(c, hat, v.moving ? Math.max(0, frame - 1) % n : 0, ax, ay, alpha);
+    }
     if (p.curse) A.drawAt(c, 'Item/Skeleton0', 0, v.x - 12, v.y - 70 + Math.sin(now / 150) * 2, 24, 24);
     if (p.shieldT > 0) {
       c.strokeStyle = `rgba(255,240,120,${0.5 + 0.3 * Math.sin(now / 80)})`; c.lineWidth = 3;
       c.beginPath(); c.arc(v.x, v.y - 8, 24, 0, Math.PI * 2); c.stroke();
     }
+  }
+
+  // A pet walks a few steps behind its owner along the owner's own path.
+  drawPet(c, p, v, pet, now) {
+    let t = this.trails.get(p.id);
+    if (!t) { t = []; this.trails.set(p.id, t); }
+    if (t.length && Math.hypot(t[t.length - 1].x - v.x, t[t.length - 1].y - v.y) > 60) t.length = 0; // teleported (start, reconcile)
+    const last = t[t.length - 1];
+    if (!last || Math.hypot(last.x - v.x, last.y - v.y) > 1.5) t.push({ x: v.x, y: v.y, dir: v.dir });
+    while (t.length > 16) t.shift();
+    const at = t.length > 12 ? t[t.length - 13] : t[0];
+    const dir = DIR_NAMES[at.dir] || 'Down';
+    const moving = t.length > 12 && v.moving;
+    const sprite = A.has(`Pet/${pet}_Walking${dir}`) ? `Pet/${pet}_Walking${dir}` : `Pet/${pet}_WalkingDown`;
+    const n = A.frames(sprite);
+    if (n) A.draw(c, sprite, moving ? Math.floor(now / 110) % n : 0, at.x - TILE / 2 + 8, at.y + TILE / 2 - 1);
   }
 
   drawOverlay(c, now) {
@@ -408,6 +440,7 @@ export class GameScene {
     }
     if (g.phase === 'end' && this.result) {
       const s = this.result === 'win' ? 'Game/Win' : this.result === 'lose' ? 'Game/Lose' : 'Game/Draw';
+      if (this.paid && now - this.endAt > 900) text(`+${this.paid.toLocaleString()} 루찌`, cx, cy + 70, { size: 20, bold: true, align: 'center', color: '#ffe23a', shadow: '#5a2a00' });
       if (!word(s, this.endAt)) text(this.result === 'win' ? 'WIN!' : this.result === 'lose' ? 'LOSE' : 'DRAW', cx, cy, { size: 48, bold: true, align: 'center', color: '#ffe23a', shadow: '#5a2a00' });
     }
   }

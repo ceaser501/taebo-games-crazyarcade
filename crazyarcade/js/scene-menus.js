@@ -5,6 +5,7 @@ import { stage, ui, text, roundRect, place } from './stage.js';
 import { playMusic, sfx, toggleMusic, musicOn } from './audio.js';
 import { CHARACTERS, TEAMS, charById, banner, MAX_PLAYERS } from './shared/const.js';
 import { MAPS } from './shared/maps.js';
+import * as W from './wallet.js';
 
 const $ = (id) => document.getElementById(id);
 const click = () => sfx('Bt_c_Pop', 0.6);
@@ -81,6 +82,8 @@ export class LobbyScene {
     text(this.app.name, 102, 161, { size: 12, bold: true, color: '#fff', align: 'center' });
     text('레벨 1   크아 초보', 95, 214, { size: 11, color: '#e6f4ff', align: 'center' });
     text('혼자놀기 · 방만들기 · 바로시작', 95, 240, { size: 10, color: '#bfe2ff', align: 'center' });
+    text(`${W.lucci().toLocaleString()} 루찌`, 95, 268, { size: 12, bold: true, color: '#ffe95a', align: 'center', shadow: '#03306e' });
+    if (ui.button('shop', 'GlobalUI/BtShop', 64, 278, { label: '상점', w: 63, h: 24 })) { click(); this.app.toShop(); }
     if (ui.button('create', 'Lobby/LB_Bt_T_CreateRenew', 216, 56, { label: '방만들기' })) { click(); this.app.createRoom(); }
     if (ui.button('quick', 'Lobby/LB_Bt_T_QuickJoinRenew', 354, 56, { label: '바로시작' })) { click(); this.quick(); }
     if (ui.button('practice', 'Lobby/LB_Bt_T_PracticeRenew', 480, 63, { label: '혼자놀기' })) { click(); this.app.practice(); }
@@ -145,6 +148,7 @@ export class RoomScene {
     const me = room.members.find((m) => m.id === app.me);
     const host = room.host === app.me;
     text(`${room.code}   ${room.title}`, 388, 20, { size: 14, bold: true, color: '#fff', align: 'center', shadow: '#022a5e' });
+    if (ui.button('shop', 'GlobalUI/BtShop', 716, 8, { label: '상점', w: 63, h: 24 })) { click(); app.toShop(); }
     // Mode button at the small tab in the top-left.
     if (ui.area('mode', 24, 62, 120, 22, { disabled: !host })) { click(); app.send({ t: 'settings', mode: room.mode === 'team' ? 'solo' : 'team' }); }
     text(room.mode === 'team' ? '팀전' : '개인전', 49, 77, { size: 12, bold: true, color: '#ffe95a', align: 'center' });
@@ -201,10 +205,15 @@ export class RoomScene {
         A.drawChar(c, cell.ch.id, 'Portrait', 0, x + 1, y + 1, me ? me.color : 0);
         c.restore();
         text(cell.ch.name.replace('럭셔리', '럭').replace('슈퍼', '슈'), x + 22, y + 41, { size: 9, color: '#fff', align: 'center', maxW: 44, shadow: '#022a5e' });
-        if (ui.area(id, x, y, 45, 43)) { click(); app.send({ t: 'set', char: cell.ch.id }); }
+        const owned = W.owns('char', cell.ch.id);
+        if (!owned) { c.fillStyle = 'rgba(0,10,40,0.55)'; roundRect(c, x, y, 45, 43, 5); c.fill(); text('🔒', x + 22, y + 26, { size: 14, align: 'center' }); }
+        if (ui.area(id, x, y, 45, 43)) {
+          click();
+          if (owned) app.send({ t: 'set', char: cell.ch.id }); else app.toast(`${cell.ch.name}은(는) 상점에서 살 수 있어요.`);
+        }
       } else if (cell.special === 'random') {
         text('랜덤', x + 22, y + 27, { size: 12, bold: true, color: '#ffe95a', align: 'center' });
-        if (ui.area(id, x, y, 45, 43)) { const r = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]; app.send({ t: 'set', char: r.id }); }
+        if (ui.area(id, x, y, 45, 43)) { const mine = CHARACTERS.filter((ch) => W.owns('char', ch.id)); const r = mine[Math.floor(Math.random() * mine.length)]; app.send({ t: 'set', char: r.id }); }
       } else {
         text(`${this.charPage + 1}/${pages}▶`, x + 22, y + 27, { size: 11, bold: true, color: '#ffe95a', align: 'center' });
         if (ui.area(id, x, y, 45, 43)) this.charPage = (this.charPage + 1) % pages;

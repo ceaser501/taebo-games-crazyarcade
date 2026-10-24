@@ -149,7 +149,16 @@ export function decodePixels({ w, h, data }) {
     const len = data.readUInt32LE(1);
     runs(data.subarray(5, 5 + len), n, 3, col);
     runs(data.subarray(5 + len), n, 1, (p, d, at) => { if (p < n) out[p * 4 + 3] = d[at]; }, (p) => { if (p < n) out[p * 4 + 3] = 255; });
-  } else throw new Error(`pixel stream ${data[0].toString(16)}`);
+  } else {
+    // 16-bit RGB565 from the first byte, no alpha stream; F81F (magenta) is transparent and any
+    // op with the top bit set is a transparent run.
+    const c16 = (p, d, at) => {
+      const v = d[at] | (d[at + 1] << 8);
+      if (p >= n || v === 0xf81f) return;
+      out[p * 4] = ((v >> 11) * 255 / 31) | 0; out[p * 4 + 1] = (((v >> 5) & 63) * 255 / 63) | 0; out[p * 4 + 2] = ((v & 31) * 255 / 31) | 0; out[p * 4 + 3] = 255;
+    };
+    runs(data, n, 2, c16, () => {});
+  }
   return out;
 }
 

@@ -43,6 +43,8 @@ console.log(`게임 코드 ${out('git rev-parse --short HEAD')} (최신)`);
 try { execSync('ffmpeg -version', { stdio: 'ignore' }); } catch {
   console.warn('\n⚠ ffmpeg가 없어서 소리를 Ogg 그대로 올려요. 아이폰에서 소리가 안 나요. (brew install ffmpeg)');
 }
+console.log('\n▶ 꾸미기·탈것 그림 받기 (archive.org, 처음 한 번 100MB 정도)');
+try { run('node crazyarcade/tools/fetch-extra.mjs'); } catch { console.warn('⚠ 받지 못해서 상점 꾸미기 없이 진행해요.'); }
 console.log('\n▶ 변환');
 run(`node crazyarcade/tools/convert-assets.mjs "${assets}"`);
 console.log('\n▶ 빌드');

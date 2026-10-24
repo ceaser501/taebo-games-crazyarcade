@@ -66,11 +66,19 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Cache the packs from the full installer
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/cache@v4
+        with:
+          path: crazyarcade/.cache/extra
+          key: ca-extra-v1
+
       - name: Build
         if: steps.secrets.outputs.ready == 'true'
         run: |
           command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
           npm ci
+          node crazyarcade/tools/fetch-extra.mjs || echo "::warning::decorations not fetched"
           npm run ca:assets -- ca-assets
           rm -rf ca-assets
           npm run build
