@@ -33,19 +33,19 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
 #intro, #signup, #home {
   position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 22px; padding: 16px; box-sizing: border-box; color: #fff; touch-action: manipulation;
-  background: linear-gradient(180deg, rgba(4, 30, 90, 0.55), rgba(2, 12, 40, 0.9)), url(../assets/ca/bg/login.jpg) center / cover, #0b3f8f;
+  background: linear-gradient(180deg, rgba(4, 30, 90, 0.55), rgba(2, 12, 40, 0.9)), url(../assets/ca/bg/shop.jpg) center / cover, #0b3f8f;
 }
 #intro { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-#home { z-index: 7; background: linear-gradient(180deg, rgba(4, 30, 90, 0.45), rgba(2, 12, 40, 0.85)), url(../assets/ca/bg/lobby.jpg) center / cover, #0b3f8f; }
+#home { z-index: 7; background: linear-gradient(180deg, rgba(4, 30, 90, 0.45), rgba(2, 12, 40, 0.85)), url(../assets/ca/bg/shop.jpg) center / cover, #0b3f8f; }
 .intro-logo { text-align: center; animation: intro-drop 0.7s cubic-bezier(.2, 1.4, .4, 1) both; }
 .intro-logo h1, .logo h1 {
-  margin: 0; font-weight: 800; line-height: 0.95; letter-spacing: 1px; font-size: clamp(46px, 12vw, 92px);
+  margin: 0; font-weight: 800; line-height: 0.95; letter-spacing: 1px; font-size: clamp(36px, min(12vw, 12vh), 92px);
   background: linear-gradient(180deg, #fffbd0 0%, #ffe14a 40%, #ff9a1a 80%, #ff6a1a 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 4px 0 #0a3a9a) drop-shadow(0 7px 0 #021a50);
 }
 .intro-logo p { margin: 10px 0 0; font-weight: 800; letter-spacing: 6px; color: #9fe0ff; text-shadow: 0 2px 0 #021a50; }
-#intro-chars { width: min(420px, 90vw); height: auto; image-rendering: pixelated; display: block; margin: 0 auto 6px; }
+#intro-chars { width: min(420px, 90vw, 70vh); height: auto; image-rendering: pixelated; display: block; margin: 0 auto 6px; }
 #intro-tap { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #ffe58a; text-shadow: 0 2px 0 #000; opacity: 0.7; }
 #intro.ready #intro-tap { opacity: 1; animation: tap-blink 1.4s ease-in-out infinite; }
 @keyframes tap-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
