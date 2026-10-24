@@ -95,7 +95,7 @@ export function showHome(app) {
     const loop = (now) => {
       if ($('home').hidden) return;
       const n = A.charFrames(ch, 'WalkDown');
-      figure(cv, ch, 'WalkDown', n > 1 ? 1 + (Math.floor(now / 160) % (n - 1)) : 0, 3.2, look);
+      figure(cv, ch, 'WalkDown', n > 1 ? 1 + (Math.floor(now / 160) % (n - 1)) : 0, 2.5, look);
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
@@ -104,16 +104,18 @@ export function showHome(app) {
     const name = $('home-name').value.trim().slice(0, 10);
     if (name) app.setName(name); else $('home-name').value = app.name;
   };
-  $('home-play').onclick = () => { sfx('Bt_c_Pop', 0.6); hideHome(); app.toLobby(); };
-  $('home-shop').onclick = () => { sfx('Bt_c_Pop', 0.6); hideHome(); app.toShop(); };
-  $('home-chars').onclick = $('home-figure').onclick = () => pickChar(app);
+  $('home-play').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toMenu(); };
+  $('home-shop').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toShop('home'); };
+  $('home-chars').onclick = $('home-figure').onclick = () => pickChar(app, () => showHome(app));
   const music = () => { $('home-music').textContent = musicOn() ? '♪ 배경음악 끄기' : '♪ 배경음악 켜기'; };
   music();
   $('home-music').onclick = () => { toggleMusic(); music(); };
 }
 export function hideHome() { $('home').hidden = true; $('char-pick').hidden = true; }
+export const isHomeShown = () => !$('home').hidden;
 
-function pickChar(app) {
+// Character choice; done() runs after a pick.
+export function pickChar(app, done) {
   sfx('Bt_c_Pop', 0.6);
   const grid = $('char-grid');
   grid.textContent = '';
@@ -134,7 +136,7 @@ function pickChar(app) {
       sfx('Bt_c_Pop', 0.6);
       W.setChar(ch.id);
       $('char-pick').hidden = true;
-      showHome(app);
+      done(ch.id);
     };
     grid.append(b);
   }

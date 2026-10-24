@@ -65,17 +65,70 @@
       </div>
     </section>
     <button type="button" id="home-play" class="big-btn">게임하러 가기</button>
-    <div id="char-pick" hidden>
-      <div class="card">
-        <h2>캐릭터 고르기</h2>
-        <div id="char-grid"></div>
-        <button type="button" id="char-close" class="chip">닫기</button>
+  </div>
+
+  <!-- Menu: practice against the computer, or an online room with friends (as in worms). -->
+  <div id="menu" hidden>
+    <header class="logo small"><h1>크레이지 아케이드</h1></header>
+    <div class="cards">
+      <section class="card" id="practice-card">
+        <h2><b>1</b>컴퓨터와 연습</h2>
+        <label class="opt"><span>대결</span><select id="practice-size"></select></label>
+        <label class="opt"><span>맵</span><select id="practice-map"></select></label>
+        <button type="button" id="practice-start" class="big-btn">연습 시작</button>
+      </section>
+      <section class="card" id="online-card">
+        <h2><b>2</b>친구와 온라인 대전</h2>
+        <p class="sub">최대 8명 · 팀전(1:1 ~ 4:4) 또는 개인전 · 맵은 방장이 골라요</p>
+        <button type="button" id="host" class="big-btn blue">방 만들기</button>
+        <div class="or"><span>또는 친구 방에 들어가기</span></div>
+        <div class="join-row">
+          <input id="join-code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="방 번호 4자리" autocomplete="off">
+          <button type="button" id="join" class="big-btn green">참가</button>
+        </div>
+        <p id="net-status"></p>
+      </section>
+    </div>
+    <footer class="menu-bar">
+      <button type="button" id="menu-home" class="chip">← 처음으로</button>
+      <button type="button" id="menu-shop" class="chip shop">상점·꾸미기</button>
+    </footer>
+  </div>
+
+  <!-- Waiting room: room number and invite link, team or solo, who sits where, map, start. -->
+  <div id="lobby" hidden>
+    <div class="lobby-card">
+      <div class="lobby-head">
+        <div id="lobby-code-box"><span>방 번호</span><strong id="lobby-code">----</strong><button type="button" id="share-link" class="chip">초대 링크 보내기</button></div>
+        <div id="lobby-mode">
+          <button type="button" data-mode="team">팀전 <small>1:1 ~ 4:4</small></button>
+          <button type="button" data-mode="solo">개인전 <small>2~8명</small></button>
+        </div>
+      </div>
+      <div id="seats"></div>
+      <div class="lobby-foot">
+        <canvas id="lobby-mm" width="74" height="64"></canvas>
+        <label class="opt lobby-map"><span>맵</span><select id="lobby-map"></select></label>
+        <button type="button" id="lobby-char" class="chip">캐릭터 바꾸기</button>
+        <button type="button" id="lobby-shop" class="chip shop">상점</button>
+      </div>
+      <p id="lobby-status"></p>
+      <div class="lobby-actions">
+        <button type="button" id="lobby-start" class="big-btn" hidden>게임 시작</button>
+        <button type="button" id="lobby-leave" class="chip">나가기</button>
       </div>
     </div>
   </div>
-  <input id="code-input" class="over" maxlength="4" inputmode="numeric" placeholder="1234" hidden>
-  <input id="chat-input" class="over" maxlength="80" placeholder="채팅 입력 후 Enter" hidden>
-  <div id="chat-log" class="over" hidden></div>
+
+  <!-- Character choice (from the home screen or the waiting room). -->
+  <div id="char-pick" hidden>
+    <div class="card">
+      <h2>캐릭터 고르기</h2>
+      <div id="char-grid"></div>
+      <button type="button" id="char-close" class="chip">닫기</button>
+    </div>
+  </div>
+
   <div id="toast" hidden></div>
   <div id="rotate">가로로 돌려 주세요 ↻</div>
   <div id="gate" hidden>

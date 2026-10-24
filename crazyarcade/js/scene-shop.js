@@ -62,9 +62,9 @@ export class ShopScene {
   }
 
   draw(now) {
-    const c = stage.begin();
     const bg = A.bg('shop');
-    if (bg) c.drawImage(bg, 0, 0); else { c.fillStyle = '#0d47b0'; c.fillRect(0, 0, 800, 600); }
+    const c = stage.begin(bg);
+    if (!bg) { c.fillStyle = '#0d47b0'; c.fillRect(0, 0, 800, 600); }
     A.drawAt(c, 'Shop/ShopMainBG', 0, 0, 0);
     ui.begin();
     if (this.confirm) ui.area('modal', 0, 0, 800, 600);

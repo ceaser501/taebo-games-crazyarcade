@@ -8,6 +8,10 @@ import { Bot } from './ai.js';
 import { MAPS } from './maps.js';
 
 export const DEFAULT_MAP = 'Village10';
+// Team play is red against blue (colours 0 and 5), up to four a side; in solo play everyone
+// has a colour of their own.
+export const RED = 0, BLUE = 5;
+const SOLO_COLORS = [0, 5, 3, 1, 2, 4, 6, 7];
 const BOT_NAMES = ['컴퓨터1', '컴퓨터2', '컴퓨터3', '컴퓨터4', '컴퓨터5', '컴퓨터6', '컴퓨터7'];
 
 // Decorations a player wears (shop ids): hat A0015, balloon Bomb001, pet Pet001.
@@ -46,6 +50,15 @@ export class RoomCore {
 
   changed() { this.broadcast({ t: 'room', room: this.state() }); this.onChange(); }
 
+  // The colour for someone arriving: the smaller team, or a colour nobody has.
+  newColor() {
+    const ms = [...this.members.values()];
+    if (this.mode === 'team') return ms.filter((m) => m.color === RED).length <= ms.filter((m) => m.color === BLUE).length ? RED : BLUE;
+    const used = new Set(ms.map((m) => m.color));
+    return SOLO_COLORS.find((c) => !used.has(c)) ?? 0;
+  }
+  teamSize(color) { return [...this.members.values()].filter((m) => m.color === color).length; }
+
   freeSlot() { return this.slots.findIndex((s) => s.open && s.id === null); }
 
   join(id, name) {
@@ -53,8 +66,7 @@ export class RoomCore {
     const slot = this.freeSlot();
     if (slot < 0) return { error: 'full' };
     // A colour nobody uses yet, so a fresh room starts as a free-for-all of distinct teams.
-    const used = new Set([...this.members.values()].map((m) => m.color));
-    const color = [0, 5, 3, 1, 2, 4, 6, 7].find((c) => !used.has(c)) ?? 0;
+    const color = this.newColor();
     const m = { id, name: String(name || '플레이어').slice(0, 10), char: CHARACTERS[slot % 4].id, color, ready: false, bot: false, slot };
     this.members.set(id, m);
     this.slots[slot].id = id;
@@ -120,7 +132,10 @@ export class RoomCore {
       case 'set':
         if (this.phase !== 'room') return;
         if (msg.char && CHARACTERS.some((c) => c.id === msg.char)) m.char = msg.char;
-        if (Number.isInteger(msg.color) && msg.color >= 0 && msg.color < TEAMS.length) m.color = msg.color;
+        if (Number.isInteger(msg.color) && msg.color >= 0 && msg.color < TEAMS.length && msg.color !== m.color) {
+          if (this.mode === 'team') { if ((msg.color === RED || msg.color === BLUE) && this.teamSize(msg.color) < 4) m.color = msg.color; }
+          else if (![...this.members.values()].some((x) => x.color === msg.color)) m.color = msg.color;
+        }
         if (msg.look && typeof msg.look === 'object') m.look = cleanLook(msg.look);
         if (!host) m.ready = false;
         this.changed(); break;
@@ -129,7 +144,11 @@ export class RoomCore {
         m.ready = !!msg.on; this.changed(); break;
       case 'settings':
         if (!host || this.phase !== 'room') return;
-        if (msg.mode === 'team' || msg.mode === 'solo') this.mode = msg.mode;
+        if ((msg.mode === 'team' || msg.mode === 'solo') && msg.mode !== this.mode) {
+          // Re-seat everyone in the order they came: alternate red/blue, or a colour each.
+          this.mode = msg.mode;
+          this.players().forEach((x, i) => { x.color = this.mode === 'team' ? (i % 2 ? BLUE : RED) : SOLO_COLORS[i % SOLO_COLORS.length]; });
+        }
         if (msg.map && MAPS.some((x) => x.id === msg.map)) this.mapId = msg.map;
         if (typeof msg.title === 'string' && msg.title.trim()) this.title = msg.title.trim().slice(0, 24);
         for (const x of this.members.values()) if (!x.bot) x.ready = false;
@@ -150,8 +169,8 @@ export class RoomCore {
         const slot = Number.isInteger(msg.i) && this.slots[msg.i] && this.slots[msg.i].open && this.slots[msg.i].id === null ? msg.i : this.freeSlot();
         if (slot < 0) return;
         const bid = `bot${slot}-${Date.now() % 100000}`;
-        const used = new Set([...this.members.values()].map((x) => x.color));
-        const color = Number.isInteger(msg.color) ? msg.color : ([5, 0, 3, 1, 2, 4, 6, 7].find((c) => !used.has(c)) ?? 5);
+        if (this.mode === 'team' && (msg.color === RED || msg.color === BLUE) && this.teamSize(msg.color) >= 4) return;
+        const color = this.mode === 'team' && (msg.color === RED || msg.color === BLUE) ? msg.color : this.newColor();
         const ch = CHARACTERS[Math.floor(Math.random() * 12)].id;
         this.members.set(bid, { id: bid, name: BOT_NAMES[slot % BOT_NAMES.length], char: ch, color, ready: true, bot: true, slot });
         this.slots[slot].id = bid; this.slots[slot].open = true;
@@ -193,14 +212,10 @@ export class RoomCore {
 
   cannotStart() {
     const ps = this.players();
-    if (ps.length < 2) return '두 명 이상이어야 시작할 수 있습니다.';
-    if (ps.some((p) => !p.ready && p.id !== this.host)) return '모두 준비해야 시작할 수 있습니다.';
+    if (ps.length < 2) return '친구가 들어오거나 컴퓨터를 넣으면 시작할 수 있어요.';
     const map = MAPS.find((x) => x.id === this.mapId) || MAPS[0];
-    if (ps.length > map.spawns.length) return `${map.name}은(는) ${map.spawns.length}명까지 할 수 있는 맵입니다.`;
-    if (this.mode === 'team') {
-      const teams = new Set(ps.map((p) => p.color));
-      if (teams.size < 2) return '팀전은 두 팀 이상이어야 합니다. 팀 색을 바꿔 주세요.';
-    }
+    if (ps.length > map.spawns.length) return `${map.name}은(는) ${map.spawns.length}명까지 하는 맵이에요. 맵을 바꿔 주세요.`;
+    if (this.mode === 'team' && this.teamSize(RED) !== this.teamSize(BLUE)) return '팀 인원을 맞춰 주세요. (1:1, 2:2, 3:3, 4:4)';
     return null;
   }
 

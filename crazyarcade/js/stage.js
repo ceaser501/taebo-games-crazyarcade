@@ -33,10 +33,15 @@ export const stage = {
   // Stage coordinates -> CSS pixels and back.
   toCss(x, y) { return [this.ox + x * this.sx, this.oy + y * this.sy]; },
   toStage(cx, cy) { return [(cx - this.ox) / this.sx, (cy - this.oy) / this.sy]; },
-  begin() {
+  // backdrop: an image laid over the whole display (beyond the 800×600 picture) first.
+  begin(backdrop = null) {
     const c = this.ctx;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.fillStyle = '#061633'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    if (backdrop) {
+      const k = Math.max(this.canvas.width / backdrop.width, this.canvas.height / backdrop.height);
+      c.drawImage(backdrop, (this.canvas.width - backdrop.width * k) / 2, (this.canvas.height - backdrop.height * k) / 2, backdrop.width * k, backdrop.height * k);
+    }
     c.setTransform(this.sx * this.dpr, 0, 0, this.sy * this.dpr, this.ox * this.dpr, this.oy * this.dpr);
     c.imageSmoothingEnabled = Math.min(this.sx, this.sy) * this.dpr < 1.5;
     return c;

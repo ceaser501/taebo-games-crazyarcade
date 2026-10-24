@@ -3,8 +3,8 @@ import * as A from './assets.js';
 import { stage, ui, onResize } from './stage.js';
 import * as input from './input.js';
 import { unlock, preload, stopMusic } from './audio.js';
-import { LobbyScene, RoomScene } from './scene-menus.js';
 import { showIntro, introReady, askName, showHome, hideHome } from './home.js';
+import { showMenu, hideMenu, showLobby, hideLobby, renderLobby, lobbyShown, lobbyStatus } from './lobby.js';
 import { GameScene } from './scene-game.js';
 import { ShopScene } from './scene-shop.js';
 import * as W from './wallet.js';
@@ -16,16 +16,19 @@ const HASH = typeof PASSWORD_HASH !== 'undefined' ? PASSWORD_HASH : '';
 
 const $ = (id) => document.getElementById(id);
 
+// Screens: the DOM ones (home, menu, waiting room) over a plain canvas, and the canvas ones
+// (game, shop). Only the game wants the phone sideways with room for the touch controls.
 const app = {
   scene: null, conn: null, room: null, me: null, name: '', roomTitle: '', practiceMode: false,
 
   setScene(s) {
     if (this.scene && this.scene.leave) this.scene.leave();
     this.scene = s;
-    // The 800×600 canvas screens want the phone sideways; the home screen works either way.
-    document.body.classList.toggle('canvas-mode', !(s instanceof HomeBackdrop));
-    stage.setFill(!(s instanceof GameScene));
-    if (!(s instanceof HomeBackdrop)) { hideHome(); landscape(); }
+    const canvas = !(s instanceof Backdrop);
+    document.body.classList.toggle('canvas-mode', canvas);
+    stage.setFill(false);
+    if (canvas) { hideHome(); hideMenu(); hideLobby(); }
+    if (s instanceof GameScene) landscape();
     if (s.layout) s.layout();
   },
   setName(n) { this.name = n.slice(0, 10); try { localStorage.setItem('ca-name', this.name); } catch { /* ignore */ } },
@@ -35,91 +38,83 @@ const app = {
     clearTimeout(this.toastTimer); this.toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
   },
   isHost() { return this.room && this.room.host === this.me; },
+  dom(show) { this.setScene(new Backdrop()); hideHome(); hideMenu(); hideLobby(); show(); },
 
-  toHome() { this.disconnect(); this.setScene(new HomeBackdrop()); showHome(this); },
-  // The shop opens over the home screen, the lobby or the waiting room and goes back to it.
-  toShop() {
-    const from = this.conn ? 'room' : this.scene instanceof LobbyScene ? 'lobby' : 'home';
-    const back = () => (from === 'room' && this.conn ? this.setScene(new RoomScene(this)) : from === 'lobby' ? this.toLobby() : this.toHome());
+  toHome() { this.disconnect(); this.dom(() => showHome(this)); },
+  toMenu(status) { this.disconnect(); this.dom(() => showMenu(this, status)); },
+  // The shop opens over the home screen, the menu or the waiting room and goes back to it.
+  toShop(from) {
+    const back = () => (from === 'lobby' && this.conn ? this.dom(() => showLobby(this)) : from === 'menu' ? this.toMenu() : this.toHome());
     this.setScene(new ShopScene(this, back, W.myChar()));
   },
   lookChanged() { if (this.conn) this.send({ t: 'set', look: W.look() }); },
-  toLobby() { this.disconnect(); this.setScene(new LobbyScene(this)); },
-  listRooms() { return listRooms(); },
 
-  async createRoom() {
+  // A new room number nobody is using.
+  async hostRoom() {
     let rooms = [];
     try { rooms = await listRooms(); } catch { /* server unreachable: still try */ }
     let code;
     for (let i = 0; i < 20; i++) { code = randomCode(); if (!rooms.some((r) => r.code === code)) break; }
     this.joinRoom(code);
   },
-  joinRoom(code) { this.connect(new Online(code, this.name), false); },
-  practice() { this.connect(new Practice(this.name || '나'), true); },
+  joinRoom(code) {
+    this.connect(new Online(code, this.name), false);
+    this.dom(() => showLobby(this));
+    lobbyStatus('방에 연결하는 중…');
+  },
+  // Practice: a room in this page with computer players, started at once.
+  practice(opts) { this.connect(new Practice(this.name || '나', opts), true); },
 
   connect(conn, practice) {
     this.disconnect();
     this.conn = conn; this.practiceMode = practice; this.room = null; this.me = null;
     conn.on((m) => this.onMessage(m));
-    this.setScene(new RoomScene(this));
   },
   disconnect() {
     if (this.conn) this.conn.close();
     this.conn = null; this.room = null; this.me = null;
-    $('chat-log').textContent = '';
   },
-  leaveRoom() {
-    const practice = this.practiceMode;
-    this.disconnect();
-    stopMusic();
-    if (practice) this.toHome(); else this.toLobby();
-  },
+  leaveRoom() { stopMusic(); this.toMenu(); },
   send(m) { if (this.conn) this.conn.send(m); },
 
   onMessage(m) {
     switch (m.t) {
-      case 'welcome': {
+      case 'welcome':
         this.me = m.you; this.room = m.room; this.roomTitle = m.room.title;
-        // Wear our decorations; trade a character we do not own for a free one.
-        const mine = m.room.members.find((x) => x.id === m.you);
-        const set = { t: 'set', look: W.look(), char: W.myChar() };
-        this.send(set);
+        // Our character and decorations.
+        this.send({ t: 'set', look: W.look(), char: W.myChar() });
+        renderLobby(this);
         break;
-      }
       case 'room':
         this.room = m.room; this.roomTitle = m.room.title;
+        renderLobby(this);
         break;
       case 'start':
         if (this.scene instanceof ShopScene) this.toast('게임이 시작됐어요!');
         this.setScene(new GameScene(this, this.conn, m, this.me));
         break;
       case 'back':
-        this.setScene(new RoomScene(this));
+        // After a round: friends go back to the waiting room, practice back to the menu.
+        if (this.practiceMode) this.toMenu(); else this.dom(() => showLobby(this));
         break;
       case 's':
         if (this.scene instanceof GameScene) this.scene.onMessage(m);
         break;
-      case 'chat': {
-        const log = $('chat-log');
-        const line = document.createElement('div');
-        if (m.name) { const b = document.createElement('b'); b.textContent = m.name + ' : '; line.append(b); } else line.className = 'sys';
-        line.append(document.createTextNode(m.text));
-        log.append(line);
-        while (log.children.length > 40) log.firstChild.remove();
-        log.scrollTop = log.scrollHeight;
+      case 'chat':
+        // Joins and leaves show briefly in the waiting room.
+        if (!m.name && lobbyShown()) lobbyStatus(m.text);
         break;
-      }
       case 'notice': this.toast(m.text); break;
-      case 'error': this.toast(m.text === 'full' ? '방이 꽉 찼습니다.' : m.text === 'playing' ? '게임 중인 방입니다.' : m.text); this.toLobby(); break;
-      case 'kicked': this.toast('방장이 내보냈습니다.'); this.toLobby(); break;
-      case 'lost': this.toast('서버와 연결이 끊겼습니다.'); this.toLobby(); break;
+      case 'error': this.toMenu(m.text === 'full' ? '방이 꽉 찼어요.' : m.text === 'playing' ? '게임 중인 방이에요. 끝나면 다시 들어와 주세요.' : m.text); break;
+      case 'kicked': this.toMenu('방장이 내보냈어요.'); break;
+      case 'lost': this.toMenu('서버와 연결이 끊겼어요.'); break;
     }
   },
 };
 window.caApp = app;
 
-// What the canvas shows behind the home screen (a DOM overlay).
-class HomeBackdrop { draw() { const c = stage.begin(); c.fillStyle = '#0b3f8f'; c.fillRect(0, 0, 800, 600); } }
+// What the canvas shows behind the DOM screens.
+class Backdrop { draw() { const c = stage.begin(); c.fillStyle = '#0b3f8f'; c.fillRect(0, 0, 800, 600); } }
 
 // On phones, going into the canvas screens asks for full screen held sideways.
 function landscape() {
@@ -170,7 +165,7 @@ async function main() {
   };
   window.addEventListener('pointerdown', first);
   window.addEventListener('keydown', first);
-  app.setScene(new HomeBackdrop());
+  app.setScene(new Backdrop());
   requestAnimationFrame(frame);
   showIntro();
   await A.loadManifest();

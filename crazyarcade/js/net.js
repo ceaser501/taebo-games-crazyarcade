@@ -57,7 +57,8 @@ export class Online {
 }
 
 export class Practice {
-  constructor(name) {
+  // opts: { mode: 'team'|'solo', bots: number of computer players, map }.
+  constructor(name, opts = {}) {
     this.handlers = []; this.rtt = 0; this.me = 'me';
     this.room = new RoomCore({
       code: '연습', title: '혼자놀기',
@@ -68,8 +69,10 @@ export class Practice {
     queueMicrotask(() => {
       this.emit({ t: 'open' });
       this.room.join(this.me, name);
-      // Start with one computer opponent on another team.
-      this.room.message(this.me, { t: 'bot' });
+      this.room.message(this.me, { t: 'settings', mode: opts.mode || 'team', map: opts.map });
+      for (let i = 0; i < (opts.bots ?? 1); i++) this.room.message(this.me, { t: 'bot' });
+      // Start once the page has answered the welcome with our character and decorations.
+      setTimeout(() => this.room.message(this.me, { t: 'start' }), 120);
     });
   }
   deliver(m) { const copy = JSON.parse(JSON.stringify(m)); queueMicrotask(() => this.emit(copy)); }
