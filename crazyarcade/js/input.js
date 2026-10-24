@@ -37,11 +37,13 @@ function layout() {
   const unit = Math.max(0.75, Math.min(1.1, Math.min(vw, vh) / 380));
   // Small controls low in the corners, where the thumbs rest (radius ~35 px on a phone held sideways).
   stick.r = 34 * unit; btn.bomb.r = 36 * unit; btn.needle.r = btn.shield.r = btn.dart.r = 19 * unit;
+  // Lifted a little off the bottom edge, where the thumbs rest holding the phone with both hands.
+  const lift = 16 + Math.round(vh * 0.08);
   const side = margin >= stick.r * 2.2 ? margin / 2 : stick.r + 18;
-  stick.baseX = side; stick.baseY = vh - stick.r - 16;
+  stick.baseX = side; stick.baseY = vh - stick.r - lift;
   if (!stick.id) { stick.cx = stick.baseX; stick.cy = stick.baseY; }
   const rx = vw - (margin >= btn.bomb.r * 2.4 ? margin / 2 : btn.bomb.r + 20);
-  btn.bomb.x = rx; btn.bomb.y = vh - btn.bomb.r - 16;
+  btn.bomb.x = rx; btn.bomb.y = vh - btn.bomb.r - lift;
   // Needle, dart and shield in an arc above the balloon button.
   btn.needle.x = rx - btn.bomb.r * 1.15; btn.needle.y = btn.bomb.y - btn.bomb.r * 1.35;
   btn.dart.x = rx - btn.bomb.r * 0.2; btn.dart.y = btn.bomb.y - btn.bomb.r * 2.05;
