@@ -35,13 +35,13 @@ function layout() {
   const vw = stage.cssW, vh = stage.cssH;
   const margin = stage.ox; // free width on each side of the picture
   const unit = Math.max(0.75, Math.min(1.1, Math.min(vw, vh) / 380));
-  // The stick is about the size of a thumb's reach (radius ~45 px on a phone held sideways).
-  stick.r = 42 * unit; btn.bomb.r = 46 * unit; btn.needle.r = btn.shield.r = btn.dart.r = 25 * unit;
+  // Small controls low in the corners, where the thumbs rest (radius ~35 px on a phone held sideways).
+  stick.r = 34 * unit; btn.bomb.r = 36 * unit; btn.needle.r = btn.shield.r = btn.dart.r = 19 * unit;
   const side = margin >= stick.r * 2.2 ? margin / 2 : stick.r + 18;
-  stick.baseX = side; stick.baseY = vh - Math.max(stick.r + 24, vh * 0.3);
+  stick.baseX = side; stick.baseY = vh - stick.r - 16;
   if (!stick.id) { stick.cx = stick.baseX; stick.cy = stick.baseY; }
   const rx = vw - (margin >= btn.bomb.r * 2.4 ? margin / 2 : btn.bomb.r + 20);
-  btn.bomb.x = rx; btn.bomb.y = vh - Math.max(btn.bomb.r + 26, vh * 0.28);
+  btn.bomb.x = rx; btn.bomb.y = vh - btn.bomb.r - 16;
   // Needle, dart and shield in an arc above the balloon button.
   btn.needle.x = rx - btn.bomb.r * 1.15; btn.needle.y = btn.bomb.y - btn.bomb.r * 1.35;
   btn.dart.x = rx - btn.bomb.r * 0.2; btn.dart.y = btn.bomb.y - btn.bomb.r * 2.05;
