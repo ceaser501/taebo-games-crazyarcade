@@ -37,16 +37,13 @@ export class LobbyScene {
     const c = stage.begin();
     bgOr(c, 'lobby', '#2c9be8');
     ui.begin();
-    text('대전 모드', 305, 57, { size: 12, bold: true, color: '#ffe95a', align: 'center' });
     text(this.app.name, 102, 161, { size: 12, bold: true, color: '#fff', align: 'center' });
-    text('레벨 1   크아 초보', 95, 214, { size: 11, color: '#e6f4ff', align: 'center' });
-    text('혼자놀기 · 방만들기 · 바로시작', 95, 240, { size: 10, color: '#bfe2ff', align: 'center' });
-    text(`${W.lucci().toLocaleString()} 루찌`, 95, 268, { size: 12, bold: true, color: '#ffe95a', align: 'center', shadow: '#03306e' });
-    if (ui.button('shop', 'GlobalUI/BtShop', 64, 278, { label: '상점', w: 63, h: 24 })) { click(); this.app.toShop(); }
-    if (ui.button('create', 'Lobby/LB_Bt_T_CreateRenew', 216, 56, { label: '방만들기' })) { click(); this.app.createRoom(); }
-    if (ui.button('quick', 'Lobby/LB_Bt_T_QuickJoinRenew', 354, 56, { label: '바로시작' })) { click(); this.quick(); }
-    if (ui.button('practice', 'Lobby/LB_Bt_T_PracticeRenew', 480, 63, { label: '혼자놀기' })) { click(); this.app.practice(); }
-    if (ui.button('wait', this.onlyWaiting ? 'Lobby/LB_Bt_T_ShowAllRenew' : 'Lobby/LB_Bt_T_WaitRoomRenew', 580, 63, { label: this.onlyWaiting ? '모든방보기' : '대기방보기' })) { this.onlyWaiting = !this.onlyWaiting; this.page = 0; }
+    text(`${W.lucci().toLocaleString()} 루찌`, 95, 214, { size: 12, bold: true, color: '#ffe95a', align: 'center' });
+    if (ui.button('shop', 'GlobalUI/BtShop', 716, 8, { label: '상점', w: 63, h: 24 })) { click(); this.app.toShop(); }
+    if (ui.button('create', 'Lobby/LB_Bt_T_CreateRenew', 216, 63, { label: '방만들기' })) { click(); this.app.createRoom(); }
+    if (ui.button('quick', 'Lobby/LB_Bt_T_QuickJoinRenew', 354, 63, { label: '바로시작' })) { click(); this.quick(); }
+    if (ui.button('practice', 'Lobby/LB_Bt_T_PracticeRenew', 480, 68, { label: '혼자놀기' })) { click(); this.app.practice(); }
+    if (ui.button('wait', this.onlyWaiting ? 'Lobby/LB_Bt_T_ShowAllRenew' : 'Lobby/LB_Bt_T_WaitRoomRenew', 580, 68, { label: this.onlyWaiting ? '모든방보기' : '대기방보기' })) { this.onlyWaiting = !this.onlyWaiting; this.page = 0; }
     if (ui.area('back', 683, 63, 85, 47)) { this.app.toHome(); }
     text('← 처음 화면', 725, 92, { size: 12, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
     const list = this.rooms.filter((r) => !this.onlyWaiting || !r.playing);
@@ -71,9 +68,6 @@ export class LobbyScene {
       text(`${this.page + 1} / ${pages}`, 492, 395, { size: 12, color: '#fff', align: 'center' });
       if (ui.button('next', 'Lobby/LB_Bt_Right01', 515, 380, { label: '>', w: 40, h: 20 })) this.page = (this.page + 1) % pages;
     }
-    const lines = ['크레이지 아케이드에 오신 것을 환영합니다!', '방을 만들고 친구에게 방 번호(4자리)를 알려 주세요.',
-      '팀전: 팀 색을 같게 맞추면 같은 편 (1:1, 2:2, 4:4 …)  ·  개인전: 모두가 적', '휴대폰은 가로로 돌려서 하세요. 왼쪽 조이스틱으로 이동, 오른쪽 버튼으로 물풍선!'];
-    lines.forEach((l, i) => text(l, 222, 442 + i * 19, { size: 12, color: i ? '#e2f2ff' : '#ffe76a', maxW: 515 }));
     text('방 번호로 입장', 300, 541, { size: 12, bold: true, color: '#fff', align: 'center' });
     if (ui.area('joincode', 716, 522, 54, 28)) this.joinCode();
     text('입장', 743, 541, { size: 12, bold: true, color: '#ffe95a', align: 'center' });
@@ -200,6 +194,8 @@ export class RoomScene {
     if (ui.area('leave', 28, 520, 106, 27)) { click(); app.leaveRoom(); }
     text('나가기', 81, 539, { size: 13, bold: true, color: '#fff', align: 'center' });
 
+    // DOM inputs would show through the dialog.
+    this.chat.hidden = this.mapDialog; $('chat-log').hidden = this.mapDialog;
     if (this.mapDialog) this.drawMapDialog(c, room);
     ui.end();
   }
@@ -222,7 +218,9 @@ export class RoomScene {
     });
     const cur = MAPS.find((m) => m.id === room.map) || MAPS[0];
     A.drawAt(c, `Etc/${cur.id}_mm`, 0, x + 26, y + 92, 148, 128);
-    text(cur.name, x + 100, y + 250, { size: 14, bold: true, color: '#fff', align: 'center' });
+    // The panel's rows under the preview: name, (stars), players.
+    text(cur.name, x + 92, y + 252, { size: 13, bold: true, color: '#fff' });
+    text(`최대 ${cur.spawns.length}명`, x + 92, y + 297, { size: 12, color: '#dff1ff' });
     if (pages > 1) {
       if (ui.area('mprev', x + 192, y + 390, 60, 26)) this.mapPage = (this.mapPage + pages - 1) % pages;
       text('◀ 이전', x + 222, y + 408, { size: 12, bold: true, color: '#ffe95a', align: 'center' });

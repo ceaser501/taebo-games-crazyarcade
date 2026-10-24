@@ -6,7 +6,10 @@ export const W = 800, H = 600;
 export const FONT = '"Nanum Gothic", "NanumGothic", Gulim, "Malgun Gothic", sans-serif';
 
 export const stage = {
-  canvas: null, ctx: null, scale: 1, ox: 0, oy: 0, dpr: 1, cssW: 0, cssH: 0,
+  // fill: the menus stretch the 800×600 screen over the whole display; the game keeps its
+  // shape (fit) so the touch controls get the space at the sides.
+  canvas: null, ctx: null, scale: 1, sx: 1, sy: 1, ox: 0, oy: 0, dpr: 1, cssW: 0, cssH: 0, fill: true,
+  setFill(on) { if (this.fill !== on) { this.fill = on; this.resize(); } },
   init(canvas) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d');
     const fit = () => this.resize();
@@ -23,19 +26,19 @@ export const stage = {
     this.canvas.style.width = vw + 'px'; this.canvas.style.height = vh + 'px';
     this.canvas.width = Math.round(vw * this.dpr); this.canvas.height = Math.round(vh * this.dpr);
     this.scale = Math.min(vw / W, vh / H);
-    this.ox = (vw - W * this.scale) / 2; this.oy = (vh - H * this.scale) / 2;
+    if (this.fill) { this.sx = vw / W; this.sy = vh / H; } else this.sx = this.sy = this.scale;
+    this.ox = (vw - W * this.sx) / 2; this.oy = (vh - H * this.sy) / 2;
     for (const f of resizeHooks) f();
   },
   // Stage coordinates -> CSS pixels and back.
-  toCss(x, y) { return [this.ox + x * this.scale, this.oy + y * this.scale]; },
-  toStage(cx, cy) { return [(cx - this.ox) / this.scale, (cy - this.oy) / this.scale]; },
+  toCss(x, y) { return [this.ox + x * this.sx, this.oy + y * this.sy]; },
+  toStage(cx, cy) { return [(cx - this.ox) / this.sx, (cy - this.oy) / this.sy]; },
   begin() {
     const c = this.ctx;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.fillStyle = '#061633'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    const s = this.scale * this.dpr;
-    c.setTransform(s, 0, 0, s, this.ox * this.dpr, this.oy * this.dpr);
-    c.imageSmoothingEnabled = this.scale * this.dpr < 1.5;
+    c.setTransform(this.sx * this.dpr, 0, 0, this.sy * this.dpr, this.ox * this.dpr, this.oy * this.dpr);
+    c.imageSmoothingEnabled = Math.min(this.sx, this.sy) * this.dpr < 1.5;
     return c;
   },
 };
@@ -45,7 +48,7 @@ export const onResize = (f) => { resizeHooks.push(f); };
 // Places a DOM element over a stage rectangle (inputs, scrolling chat).
 export function place(el, x, y, w, h, fontPx = 12) {
   const [cx, cy] = stage.toCss(x, y);
-  Object.assign(el.style, { left: cx + 'px', top: cy + 'px', width: w * stage.scale + 'px', height: h * stage.scale + 'px', fontSize: fontPx * stage.scale + 'px' });
+  Object.assign(el.style, { left: cx + 'px', top: cy + 'px', width: w * stage.sx + 'px', height: h * stage.sy + 'px', fontSize: fontPx * stage.sy + 'px' });
 }
 
 export const ui = {

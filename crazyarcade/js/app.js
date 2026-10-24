@@ -24,6 +24,7 @@ const app = {
     this.scene = s;
     // The 800×600 canvas screens want the phone sideways; the home screen works either way.
     document.body.classList.toggle('canvas-mode', !(s instanceof HomeBackdrop));
+    stage.setFill(!(s instanceof GameScene));
     if (!(s instanceof HomeBackdrop)) { hideHome(); landscape(); }
     if (s.layout) s.layout();
   },
