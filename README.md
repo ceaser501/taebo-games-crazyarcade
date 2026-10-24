@@ -17,6 +17,8 @@ npm start                                               # http://localhost:8080/
 npm test                                                # 모든 맵에서 컴퓨터끼리 대전시켜 보기
 ```
 
+맵을 원본에서 다시 뽑으려면 `node crazyarcade/tools/build-maps.mjs ../taebo-games-crazyarcade-assets` (결과 `maps-data.js`는 저장소에 들어 있어 평소엔 필요 없음).
+
 `npm start`는 `dist/`를 열고 `/api`를 Durable Object와 같은 방 로직(`RoomCore`)으로 흉내 냅니다. 창 두 개를 열면 혼자서
 온라인 대전을 시험할 수 있고, `DEV_LAG=120 npm start`로 휴대폰 데이터처럼 지연을 줄 수 있습니다.
 변환에는 `ffmpeg`가 있으면 소리를 MP3로 바꿉니다(아이폰은 원본 Ogg를 못 틉니다).
@@ -58,11 +60,11 @@ Durable Objects는 무료 플랜에서도 SQLite 방식 클래스로 쓸 수 있
 | `crazyarcade/js/shared/sim.js` | 게임 규칙: 이동(모서리 미끄러짐), 물풍선, 물줄기, 연쇄, 갇힘·구출·터뜨리기, 아이템, 승패. 결정적(시드 난수) |
 | `crazyarcade/js/shared/room.js` | 방: 8자리, 방장 설정(팀전/개인전, 맵), 준비, 컴퓨터 추가, 라운드 진행·스냅샷 전송 |
 | `crazyarcade/js/shared/ai.js` | 컴퓨터 플레이어 (위험 지도 + 너비 우선 탐색) |
-| `crazyarcade/js/shared/maps-data.js` | 공식 맵 85개 (미리보기에서 복원, `crazyarcade/tools/maps/`) |
+| `crazyarcade/js/shared/maps-data.js` | 원본 맵 파일(FxMap `Map/*`)에서 뽑은 대전 맵 122개: 칸·시작 위치·맵별 아이템 비율 그대로 (`crazyarcade/tools/build-maps.mjs`) |
 | `crazyarcade/js/scene-game.js` | 게임 화면, 내 캐릭터 예측·보정, 다른 사람 보간, PC판 화면 그대로의 오른쪽 패널 |
 | `crazyarcade/js/scene-menus.js` | 로그인(닉네임) → 로비(방 목록) → 대기방 (PC판 배경·버튼 그대로) |
 | `crazyarcade/js/input.js` | 키보드 + 크아M식 터치 조작 |
-| `crazyarcade/tools/ca-formats.mjs` | PatchData `.idx/.idd`, 스프라이트, RLE 픽셀 해석 |
+| `crazyarcade/tools/ca-formats.mjs` | PatchData `.idx/.idd`, 암호화된 항목(맵·표) 풀기, 스프라이트, RLE 픽셀 해석 |
 | `crazyarcade/tools/convert-assets.mjs` | 원본 → PNG 시트 + JSON, JPEG 배경, MP3/Ogg |
 | `server/worker.js` | Durable Object `Room`(방마다 하나, 초당 30틱) · `Lobby`(방 목록) |
 

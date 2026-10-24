@@ -249,6 +249,7 @@ export class RoomScene {
       c.fillStyle = sel ? 'rgba(255,230,80,0.6)' : ui.state('map' + m.id) === 'over' ? 'rgba(150,220,255,0.5)' : 'rgba(0,40,110,0.0)';
       c.fillRect(x + 192, yy - 4, 240, 23);
       text(m.name, x + 202, yy + 13, { size: 13, bold: sel, color: '#fff' });
+      text(`${m.spawns.length}명`, x + 424, yy + 13, { size: 11, color: '#bfe8ff', align: 'right' });
       if (ui.area('map' + m.id, x + 192, yy - 4, 240, 23)) { click(); this.app.send({ t: 'settings', map: m.id }); }
     });
     const cur = MAPS.find((m) => m.id === room.map) || MAPS[0];
@@ -263,7 +264,10 @@ export class RoomScene {
     }
     if (ui.area('mok', x + 124, y + 445, 108, 38)) this.mapDialog = false;
     text('확인', x + 178, y + 470, { size: 14, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
-    if (ui.area('mrandom', x + 240, y + 445, 108, 38)) { const m = MAPS[Math.floor(Math.random() * MAPS.length)]; this.app.send({ t: 'settings', map: m.id }); }
+    if (ui.area('mrandom', x + 240, y + 445, 108, 38)) {
+      const fit = MAPS.filter((m) => m.spawns.length >= Math.max(2, room.members.length));
+      const m = fit[Math.floor(Math.random() * fit.length)] || MAPS[0];
+      this.app.send({ t: 'settings', map: m.id }); }
     text('랜덤', x + 294, y + 470, { size: 14, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
   }
 

@@ -13,6 +13,17 @@ import { mapById } from './shared/room.js';
 const MX = 20, MY = 40; // map origin on the 800×600 screen
 const INTERP = 3; // ticks others are drawn behind the newest snapshot
 
+// Flame/Flame states FireL01..FireL10 (left arm; up, right and down add 1, 2, 3): row n is the
+// cell n places from the arm's tip, so the tip dries up first and the stream recedes inwards.
+const FLAME_ARM = (() => {
+  const grow = [4, 16, 20, 24, 28, 32, 36, 40, 44, 48];
+  const dry = [64, 60, 72, 76, 80, 84, 88, 92, 96];
+  const hold = [52, 56, 52, 48, 52, 56, 52, 48];
+  const rows = [[4, 8, 12, 8, 12, 8, 12, 8, 12, 60, 64, 60, 72, 76, 80, 84, 88, 92, 96]];
+  for (let n = 2; n <= 10; n++) rows.push([...grow, ...dry.map((f, k) => (k < n - 2 ? hold[k] : f))]);
+  return rows;
+})();
+
 export class GameScene {
   constructor(app, conn, start, me) {
     Object.assign(this, { app, conn, me });
@@ -31,9 +42,8 @@ export class GameScene {
   }
 
   async load() {
-    const t = this.map.theme;
     const chars = [...new Set(this.g.players.map((p) => p.char))];
-    await Promise.all([A.loadGroup(`tile_${t}`), A.loadGroup('game'), A.loadBg('game'), ...chars.map((c) => A.loadGroup(`char_${c}`))]);
+    await Promise.all([...this.map.sets.map((t) => A.loadGroup(`tile_${t}`)), A.loadGroup('game'), A.loadBg('game'), ...chars.map((c) => A.loadGroup(`char_${c}`))]);
     this.buildFloor();
     playMusic(this.map.bgm);
     sfx('Ntc_GameStart');
@@ -75,7 +85,7 @@ export class GameScene {
     if (m.m) for (const [i, ot, bt, it, f] of m.m) {
       g.objs[i] = ot >= 0 ? { t: ot, k: g.tiles[ot].k, breakT: bt } : null;
       g.items[i] = it ? { k: it, fresh: 0 } : null;
-      g.flames[i] = f ? { kind: f[0], end: !!f[1], born: f[2], t: Math.max(0, FLAME - (m.k - f[2])) } : null;
+      g.flames[i] = f ? { kind: f[0], end: !!f[1], born: f[2], d: f[3], t: Math.max(0, FLAME - (m.k - f[2])) } : null;
     }
     for (const e of m.ev || []) this.event(e);
   }
@@ -257,17 +267,13 @@ export class GameScene {
 
   // Fire00 (100 frames): 0-3 centre; then for each arm direction k (left, up, right, down)
   // three tip frames (4+k, 8+k, 12+k), ten middle frames (16+k … 52+k) and the fading frames.
+  // Frames of Bomb/Fire00 from the client's Flame/Flame animation table, one frame per step.
   drawFlame(c, f, ax, ay) {
-    const age = FLAME - f.t;
-    const K = { l: 0, u: 1, r: 2, d: 3 };
+    const age = Math.min(18, FLAME - f.t);
+    const n = Math.max(1, Math.min(10, f.d || 1));
     let frame;
-    if (f.kind === 'c') frame = Math.floor(age / 2) % 4;
-    else {
-      const k = K[f.kind];
-      if (age < FLAME - 6) {
-        frame = f.end ? 4 + k + 4 * (Math.floor(age / 2) % 3) : 16 + k + 4 * (Math.floor(age / 2) % 10);
-      } else frame = 56 + k + 4 * Math.min(10, (age - (FLAME - 6)) * 2);
-    }
+    if (f.kind === 'c') frame = age < 4 ? age : age < 7 + n ? 2 + ((age - 4) & 1) : 2 + ((7 + n - 4) & 1);
+    else frame = FLAME_ARM[n - 1][age] + { l: 0, u: 1, r: 2, d: 3 }[f.kind];
     if (!A.draw(c, 'Bomb/Fire00', frame, ax, ay)) { c.fillStyle = 'rgba(80,180,255,0.7)'; c.fillRect(ax + 4, ay - 35, 32, 32); }
   }
 

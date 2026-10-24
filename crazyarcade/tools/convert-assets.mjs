@@ -46,9 +46,8 @@ const pick = (ar, pats) => { const res = pats.map(glob); return ar.names().filte
 
 // Characters: classic, luxury and super versions (C00 Dao ... C29 super Lucky Ethi).
 const CHARS = Array.from({ length: 30 }, (_, i) => `C${String(i).padStart(2, '0')}`);
-// Map themes we build maps from.
-// Map themes: the tilesets the maps use (or a list in CA_TILESETS).
-const TILESETS = process.env.CA_TILESETS ? process.env.CA_TILESETS.split(',') : [...new Set(MAPS.map((m) => m.theme))].sort();
+// Map tilesets: every set the maps use (or a list in CA_TILESETS).
+const TILESETS = process.env.CA_TILESETS ? process.env.CA_TILESETS.split(',') : [...new Set(MAPS.flatMap((m) => m.sets))].sort();
 
 const GROUPS = [
   { name: 'game', from: [
@@ -71,7 +70,7 @@ const GROUPS = [
   ] },
   // Map previews for the map list (zlib-wrapped sprites in FxMap's Etc/).
   { name: 'maps', from: [['FxMap', MAPS.map((m) => `Etc/${m.id}_mm`)]] },
-  ...TILESETS.map((t) => ({ name: `tile_${t}`, from: [['FxTile', [`${t}/*`]]] })),
+  ...TILESETS.map((t) => ({ name: `tile_${t}`, from: [[t === 'TileConv' ? 'fx' : 'FxTile', [`${t}/*`]]] })),
   ...CHARS.map((c) => ({ name: `char_${c}`, from: [['FxCharacter', [`Character/${c}-*`]]] })),
 ];
 

@@ -4,7 +4,7 @@
 //   .idx  16-byte header, then one XOR chain: every byte is XORed with the plaintext byte four
 //         places earlier. Plaintext records are u32 name length, name (cp949), u32 offset,
 //         u32 size, u32 x, u32 y. The first record's length is not stored (it seeds the chain).
-//         Entries with x or y set are encrypted with a scheme we cannot read (maps, tables).
+//         x is the key of an encrypted entry (maps, tables; 0 = plain) and y its CRC (see decrypt).
 //   sprite  i32 frameCount, i32 format (2), i32 atlasCount, i32 ?; atlasCount × (height, width);
 //           frameCount × 12 i32 (offX, offY, key, atlas, left, top, right, bottom, canvasW,
 //           canvasH, anchorX, anchorY); then per atlas u32 length + pixel stream.
@@ -64,8 +64,40 @@ export class Archive {
     if (!e) throw new Error(`missing ${name}`);
     const b = Buffer.alloc(e.size);
     fs.readSync(this.fd, b, 0, e.size, e.offset);
-    return b;
+    if (!e.x) return b;
+    const plain = decrypt(b, e.x);
+    if (entryCrc(e.x, plain) !== e.y) throw new Error(`bad checksum ${name}`);
+    return plain;
   }
+}
+
+// Encrypted entries (maps, ObjectTable, Attr/*): little-endian words, each XORed with the
+// previous plaintext word (the key for the first), a constant and i·i·(i+966)·(i+2020); the
+// trailing bytes with the last plaintext word. Scheme as worked out by the boom-rs project
+// (github.com/aquaplatinumberlitz/boom-rs, crates/boom-assets/src/pack.rs).
+const MAGIC = 0x9c6c95ce;
+export function decrypt(b, key) {
+  const out = Buffer.from(b), n = b.length >> 2;
+  let prev = key >>> 0;
+  for (let i = 0; i < n; i++) {
+    const c = b.readUInt32LE(i * 4);
+    const v = i === 0 ? (c ^ prev ^ MAGIC) >>> 0
+      : (prev ^ c ^ Math.imul(Math.imul(Math.imul(i, i), i + 966), i + 2020) ^ MAGIC) >>> 0;
+    out.writeUInt32LE(v, i * 4);
+    prev = v;
+  }
+  for (let k = 0; k < (b.length & 3); k++) out[n * 4 + k] = b[n * 4 + k] ^ ((prev >>> (8 * k)) & 255);
+  return out;
+}
+
+// CRC-32 (polynomial 04C11DB7, MSB first, no final XOR) seeded with the key.
+function entryCrc(init, buf) {
+  let c = init >>> 0;
+  for (const x of buf) {
+    c = (c ^ (x << 24)) >>> 0;
+    for (let k = 0; k < 8; k++) c = c & 0x80000000 ? ((c << 1) ^ 0x04c11db7) >>> 0 : (c << 1) >>> 0;
+  }
+  return c;
 }
 
 export function isSprite(b) {

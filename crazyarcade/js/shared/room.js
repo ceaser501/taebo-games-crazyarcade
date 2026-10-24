@@ -87,7 +87,7 @@ export class RoomCore {
       const g = this.game;
       this.send(id, { t: 'start', seed: this.startInfo.seed, map: this.startInfo.map, mode: this.mode, players: this.startInfo.players });
       const snap = snapshot(g);
-      snap.m = g.objs.map((o, i) => [i, o ? o.t : -1, o ? o.breakT : 0, g.items[i] ? g.items[i].k : 0, g.flames[i] ? [g.flames[i].kind, g.flames[i].end ? 1 : 0, g.flames[i].born] : 0]);
+      snap.m = g.objs.map((o, i) => [i, o ? o.t : -1, o ? o.breakT : 0, g.items[i] ? g.items[i].k : 0, g.flames[i] ? [g.flames[i].kind, g.flames[i].end ? 1 : 0, g.flames[i].born, g.flames[i].d] : 0]);
       this.send(id, { t: 's', ...snap, a: 0 });
     }
     return true;
@@ -188,6 +188,8 @@ export class RoomCore {
     const ps = this.players();
     if (ps.length < 2) return '두 명 이상이어야 시작할 수 있습니다.';
     if (ps.some((p) => !p.ready && p.id !== this.host)) return '모두 준비해야 시작할 수 있습니다.';
+    const map = MAPS.find((x) => x.id === this.mapId) || MAPS[0];
+    if (ps.length > map.spawns.length) return `${map.name}은(는) ${map.spawns.length}명까지 할 수 있는 맵입니다.`;
     if (this.mode === 'team') {
       const teams = new Set(ps.map((p) => p.color));
       if (teams.size < 2) return '팀전은 두 팀 이상이어야 합니다. 팀 색을 바꿔 주세요.';
@@ -232,7 +234,7 @@ export class RoomCore {
     if (!this.lastObjs) this.lastObjs = new Array(cur.length).fill('');
     for (let i = 0; i < cur.length; i++) if (cur[i] !== this.lastObjs[i]) {
       const o = g.objs[i], it = g.items[i], f = g.flames[i];
-      cells.push([i, o ? o.t : -1, o ? o.breakT : 0, it ? it.k : 0, f ? [f.kind, f.end ? 1 : 0, f.born] : 0]);
+      cells.push([i, o ? o.t : -1, o ? o.breakT : 0, it ? it.k : 0, f ? [f.kind, f.end ? 1 : 0, f.born, f.d] : 0]);
     }
     this.lastObjs = cur;
     if (cells.length) snap.m = cells;

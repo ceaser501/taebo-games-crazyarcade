@@ -3,7 +3,7 @@
 // practice games against the computer. No DOM, no timers, no Math.random (seeded RNG).
 import {
   COLS, ROWS, TILE, HZ, ROUND_SECONDS, HURRY_SECONDS, FUSE, FLAME, TRAP, START_DELAY, END_DELAY,
-  speedPx, TRAPPED_PX, charById, ITEMS, NO_ITEM_WEIGHT, SHIELD_TIME,
+  speedPx, TRAPPED_PX, charById, ITEMS, ITEM_CHANCE, SHIELD_TIME,
 } from './const.js';
 
 export const DIRS = [[0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]]; // none, up, down, left, right
@@ -11,7 +11,7 @@ export const DIR_NAMES = ['Down', 'Up', 'Down', 'Left', 'Right'];
 const HALF = TILE / 2;
 const CORNER = 9; // this far into the next row/column and you slide around a corner
 const BREAK = 9; // ticks a block takes to crumble
-const CONTACT = 26; // players this close touch (rescue or pop a bubble)
+const CONTACT = 28; // players this close touch (rescue or pop a bubble)
 const INVULN = Math.round(1 * HZ); // after losing a ride or being freed
 
 export function rng(state) {
@@ -22,11 +22,11 @@ export function rng(state) {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-function rollItem(g) {
-  const total = NO_ITEM_WEIGHT + Object.values(ITEMS).reduce((n, it) => n + it.weight, 0);
-  let x = rng(g) * total - NO_ITEM_WEIGHT;
-  if (x < 0) return null;
-  for (const [k, it] of Object.entries(ITEMS)) { x -= it.weight; if (x < 0) return k; }
+function rollItem(g, weights) {
+  if (rng(g) * 1000 >= ITEM_CHANCE) return null;
+  const total = weights.reduce((n, [, w]) => n + w, 0);
+  let x = rng(g) * total;
+  for (const [k, w] of weights) { x -= w; if (x < 0) return k; }
   return null;
 }
 
@@ -45,20 +45,14 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
     g.objs.push(t >= 0 ? { t, k: g.tiles[t].k, item: null, breakT: 0 } : null);
   }
   // Hidden items: every breakable block gets a roll.
-  for (const o of g.objs) if (o && o.k === 'soft') o.item = rollItem(g);
+  const weights = Object.entries(ITEMS).map(([k, it]) => [k, map.drops?.[k] ?? it.weight]).filter(([, w]) => w > 0);
+  for (const o of g.objs) if (o && o.k === 'soft') o.item = rollItem(g, weights);
   const spawns = map.spawns.slice();
   // Shuffle spawn points so seats do not always start in the same corner.
   for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(rng(g) * (i + 1)); [spawns[i], spawns[j]] = [spawns[j], spawns[i]]; }
   players.forEach((pl, i) => {
     const ch = charById(pl.char);
     const [c, r] = spawns[i % spawns.length];
-    // Clear the spawn cell and its neighbours of breakable blocks so nobody starts boxed in.
-    for (const [dc, dr] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const cc = c + dc, rr = r + dr;
-      if (cc < 0 || rr < 0 || cc >= COLS || rr >= ROWS) continue;
-      const o = g.objs[rr * COLS + cc];
-      if (o && o.k === 'soft' && (dc === 0 && dr === 0 || Math.abs(dc) + Math.abs(dr) === 1)) g.objs[rr * COLS + cc] = null;
-    }
     g.players.push({
       id: pl.id, name: pl.name, char: ch.id, team: pl.team, color: pl.color ?? pl.team, bot: !!pl.bot,
       x: c * TILE + HALF, y: r * TILE + HALF, dir: 2, moving: false,
@@ -146,16 +140,19 @@ function placeBomb(g, p) {
   emit(g, 'place', { c, r });
 }
 
-function setFlame(g, c, r, kind, end) {
-  g.flames[idx(c, r)] = { t: FLAME, kind, end, born: g.tick };
+// d: for an arm cell its place counted from the arm's tip (1 = tip), for the centre the
+// longest arm; it picks the animation (the stream dries up from the tips inwards).
+function setFlame(g, c, r, kind, end, d) {
+  g.flames[idx(c, r)] = { t: FLAME, kind, end, born: g.tick, d };
 }
 
 function explode(g, b) {
   g.bombs.splice(g.bombs.indexOf(b), 1);
   emit(g, 'boom', { c: b.c, r: b.r });
-  setFlame(g, b.c, b.r, 'c', false);
   const kinds = { '0,-1': 'u', '0,1': 'd', '-1,0': 'l', '1,0': 'r' };
+  let longest = 0;
   for (const [dc, dr] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+    const arm = [];
     for (let i = 1; i <= b.power; i++) {
       const c = b.c + dc * i, r = b.r + dr * i;
       if (!inside(c, r)) break;
@@ -164,11 +161,14 @@ function explode(g, b) {
       if (o && o.k === 'soft') { if (!o.breakT) { o.breakT = 1; emit(g, 'break', { c, r }); } break; }
       if (o && o.k === 'bush') g.objs[idx(c, r)] = null;
       const other = bombAt(g, c, r);
-      if (other) { other.t = Math.min(other.t, 1); setFlame(g, c, r, kinds[`${dc},${dr}`], true); break; }
+      if (other) { other.t = Math.min(other.t, 1); arm.push([c, r]); break; }
       if (g.items[idx(c, r)] && !(g.items[idx(c, r)].fresh > g.tick)) g.items[idx(c, r)] = null;
-      setFlame(g, c, r, kinds[`${dc},${dr}`], i === b.power);
+      arm.push([c, r]);
     }
+    arm.forEach(([c, r], k) => setFlame(g, c, r, kinds[`${dc},${dr}`], k === arm.length - 1, arm.length - k));
+    longest = Math.max(longest, arm.length);
   }
+  setFlame(g, b.c, b.r, 'c', false, Math.max(1, longest));
 }
 
 function applyItem(g, p, k) {
