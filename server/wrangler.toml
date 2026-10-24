@@ -2,6 +2,9 @@
 name = "taebo-crazyarcade-server"
 main = "worker.js"
 compatibility_date = "2024-09-23"
+# Reached only through the site's /api (Pages binding), so no public workers.dev address;
+# this also lets accounts without a workers.dev subdomain deploy it.
+workers_dev = false
 
 [[durable_objects.bindings]]
 name = "ROOMS"
