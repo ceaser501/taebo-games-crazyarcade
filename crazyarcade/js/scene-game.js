@@ -11,7 +11,7 @@ import { createGame, walk, cellOf, DIR_NAMES, DIRS } from './shared/sim.js';
 import { mapById } from './shared/room.js';
 import * as Wallet from './wallet.js';
 
-const MX = 20, MY = 40; // map origin on the 800×600 screen
+const WW = COLS * TILE, WH = ROWS * TILE; // the map in world pixels (600×520)
 const INTERP = 3; // ticks others are drawn behind the newest snapshot
 
 // Flame/Flame states FireL01..FireL10 (left arm; up, right and down add 1, 2, 3): row n is the
@@ -198,25 +198,38 @@ export class GameScene {
     return { x: a.x + (c.x - a.x) * f, y: a.y + (c.y - a.y) * f, dir: c.dir, moving: !!c.moving };
   }
 
+  // Laid out for the phone rather than the PC's 800×600: the map as tall as the screen in the
+  // middle, the timer and players in the left margin, my items and the exit in the right one,
+  // and the touch controls low in both margins.
+  layout() {
+    const vw = stage.cssW, vh = stage.cssH;
+    let k = (vh - 8) / WH;
+    const side = (vw - WW * k) / 2;
+    if (side < 130) k = Math.max((vh - 8) / WH * 0.72, Math.min((vh - 8) / WH, (vw - 260) / WW));
+    if (WW * k > vw) k = vw / WW;
+    this.L = { k, x: Math.round((vw - WW * k) / 2), y: Math.round((vh - WH * k) / 2), vw, vh };
+    input.setSides(this.L.x);
+  }
+
   draw(now) {
     this.update(now);
+    if (!this.L || this.L.vw !== stage.cssW || this.L.vh !== stage.cssH) this.layout();
+    const { k, x, y, vw, vh } = this.L;
     const c = stage.begin();
-    const bgimg = A.bg('game');
-    if (bgimg) c.drawImage(bgimg, 0, 0); else { c.fillStyle = '#0b5fb8'; c.fillRect(0, 0, 800, 600); }
+    const sky = c.createLinearGradient(0, 0, 0, vh);
+    sky.addColorStop(0, '#1a5fc8'); sky.addColorStop(1, '#0a2f78');
+    c.fillStyle = sky; c.fillRect(0, 0, vw, vh);
+    // The map with a frame round it.
+    c.fillStyle = '#04163f'; roundRect(c, x - 4, y - 4, WW * k + 8, WH * k + 8, 8); c.fill();
+    c.strokeStyle = '#7fd4ff'; c.lineWidth = 2; c.stroke();
     c.save();
-    c.beginPath(); c.rect(MX, MY, COLS * TILE, ROWS * TILE); c.clip();
-    c.translate(MX, MY);
+    c.translate(x, y); c.scale(k, k);
+    c.beginPath(); c.rect(0, 0, WW, WH); c.clip();
     if (this.floorCanvas) c.drawImage(this.floorCanvas, 0, 0);
     this.drawWorld(c, now);
-    c.restore();
     this.drawOverlay(c, now);
-    this.drawPanel(c, now);
-    ui.begin();
-    if (ui.area('exit', 640, 558, 156, 38)) this.app.leaveRoom();
-    text('나가기', 718, 583, { size: 15, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
-    if (this.g.phase === 'end' && this.app.isHost() && performance.now() - this.endAt > 1500) {
-      // The host can go back early; the server also returns everyone after a few seconds.
-    }
+    c.restore();
+    this.drawHud(c, now);
     ui.end();
     input.draw();
   }
@@ -411,7 +424,7 @@ export class GameScene {
 
   drawOverlay(c, now) {
     const g = this.g;
-    const cx = MX + (COLS * TILE) / 2, cy = MY + (ROWS * TILE) / 2;
+    const cx = WW / 2, cy = WH / 2;
     const word = (sprite, t0, dur = 9e9) => {
       const n = A.frames(sprite);
       if (!n) return false;
@@ -445,40 +458,51 @@ export class GameScene {
     }
   }
 
-  drawPanel(c, now) {
-    const g = this.g;
-    // Timer as the client shows it: "TIMER m:ss".
+  // Timer and players at the left, my items and the exit at the right (over the map's top
+  // corners when the screen has no margins).
+  drawHud(c, now) {
+    const g = this.g, { k, x, y, vw } = this.L;
+    const left = x - 16, right = vw - (x + WW * k) - 20;
+    const lx = left >= 110 ? 8 : x + 6, rx = right >= 110 ? x + WW * k + 12 : x + WW * k - 116;
+    const lw = Math.min(left >= 110 ? left : 150, 190), rw = Math.min(right >= 110 ? right : 110, 190);
+    const panel = (px, py, w, h) => { c.fillStyle = 'rgba(2, 22, 70, 0.72)'; roundRect(c, px, py, w, h, 9); c.fill(); c.strokeStyle = 'rgba(127, 212, 255, 0.6)'; c.lineWidth = 1.5; c.stroke(); };
+    // Timer.
     const secs = Math.max(0, Math.ceil(g.timer / HZ));
-    // The background already has the colon of "TIMER  :"; minutes go left of it, seconds right.
-    const tcol = g.hurry ? '#ff5050' : '#ffe14a';
-    text(String(Math.floor(secs / 60)), 737, 88, { size: 15, bold: true, color: tcol, align: 'right', shadow: '#0a2a5a' });
-    text(String(secs % 60).padStart(2, '0'), 745, 88, { size: 15, bold: true, color: tcol, align: 'left', shadow: '#0a2a5a' });
-    text(this.map.name, 58, 18, { size: 12, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
-    text(this.app.roomTitle || '', 717, 49, { size: 11, color: '#cfe8ff', align: 'center', maxW: 150 });
+    panel(lx, y + 2, lw, 34);
+    text('TIME', lx + 10, y + 24, { size: 11, bold: true, color: '#9fd0f5' });
+    text(`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, lx + lw - 10, y + 27, { size: 20, bold: true, color: g.hurry ? '#ff5a5a' : '#ffe14a', align: 'right', shadow: '#02163f' });
+    // Players: portrait, name, kills.
+    const rowH = 27, py = y + 42;
+    panel(lx, py, lw, g.players.length * rowH + 8);
     g.players.forEach((p, i) => {
-      const y = 101 + 43 * i;
-      const dead = p.state === 'dead';
-      c.save(); c.beginPath(); c.rect(658, y + 2, 43, 38); c.clip();
-      A.drawChar(c, p.char, dead ? 'PortraitDie' : 'Portrait', dead ? Math.floor(now / 200) % 4 : 0, 658, y + 4, p.color);
+      const ry = py + 4 + i * rowH, dead = p.state === 'dead';
+      c.save(); c.beginPath(); c.rect(lx + 4, ry, 26, 25); c.clip();
+      c.translate(lx + 4, ry); c.scale(0.58, 0.58);
+      A.drawChar(c, p.char, dead ? 'PortraitDie' : 'Portrait', dead ? Math.floor(now / 200) % 4 : 0, 0, 0, p.color, dead ? 0.5 : 1);
       c.restore();
-      c.fillStyle = TEAMS[p.color]?.css || '#888'; c.fillRect(709, y + 4, 14, 14);
-      text(p.name, 753, y + 16, { size: 11, color: dead ? '#8aa' : '#fff', align: 'center', maxW: 44 });
-      if (p.state === 'trapped') text('!', 716, y + 32, { size: 12, bold: true, color: '#7df', align: 'center' });
-      text(`${p.kills}`, 753, y + 33, { size: 10, color: '#9cf', align: 'center' });
+      c.fillStyle = TEAMS[p.color]?.css || '#888'; c.fillRect(lx + 33, ry + 8, 6, 10);
+      text(p.name, lx + 44, ry + 17, { size: 12, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - 76 });
+      text(p.state === 'trapped' ? '갇힘' : `${p.kills}`, lx + lw - 8, ry + 17, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : '#9cf', align: 'right' });
     });
+    // Exit, map name, my items.
+    ui.begin();
+    panel(rx, y + 2, rw, 34);
+    text('나가기', rx + rw / 2, y + 24, { size: 14, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
+    if (ui.area('exit', rx, y + 2, rw, 34)) this.app.leaveRoom();
+    text(this.map.name, rx + rw / 2, y + 56, { size: 12, bold: true, color: '#cfe8ff', align: 'center', maxW: rw });
     const me = this.myPlayer();
-    if (me) {
-      const items = [['Item/Niddle', me.needle], ['Item/Shield', me.shield], ['Item/Dart', me.dart || 0], ['Item/Bomb', me.bombs], ['Item/Potion', me.power], ['Item/Skate', me.speed]];
-
-      // Kept powers (shoe, punch) as small marks beside the ITEM label.
-      [['Item/Shoe', me.kick], ['Item/Punch', me.punch]].filter(([, on]) => on).forEach(([sp], k) => A.drawAt(c, sp, 0, 712 + k * 24, 448, 22, 22));
-      items.forEach(([s, n], k) => {
-        const x = 656 + (k % 3) * 44, y = 472 + Math.floor(k / 3) * 38;
-        const [w, h] = A.size(s);
-        if (w) { const sc = Math.min(1, 30 / Math.max(w, h)); c.drawImage(A.frameOf(s, 0).img, A.frameOf(s, 0).sx, A.frameOf(s, 0).sy, w, h, x, y, w * sc, h * sc); }
-        text(String(n), x + 36, y + 30, { size: 12, bold: true, color: '#fff', align: 'right', shadow: '#03306e' });
-      });
-    }
+    if (!me) return;
+    const items = [['Item/Bomb', me.bombs], ['Item/Potion', me.power], ['Item/Skate', me.speed]];
+    if (me.kick) items.push(['Item/Shoe', '✓']);
+    if (me.punch) items.push(['Item/Punch', '✓']);
+    const per = Math.max(1, Math.min(3, Math.floor(rw / 52)));
+    panel(rx, y + 66, rw, Math.ceil(items.length / per) * 36 + 8);
+    items.forEach(([sp, n], i) => {
+      const ix = rx + 6 + (i % per) * (rw - 12) / per, iy = y + 70 + Math.floor(i / per) * 36;
+      const [w, h] = A.size(sp);
+      if (w) { const sc = Math.min(1, 28 / Math.max(w, h)); A.drawAt(c, sp, 0, ix, iy + (32 - h * sc) / 2, w * sc, h * sc); }
+      text(String(n), ix + 46, iy + 26, { size: 14, bold: true, color: '#fff', align: 'right', shadow: '#03306e' });
+    });
   }
 
   leave() { input.enable(false); }

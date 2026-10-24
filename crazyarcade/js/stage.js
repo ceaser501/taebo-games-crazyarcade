@@ -8,8 +8,10 @@ export const FONT = '"Nanum Gothic", "NanumGothic", Gulim, "Malgun Gothic", sans
 export const stage = {
   // fill: the menus stretch the 800×600 screen over the whole display; the game keeps its
   // shape (fit) so the touch controls get the space at the sides.
-  canvas: null, ctx: null, scale: 1, sx: 1, sy: 1, ox: 0, oy: 0, dpr: 1, cssW: 0, cssH: 0, fill: true,
-  setFill(on) { if (this.fill !== on) { this.fill = on; this.resize(); } },
+  // mode: 'fit' keeps the 800×600 picture whole (letterboxed), 'fill' stretches it, 'css' maps
+  // stage units to CSS pixels so a scene lays itself out for the screen (the game does).
+  canvas: null, ctx: null, scale: 1, sx: 1, sy: 1, ox: 0, oy: 0, dpr: 1, cssW: 0, cssH: 0, mode: 'fit',
+  setMode(m) { if (this.mode !== m) { this.mode = m; this.resize(); } },
   init(canvas) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d');
     const fit = () => this.resize();
@@ -26,8 +28,10 @@ export const stage = {
     this.canvas.style.width = vw + 'px'; this.canvas.style.height = vh + 'px';
     this.canvas.width = Math.round(vw * this.dpr); this.canvas.height = Math.round(vh * this.dpr);
     this.scale = Math.min(vw / W, vh / H);
-    if (this.fill) { this.sx = vw / W; this.sy = vh / H; } else this.sx = this.sy = this.scale;
-    this.ox = (vw - W * this.sx) / 2; this.oy = (vh - H * this.sy) / 2;
+    if (this.mode === 'css') { this.sx = this.sy = 1; this.ox = this.oy = 0; } else {
+      if (this.mode === 'fill') { this.sx = vw / W; this.sy = vh / H; } else this.sx = this.sy = this.scale;
+      this.ox = (vw - W * this.sx) / 2; this.oy = (vh - H * this.sy) / 2;
+    }
     for (const f of resizeHooks) f();
   },
   // Stage coordinates -> CSS pixels and back.

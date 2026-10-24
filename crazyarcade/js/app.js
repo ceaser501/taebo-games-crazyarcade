@@ -6,7 +6,7 @@ import { unlock, preload, stopMusic } from './audio.js';
 import { showIntro, introReady, askName, showHome, hideHome } from './home.js';
 import { showMenu, hideMenu, showLobby, hideLobby, renderLobby, lobbyShown, lobbyStatus } from './lobby.js';
 import { GameScene } from './scene-game.js';
-import { ShopScene } from './scene-shop.js';
+import { showShop, hideShop } from './shop.js';
 import * as W from './wallet.js';
 import { Online, Practice, listRooms, randomCode } from './net.js';
 
@@ -26,8 +26,8 @@ const app = {
     this.scene = s;
     const canvas = !(s instanceof Backdrop);
     document.body.classList.toggle('canvas-mode', canvas);
-    stage.setFill(false);
-    if (canvas) { hideHome(); hideMenu(); hideLobby(); }
+    stage.setMode(s instanceof GameScene ? 'css' : 'fit');
+    if (canvas) { hideHome(); hideMenu(); hideLobby(); hideShop(); }
     if (s instanceof GameScene) landscape();
     if (s.layout) s.layout();
   },
@@ -38,14 +38,14 @@ const app = {
     clearTimeout(this.toastTimer); this.toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
   },
   isHost() { return this.room && this.room.host === this.me; },
-  dom(show) { this.setScene(new Backdrop()); hideHome(); hideMenu(); hideLobby(); show(); },
+  dom(show) { this.setScene(new Backdrop()); hideHome(); hideMenu(); hideLobby(); hideShop(); show(); },
 
   toHome() { this.disconnect(); this.dom(() => showHome(this)); },
   toMenu(status) { this.disconnect(); this.dom(() => showMenu(this, status)); },
   // The shop opens over the home screen, the menu or the waiting room and goes back to it.
   toShop(from) {
     const back = () => (from === 'lobby' && this.conn ? this.dom(() => showLobby(this)) : from === 'menu' ? this.toMenu() : this.toHome());
-    this.setScene(new ShopScene(this, back, W.myChar()));
+    this.dom(() => showShop(this, back));
   },
   lookChanged() { if (this.conn) this.send({ t: 'set', look: W.look() }); },
 
@@ -90,7 +90,7 @@ const app = {
         renderLobby(this);
         break;
       case 'start':
-        if (this.scene instanceof ShopScene) this.toast('게임이 시작됐어요!');
+        if (!document.getElementById('shop').hidden) this.toast('게임이 시작됐어요!');
         this.setScene(new GameScene(this, this.conn, m, this.me));
         break;
       case 'back':

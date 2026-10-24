@@ -120,6 +120,35 @@
     </div>
   </div>
 
+  <!-- Shop: characters, hats, balloon skins and pets for lucci, with the character wearing them. -->
+  <div id="shop" hidden>
+    <div class="shop-card">
+      <div class="shop-head">
+        <h2>상점</h2>
+        <span class="shop-lucci"><b id="shop-lucci">0</b> 루찌</span>
+        <button type="button" id="shop-close" class="chip">← 나가기</button>
+      </div>
+      <div id="shop-tabs">
+        <button type="button" data-kind="char">캐릭터</button>
+        <button type="button" data-kind="hat">머리장식</button>
+        <button type="button" data-kind="bomb">물풍선</button>
+        <button type="button" data-kind="pet">펫</button>
+      </div>
+      <div class="shop-body">
+        <div class="shop-list">
+          <div id="shop-grid"></div>
+          <div class="shop-pager"><button type="button" id="shop-prev" class="chip">◀ 이전</button><span id="shop-page"></span><button type="button" id="shop-next" class="chip">다음 ▶</button></div>
+        </div>
+        <aside class="shop-side">
+          <canvas id="shop-preview" width="200" height="190"></canvas>
+          <b id="shop-name">물건을 고르세요</b>
+          <span id="shop-price"></span>
+          <button type="button" id="shop-act" class="big-btn" hidden></button>
+        </aside>
+      </div>
+    </div>
+  </div>
+
   <!-- Character choice (from the home screen or the waiting room). -->
   <div id="char-pick" hidden>
     <div class="card">

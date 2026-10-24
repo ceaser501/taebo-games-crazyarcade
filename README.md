@@ -65,11 +65,11 @@ Durable Objects는 무료 플랜에서도 SQLite 방식 클래스로 쓸 수 있
 | `crazyarcade/js/shared/room.js` | 방: 8자리, 방장 설정(팀전 빨강/파랑·개인전, 맵), 컴퓨터 추가, 팀 인원 맞추기, 라운드 진행·스냅샷 전송 |
 | `crazyarcade/js/shared/ai.js` | 컴퓨터 플레이어 (위험 지도 + 너비 우선 탐색) |
 | `crazyarcade/js/shared/maps-data.js` | 원본 맵 파일(FxMap `Map/*`)에서 뽑은 대전 맵 122개: 칸·시작 위치·맵별 아이템 비율 그대로 (`crazyarcade/tools/build-maps.mjs`) |
-| `crazyarcade/js/scene-game.js` | 게임 화면, 내 캐릭터 예측·보정, 다른 사람 보간, PC판 화면 그대로의 오른쪽 패널 |
+| `crazyarcade/js/scene-game.js` | 게임 화면(휴대폰 배치: 맵을 화면 높이에 맞추고 양옆에 타이머·참가자·내 능력치와 조작 버튼), 내 캐릭터 예측·보정, 다른 사람 보간 |
 | `crazyarcade/js/home.js` | 인트로(터치해서 시작) → 처음 한 번 닉네임 → 처음 화면(내 캐릭터·전적·루찌), 웜즈·뿌요뿌요와 같은 흐름 |
 | `crazyarcade/js/lobby.js` | 메뉴(컴퓨터와 연습 / 방 만들기·참가)와 대기실(방 번호·초대 링크, 팀전·개인전, 빨강팀 vs 파랑팀, 맵, 시작), 웜즈와 같은 방식 |
 | `crazyarcade/js/input.js` | 키보드 + 크아M식 터치 조작 |
-| `crazyarcade/js/scene-shop.js` | 상점: 캐릭터·머리장식·물풍선·펫을 게임에서 모은 루찌로 사기, 착용 |
+| `crazyarcade/js/shop.js` | 상점(휴대폰 화면): 캐릭터·머리장식·물풍선·펫을 게임에서 모은 루찌로 사기, 착용 |
 | `crazyarcade/js/wallet.js` | 루찌·보유·착용 (이 브라우저에 저장) |
 | `crazyarcade/tools/ca-formats.mjs` | PatchData `.idx/.idd`, 암호화된 항목(맵·표) 풀기, 스프라이트, RLE 픽셀 해석 |
 | `crazyarcade/tools/convert-assets.mjs` | 원본 → PNG 시트 + JSON, JPEG 배경, MP3/Ogg |

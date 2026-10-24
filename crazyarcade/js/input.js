@@ -33,7 +33,7 @@ let counts = { needle: 0, shield: 0, dart: 0 };
 
 function layout() {
   const vw = stage.cssW, vh = stage.cssH;
-  const margin = stage.ox; // free width on each side of the picture
+  const margin = sides ?? stage.ox; // free width on each side of the picture (or of the game's map)
   const unit = Math.max(0.75, Math.min(1.1, Math.min(vw, vh) / 380));
   // Small controls low in the corners, where the thumbs rest (radius ~35 px on a phone held sideways).
   stick.r = 34 * unit; btn.bomb.r = 36 * unit; btn.needle.r = btn.shield.r = btn.dart.r = 19 * unit;
@@ -101,6 +101,9 @@ export function attach(canvas) {
 
 export function enable(on) { enabled = on; keys.clear(); bombQueued = false; itemQueued = null; stick.id = null; layout(); }
 export function setCounts(c) { counts = c; }
+// The game tells how much room its map leaves at each side.
+let sides = null;
+export function setSides(px) { sides = px; layout(); }
 
 // Input for this tick: direction 0-4, balloon edge, item edge ('needle' | 'shield' | 'auto').
 export function read() {
