@@ -1,8 +1,8 @@
 // The screens before a round, on the PC client's own backgrounds and parts:
-// login (nickname), lobby (room list), and the waiting room (seats, character, team, map).
+// the lobby (room list) and the waiting room (seats, character, team, map).
 import * as A from './assets.js';
 import { stage, ui, text, roundRect, place } from './stage.js';
-import { playMusic, sfx, toggleMusic, musicOn } from './audio.js';
+import { playMusic, sfx } from './audio.js';
 import { CHARACTERS, TEAMS, charById, banner, MAX_PLAYERS } from './shared/const.js';
 import { MAPS } from './shared/maps.js';
 import * as W from './wallet.js';
@@ -13,47 +13,6 @@ const click = () => sfx('Bt_c_Pop', 0.6);
 function bgOr(c, name, color) {
   const img = A.bg(name);
   if (img) c.drawImage(img, 0, 0); else { c.fillStyle = color; c.fillRect(0, 0, 800, 600); }
-}
-
-// ---------------------------------------------------------------- login
-export class LoginScene {
-  constructor(app) {
-    this.app = app;
-    this.input = $('name-input');
-    this.input.value = app.name || '';
-    this.input.hidden = false;
-    this.input.onkeydown = (e) => { if (e.key === 'Enter') this.go('online'); };
-    Promise.all([A.loadBg('login'), A.loadGroup('ui')]).then(() => playMusic('StageLogin'));
-    this.server = 1;
-  }
-  layout() { place(this.input, 404, 529, 90, 17, 12); }
-  go(where) {
-    const name = this.input.value.trim();
-    if (!name) { this.input.focus(); this.app.toast('아이디(닉네임)를 입력해 주세요.'); return; }
-    this.app.setName(name);
-    click();
-    if (where === 'online') this.app.toLobby(); else this.app.practice();
-  }
-  draw() {
-    const c = stage.begin();
-    bgOr(c, 'login', '#2a7fd8');
-    ui.begin();
-    const tx = 172, ty = 432;
-    if (!A.drawAt(c, 'LoginStage/LO_LogTable00', 0, tx, ty)) { c.fillStyle = '#f7a21b'; roundRect(c, 268, ty, 264, 150, 10); c.fill(); }
-    if (ui.button('1p', 'LoginStage/LO_Bt1P', 180, 440, { label: '1P' })) this.go('practice');
-    if (ui.button('2p', 'LoginStage/LO_Bt2P', 536, 440, { label: '2P' })) this.go('online');
-    // Server choice: decorative, as in the original (드림/해피).
-    if (ui.button('s0', 'LoginStage/LO_SerDre', 302, 456, { frame: this.server === 0 ? 1 : 0 })) this.server = 0;
-    if (ui.button('s1', 'LoginStage/LO_SerHa', 403, 456, { frame: this.server === 1 ? 1 : 0 })) this.server = 1;
-    text('아이디에 닉네임을 쓰고  1P: 혼자놀기  ·  확인/2P: 온라인 대전', 400, 425, { size: 13, bold: true, color: '#fff', align: 'center', shadow: '#062a66' });
-    text('(비밀번호 없음)', 448, 561, { size: 10, color: '#4a5a7a', align: 'center' });
-    if (ui.button('newid', 'LoginStage/LO_BtLogNewId', 241, 566, { label: '아이디만들기' })) this.input.focus();
-    if (ui.button('ok', 'LoginStage/LO_BtLogOk', 350, 566, { label: '확인' })) this.go('online');
-    if (ui.button('exit', 'LoginStage/LO_BtLogExit', 459, 566, { label: '나가기' })) { toggleMusic(); }
-    text(musicOn() ? '나가기: 배경음악 끄기' : '나가기: 배경음악 켜기', 690, 590, { size: 10, color: '#dff', align: 'center', shadow: '#033' });
-    ui.end();
-  }
-  leave() { this.input.hidden = true; this.input.onkeydown = null; }
 }
 
 // ---------------------------------------------------------------- lobby
@@ -88,8 +47,8 @@ export class LobbyScene {
     if (ui.button('quick', 'Lobby/LB_Bt_T_QuickJoinRenew', 354, 56, { label: '바로시작' })) { click(); this.quick(); }
     if (ui.button('practice', 'Lobby/LB_Bt_T_PracticeRenew', 480, 63, { label: '혼자놀기' })) { click(); this.app.practice(); }
     if (ui.button('wait', this.onlyWaiting ? 'Lobby/LB_Bt_T_ShowAllRenew' : 'Lobby/LB_Bt_T_WaitRoomRenew', 580, 63, { label: this.onlyWaiting ? '모든방보기' : '대기방보기' })) { this.onlyWaiting = !this.onlyWaiting; this.page = 0; }
-    if (ui.area('back', 683, 63, 85, 47)) { this.app.toLogin(); }
-    text('← 처음으로', 725, 92, { size: 12, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
+    if (ui.area('back', 683, 63, 85, 47)) { this.app.toHome(); }
+    text('← 처음 화면', 725, 92, { size: 12, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
     const list = this.rooms.filter((r) => !this.onlyWaiting || !r.playing);
     const pages = Math.max(1, Math.ceil(list.length / 6));
     this.page = Math.min(this.page, pages - 1);
@@ -209,7 +168,7 @@ export class RoomScene {
         if (!owned) { c.fillStyle = 'rgba(0,10,40,0.55)'; roundRect(c, x, y, 45, 43, 5); c.fill(); text('🔒', x + 22, y + 26, { size: 14, align: 'center' }); }
         if (ui.area(id, x, y, 45, 43)) {
           click();
-          if (owned) app.send({ t: 'set', char: cell.ch.id }); else app.toast(`${cell.ch.name}은(는) 상점에서 살 수 있어요.`);
+          if (owned) { W.setChar(cell.ch.id); app.send({ t: 'set', char: cell.ch.id }); } else app.toast(`${cell.ch.name}은(는) 상점에서 살 수 있어요.`);
         }
       } else if (cell.special === 'random') {
         text('랜덤', x + 22, y + 27, { size: 12, bold: true, color: '#ffe95a', align: 'center' });

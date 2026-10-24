@@ -14,11 +14,14 @@ export function price(kind, id) {
 }
 export const ROUND_BONUS = { win: 300, draw: 150, lose: 100 };
 
-function blank() { return { lucci: START_LUCCI, owned: { char: [], hat: [], bomb: [], pet: [] }, wear: { hat: null, bomb: null, pet: null } }; }
+function blank() {
+  return { lucci: START_LUCCI, owned: { char: [], hat: [], bomb: [], pet: [] }, wear: { hat: null, bomb: null, pet: null },
+    char: CHARACTERS[0].id, stats: { games: 0, wins: 0, draws: 0, kills: 0 } };
+}
 let w = blank();
 try {
   const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
-  if (saved && typeof saved.lucci === 'number') w = { ...blank(), ...saved, owned: { ...blank().owned, ...saved.owned }, wear: { ...blank().wear, ...saved.wear } };
+  if (saved && typeof saved.lucci === 'number') w = { ...blank(), ...saved, owned: { ...blank().owned, ...saved.owned }, wear: { ...blank().wear, ...saved.wear }, stats: { ...blank().stats, ...saved.stats } };
 } catch { /* private mode: start fresh each time */ }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(w)); } catch { /* ignore */ } }
 
@@ -35,6 +38,16 @@ export function buy(kind, id) {
   return 'ok';
 }
 export function wear(kind, id) { if (id === null || owns(kind, id)) { w.wear[kind] = id; save(); } }
+// The character I play (chosen on the home screen or in a room) and my record.
+export const myChar = () => (owns('char', w.char) ? w.char : FREE_CHARS[0]);
+export function setChar(id) { if (owns('char', id)) { w.char = id; save(); } }
+export const stats = () => ({ ...w.stats });
+export function record(result, kills) {
+  w.stats.games++;
+  if (result === 'win') w.stats.wins++; else if (result === 'draw') w.stats.draws++;
+  w.stats.kills += kills | 0;
+  save();
+}
 export function earn(n) { if (n > 0) { w.lucci += Math.round(n); save(); } }
 // What others see: sent with the character to the room.
 export const look = () => ({ hat: w.wear.hat, bomb: w.wear.bomb, pet: w.wear.pet });

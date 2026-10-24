@@ -3,7 +3,8 @@ import * as A from './assets.js';
 import { stage, ui, onResize } from './stage.js';
 import * as input from './input.js';
 import { unlock, preload, stopMusic } from './audio.js';
-import { LoginScene, LobbyScene, RoomScene } from './scene-menus.js';
+import { LobbyScene, RoomScene } from './scene-menus.js';
+import { showIntro, introReady, askName, showHome, hideHome } from './home.js';
 import { GameScene } from './scene-game.js';
 import { ShopScene } from './scene-shop.js';
 import * as W from './wallet.js';
@@ -21,6 +22,9 @@ const app = {
   setScene(s) {
     if (this.scene && this.scene.leave) this.scene.leave();
     this.scene = s;
+    // The 800×600 canvas screens want the phone sideways; the home screen works either way.
+    document.body.classList.toggle('canvas-mode', !(s instanceof HomeBackdrop));
+    if (!(s instanceof HomeBackdrop)) { hideHome(); landscape(); }
     if (s.layout) s.layout();
   },
   setName(n) { this.name = n.slice(0, 10); try { localStorage.setItem('ca-name', this.name); } catch { /* ignore */ } },
@@ -31,12 +35,12 @@ const app = {
   },
   isHost() { return this.room && this.room.host === this.me; },
 
-  toLogin() { this.disconnect(); this.setScene(new LoginScene(this)); },
-  // The shop opens over the lobby or the waiting room and goes back to it.
+  toHome() { this.disconnect(); this.setScene(new HomeBackdrop()); showHome(this); },
+  // The shop opens over the home screen, the lobby or the waiting room and goes back to it.
   toShop() {
-    const inRoom = !!this.conn;
-    const me = this.room && this.room.members.find((m) => m.id === this.me);
-    this.setScene(new ShopScene(this, () => this.setScene(inRoom && this.conn ? new RoomScene(this) : new LobbyScene(this)), me && me.char));
+    const from = this.conn ? 'room' : this.scene instanceof LobbyScene ? 'lobby' : 'home';
+    const back = () => (from === 'room' && this.conn ? this.setScene(new RoomScene(this)) : from === 'lobby' ? this.toLobby() : this.toHome());
+    this.setScene(new ShopScene(this, back, W.myChar()));
   },
   lookChanged() { if (this.conn) this.send({ t: 'set', look: W.look() }); },
   toLobby() { this.disconnect(); this.setScene(new LobbyScene(this)); },
@@ -67,7 +71,7 @@ const app = {
     const practice = this.practiceMode;
     this.disconnect();
     stopMusic();
-    if (practice) this.toLogin(); else this.toLobby();
+    if (practice) this.toHome(); else this.toLobby();
   },
   send(m) { if (this.conn) this.conn.send(m); },
 
@@ -77,8 +81,7 @@ const app = {
         this.me = m.you; this.room = m.room; this.roomTitle = m.room.title;
         // Wear our decorations; trade a character we do not own for a free one.
         const mine = m.room.members.find((x) => x.id === m.you);
-        const set = { t: 'set', look: W.look() };
-        if (mine && !W.owns('char', mine.char)) set.char = W.FREE_CHARS[mine.slot % W.FREE_CHARS.length];
+        const set = { t: 'set', look: W.look(), char: W.myChar() };
         this.send(set);
         break;
       }
@@ -113,6 +116,15 @@ const app = {
   },
 };
 window.caApp = app;
+
+// What the canvas shows behind the home screen (a DOM overlay).
+class HomeBackdrop { draw() { const c = stage.begin(); c.fillStyle = '#0b3f8f'; c.fillRect(0, 0, 800, 600); } }
+
+// On phones, going into the canvas screens asks for full screen held sideways.
+function landscape() {
+  if (!matchMedia('(pointer: coarse)').matches || !document.documentElement.requestFullscreen || document.fullscreenElement) return;
+  document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+}
 
 function frame(now) {
   if (app.scene) app.scene.draw(now);
@@ -154,19 +166,22 @@ async function main() {
   const first = () => {
     unlock();
     preload(['Cha_BombIgnite', 'Cha_BombExplode', 'Cha_LockedIn', 'Cha_Die', 'Cha_Release', 'Itm_ItemEaten', 'Bt_c_Pop']);
-    if (matchMedia('(pointer: coarse)').matches && document.documentElement.requestFullscreen && !document.fullscreenElement) {
-      document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
-    }
   };
   window.addEventListener('pointerdown', first);
   window.addEventListener('keydown', first);
+  app.setScene(new HomeBackdrop());
+  requestAnimationFrame(frame);
+  showIntro();
   await A.loadManifest();
   if (!A.ready) app.toast('에셋이 변환되지 않았습니다 (npm run ca:assets).');
-  // ?room=1234 in a shared link opens that room directly.
+  await Promise.all([A.loadGroup('game'), A.loadGroup('ui'), ...['C00', 'C06', 'C01', 'C04', 'C05'].map((c) => A.loadGroup(`char_${c}`))]);
+  // ?room=1234 in a shared link opens that room directly (after the nickname on a first visit).
   const code = new URLSearchParams(location.search).get('room');
-  app.setScene(new LoginScene(app));
-  if (code && app.name) app.joinRoom(code);
-  requestAnimationFrame(frame);
+  introReady(() => {
+    first();
+    const go = () => (code ? app.joinRoom(code) : app.toHome());
+    if (app.name) go(); else askName((name) => { app.setName(name); go(); });
+  });
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 

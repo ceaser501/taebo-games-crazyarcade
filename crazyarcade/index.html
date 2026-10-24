@@ -22,7 +22,57 @@
 
 <body>
   <canvas id="game"></canvas>
-  <input id="name-input" class="over" maxlength="10" placeholder="닉네임" autocomplete="nickname" hidden>
+
+  <!-- Intro: tap to start (this also lets the browser play sound), as in the other taebo games. -->
+  <div id="intro">
+    <div class="intro-logo">
+      <canvas id="intro-chars" width="420" height="150"></canvas>
+      <h1>크레이지<br>아케이드</h1>
+      <p>태보 에디션</p>
+    </div>
+    <p id="intro-tap">불러오는 중…</p>
+  </div>
+
+  <!-- First visit: a nickname is all the sign-up there is; it is remembered on this phone. -->
+  <div id="signup" hidden>
+    <form id="signup-form" class="card">
+      <h2>닉네임을 정해 주세요</h2>
+      <p>처음 한 번만 정하면 다음부터는 바로 들어가요.</p>
+      <input id="signup-name" type="text" maxlength="10" placeholder="닉네임 (10자까지)" autocomplete="nickname">
+      <button type="submit" class="big-btn">시작하기</button>
+    </form>
+  </div>
+
+  <!-- Home: my character, records and lucci, then on to the game. -->
+  <div id="home" hidden>
+    <header class="logo small"><h1>크레이지 아케이드</h1></header>
+    <section id="home-card">
+      <button type="button" class="home-figure" id="home-figure" aria-label="캐릭터 바꾸기"><canvas id="home-char" width="180" height="180"></canvas></button>
+      <div class="home-info">
+        <span id="home-charname"></span>
+        <label class="home-name"><span>내 이름</span><input id="home-name" type="text" maxlength="10" autocomplete="nickname"></label>
+        <dl id="home-stats">
+          <div><dt>루찌</dt><dd id="home-lucci">-</dd></div>
+          <div><dt>전적</dt><dd id="home-record">-</dd></div>
+          <div><dt>승률</dt><dd id="home-rate">-</dd></div>
+          <div><dt>물풍선으로 가둔 수</dt><dd id="home-kills">-</dd></div>
+        </dl>
+        <div class="home-actions">
+          <button type="button" id="home-chars" class="chip">캐릭터 바꾸기</button>
+          <button type="button" id="home-shop" class="chip shop">상점·꾸미기</button>
+          <button type="button" id="home-music" class="chip">♪</button>
+        </div>
+      </div>
+    </section>
+    <button type="button" id="home-play" class="big-btn">게임하러 가기</button>
+    <div id="char-pick" hidden>
+      <div class="card">
+        <h2>캐릭터 고르기</h2>
+        <div id="char-grid"></div>
+        <button type="button" id="char-close" class="chip">닫기</button>
+      </div>
+    </div>
+  </div>
   <input id="code-input" class="over" maxlength="4" inputmode="numeric" placeholder="1234" hidden>
   <input id="chat-input" class="over" maxlength="80" placeholder="채팅 입력 후 Enter" hidden>
   <div id="chat-log" class="over" hidden></div>

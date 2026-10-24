@@ -140,7 +140,7 @@ export class GameScene {
         this.result = e.team === null ? 'draw' : won ? 'win' : mine ? 'lose' : 'win';
         this.endAt = performance.now();
         // Lucci: the coins picked up this round plus a bonus by the result.
-        if (mine && !this.paid) { this.paid = (mine.lucci || 0) + Wallet.ROUND_BONUS[this.result]; Wallet.earn(this.paid); }
+        if (mine && !this.paid) { this.paid = (mine.lucci || 0) + Wallet.ROUND_BONUS[this.result]; Wallet.earn(this.paid); Wallet.record(this.result, mine.kills); }
         stopMusic();
         playMusic(this.result === 'win' ? 'Ntc_Win' : this.result === 'lose' ? 'Ntc_Lose' : 'Ntc_Draw');
         break;
