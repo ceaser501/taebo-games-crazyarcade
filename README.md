@@ -21,7 +21,18 @@ npm test                                                # 모든 맵에서 컴�
 온라인 대전을 시험할 수 있고, `DEV_LAG=120 npm start`로 휴대폰 데이터처럼 지연을 줄 수 있습니다.
 변환에는 `ffmpeg`가 있으면 소리를 MP3로 바꿉니다(아이폰은 원본 Ogg를 못 틉니다).
 
-## 웹 배포 (Cloudflare)
+## 손으로 배포 (Cloudflare)
+
+맥에서는 아래 한 줄이면 원본 데이터 받기(없으면 clone, 있으면 pull)·변환·빌드·방 서버 배포·사이트 배포까지 합니다.
+
+```bash
+npm run release
+```
+
+처음 한 번은 `npx wrangler login`(브라우저 로그인)이 필요합니다. Pages 프로젝트 `taesu-crazyarcade`는 처음 실행할 때 만들어지고,
+주소는 `https://taesu-crazyarcade.pages.dev`입니다. 소리를 아이폰에서도 틀려면 `brew install ffmpeg`가 있어야 합니다.
+
+## 자동 배포 (GitHub Actions)
 
 `main`에 푸시하면 `.github/workflows/deploy.yml`이 원본 데이터를 받아 변환·빌드한 뒤 방 서버(Worker
 `taebo-crazyarcade-server`)를 먼저, 사이트(Pages 프로젝트 `taesu-crazyarcade`)를 다음에 배포합니다. 주소는

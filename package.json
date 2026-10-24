@@ -11,7 +11,8 @@
     "ca:assets": "node crazyarcade/tools/convert-assets.mjs",
     "deploy:server": "npx -y wrangler@3 deploy --config server/wrangler.toml",
     "deploy": "npx -y wrangler@3 pages deploy dist --project-name taesu-crazyarcade --branch main --commit-dirty=true",
-    "test": "node crazyarcade/tools/test-sim.mjs"
+    "test": "node crazyarcade/tools/test-sim.mjs",
+    "release": "node crazyarcade/tools/release.mjs"
   },
   "devDependencies": {
     "copy-webpack-plugin": "^11.0.0",
