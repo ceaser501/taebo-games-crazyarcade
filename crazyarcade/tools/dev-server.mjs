@@ -9,6 +9,16 @@ import { WebSocketServer } from 'ws';
 import { RoomCore } from '../js/shared/room.js';
 import { HZ } from '../js/shared/const.js';
 
+// DEV_LAG=ms delays messages both ways (half each way); DEV_JITTER=ms adds a random extra
+// delay to what the server sends, keeping the order, like a phone on mobile data.
+const LAG = Number(process.env.DEV_LAG) || 0, JITTER = Number(process.env.DEV_JITTER) || 0;
+function deliver(ws, s) {
+  if (!LAG && !JITTER) { if (ws.readyState === 1) ws.send(s); return; }
+  const at = Math.max(ws.nextAt || 0, Date.now() + LAG / 2 + Math.random() * JITTER);
+  ws.nextAt = at;
+  setTimeout(() => ws.readyState === 1 && ws.send(s), at - Date.now());
+}
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'dist');
 const PORT = Number(process.env.PORT) || 8080;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
@@ -21,8 +31,8 @@ function room(code) {
   const r = { sockets: new Map(), gone: new Map() };
   r.core = new RoomCore({
     code,
-    send: (id, m) => { const ws = r.sockets.get(id); if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); },
-    broadcast: (m) => { const s = JSON.stringify(m); for (const ws of r.sockets.values()) if (ws.readyState === 1) ws.send(s); },
+    send: (id, m) => { const ws = r.sockets.get(id); if (ws) deliver(ws, JSON.stringify(m)); },
+    broadcast: (m) => { const s = JSON.stringify(m); for (const ws of r.sockets.values()) deliver(ws, s); },
   });
   r.loop = setInterval(() => { if (r.core.phase === 'game') r.core.tick(); }, 1000 / HZ);
   rooms.set(code, r);

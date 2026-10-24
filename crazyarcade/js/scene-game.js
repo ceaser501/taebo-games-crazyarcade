@@ -6,13 +6,13 @@ import * as A from './assets.js';
 import { stage, ui, text, roundRect, W } from './stage.js';
 import * as input from './input.js';
 import { sfx, playMusic, stopMusic } from './audio.js';
-import { COLS, ROWS, TILE, HZ, FLAME, TEAMS, ITEMS, RIDES, PUNCH_TICKS, charById } from './shared/const.js';
-import { createGame, walk, cellOf, DIR_NAMES, DIRS } from './shared/sim.js';
+import { COLS, ROWS, TILE, HZ, TEAMS, ITEMS, RIDES, PUNCH_TICKS, charById } from './shared/const.js';
+import { createGame, walk, carry, cellOf, DIR_NAMES, DIRS } from './shared/sim.js';
 import { mapById } from './shared/room.js';
 import * as Wallet from './wallet.js';
 
 const WW = COLS * TILE, WH = ROWS * TILE; // the map in world pixels (600×520)
-const INTERP = 3; // ticks others are drawn behind the newest snapshot
+const INTERP = 4; // ticks others are drawn behind the server clock (smooths uneven arrival)
 
 // Flame/Flame states FireL01..FireL10 (left arm; up, right and down add 1, 2, 3): row n is the
 // cell n places from the arm's tip, so the tip dries up first and the stream recedes inwards.
@@ -35,7 +35,7 @@ export class GameScene {
     this.deathAt = new Map(); this.trapAt = new Map(); this.effects = [];
     this.localTick = 0; this.acc = 0; this.last = performance.now();
     this.hist = []; this.lastSent = { d: -1 }; this.pendingBombs = []; this.darts = [];
-    this.snapTick = 0; this.snapTime = 0; this.result = null; this.endAt = 0;
+    this.snapTick = 0; this.snapTime = 0; this.clock = 0; this.clockSet = false; this.result = null; this.endAt = 0;
     this.floorCanvas = null;
     // Shop decorations each player wears: { hat, bomb, pet } by player id; pets trail behind.
     this.looks = new Map(start.players.map((p) => [p.id, p.look || {}]));
@@ -73,6 +73,10 @@ export class GameScene {
     const g = this.g;
     g.phase = m.ph; g.phaseT = m.pt; g.timer = m.tm; g.hurry = m.hu; g.result = m.rs;
     this.snapTick = m.k; this.snapTime = performance.now();
+    // The server clock runs on local time and is nudged towards each snapshot's tick, so
+    // uneven arrival does not make others jump back and forth.
+    if (!this.clockSet || Math.abs(m.k - this.clock) > 12) { this.clock = m.k; this.clockSet = true; }
+    else this.clock += (m.k - this.clock) * 0.06;
     for (const row of m.p) {
       const [id, x, y, dir, moving, state, stateT, bombs, power, speed, needle, shield, shieldT, ride, invT, kills,
         dart, kick, punch, curse, curseT, lucci] = row;
@@ -93,7 +97,7 @@ export class GameScene {
     if (m.m) for (const [i, ot, bt, it, f] of m.m) {
       g.objs[i] = ot >= 0 ? { t: ot, k: g.tiles[ot].k, breakT: bt } : null;
       g.items[i] = it ? { k: it, fresh: 0 } : null;
-      g.flames[i] = f ? { kind: f[0], end: !!f[1], born: f[2], d: f[3], t: Math.max(0, FLAME - (m.k - f[2])) } : null;
+      g.flames[i] = f ? { kind: f[0], end: !!f[1], born: f[2], d: f[3] } : null;
     }
     for (const e of m.ev || []) this.event(e);
   }
@@ -101,14 +105,17 @@ export class GameScene {
   // Our own character: compare the server's position with where we predicted we were one
   // round trip ago and fold the difference in gently (or at once if it is large).
   reconcile(p, x, y, dir, moving) {
-    if (p.state === 'dead' || this.g.phase !== 'play') { p.x = x; p.y = y; p.dir = dir; p.moving = !!moving; this.hist = []; return; }
+    if (p.state === 'dead' || this.g.phase !== 'play') { p.x = p.px = x; p.y = p.py = y; p.dir = dir; p.moving = !!moving; this.hist = []; return; }
     const lag = Math.round(((this.conn.rtt || 0) / 1000) * HZ) + 1;
     const h = this.hist.find((e) => e.t === this.localTick - lag) || this.hist[this.hist.length - 1];
-    if (!h) { p.x = x; p.y = y; return; }
+    if (!h) { p.x = p.px = x; p.y = p.py = y; return; }
     const dx = x - h.x, dy = y - h.y;
+    // The server follows our reports, so small differences are only lag: leave them alone.
+    if (Math.hypot(dx, dy) < 18) return;
     const big = Math.hypot(dx, dy) > 34;
     const k = big ? 1 : 0.25;
     p.x += dx * k; p.y += dy * k;
+    if (p.px != null) { p.px += dx * k; p.py += dy * k; }
     for (const e of this.hist) { e.x += dx * k; e.y += dy * k; }
   }
 
@@ -150,7 +157,9 @@ export class GameScene {
 
   // Fixed 30 Hz steps for input and prediction.
   update(now) {
-    this.acc += Math.min(250, now - this.last); this.last = now;
+    const el = Math.min(250, now - this.last);
+    this.acc += el; this.last = now;
+    if (this.clockSet) this.clock += (el / 1000) * HZ;
     const dt = 1000 / HZ;
     while (this.acc >= dt) { this.acc -= dt; this.fixed(); }
   }
@@ -166,9 +175,13 @@ export class GameScene {
     let send = inp.dir !== this.lastSent.d || this.localTick - (this.lastSent.at || 0) > HZ;
     if (inp.bomb) { msg.b = 1; send = true; this.predictBomb(p); }
     if (item) { msg.i = item; send = true; }
-    if (send) { this.conn.send(msg); this.lastSent = { d: inp.dir, at: this.localTick }; }
-    if (g.phase === 'play' && p.state !== 'dead') walk(g, p, inp.dir);
+    p.px = p.x; p.py = p.y; // where this step starts, for drawing between steps
+    if (g.phase === 'play' && p.state !== 'dead') { walk(g, p, inp.dir); carry(g, p); }
     else p.moving = false;
+    // While playing, the server takes our position from us (checked), so it never lags.
+    const moved = Math.abs(p.x - (this.lastSent.x ?? -1)) > 0.05 || Math.abs(p.y - (this.lastSent.y ?? -1)) > 0.05;
+    if (g.phase === 'play' && p.state !== 'dead' && (moved || send)) { msg.x = Math.round(p.x * 10) / 10; msg.y = Math.round(p.y * 10) / 10; send = true; }
+    if (send) { this.conn.send(msg); this.lastSent = { d: inp.dir, at: this.localTick, x: p.x, y: p.y }; }
     p.anim = (p.anim || 0) + 1;
     this.hist.push({ t: this.localTick, x: p.x, y: p.y });
     if (this.hist.length > 60) this.hist.shift();
@@ -185,11 +198,15 @@ export class GameScene {
 
   // Where another player is drawn: INTERP ticks behind the newest snapshot, interpolated.
   view(p) {
-    if (p.id === this.me) return { x: p.x, y: p.y, dir: p.dir, moving: p.moving };
+    if (p.id === this.me) {
+      // Drawn between the last two 30 Hz steps, so it glides on 60/120 Hz screens.
+      const a = Math.min(1, this.acc / (1000 / HZ));
+      if (p.px == null || Math.hypot(p.x - p.px, p.y - p.py) > 30) return { x: p.x, y: p.y, dir: p.dir, moving: p.moving };
+      return { x: p.px + (p.x - p.px) * a, y: p.py + (p.y - p.py) * a, dir: p.dir, moving: p.moving };
+    }
     const b = this.buffers.get(p.id);
     if (!b || !b.length) return { x: p.x, y: p.y, dir: p.dir, moving: false };
-    const est = this.snapTick + ((performance.now() - this.snapTime) / 1000) * HZ;
-    const t = est - INTERP;
+    const t = this.clock - INTERP;
     let i = b.length - 1;
     while (i > 0 && b[i - 1].k > t) i--;
     const a = b[Math.max(0, i - 1)], c = b[i];
@@ -337,7 +354,8 @@ export class GameScene {
   // three tip frames (4+k, 8+k, 12+k), ten middle frames (16+k … 52+k) and the fading frames.
   // Frames of Bomb/Fire00 from the client's Flame/Flame animation table, one frame per step.
   drawFlame(c, f, ax, ay) {
-    const age = Math.min(18, FLAME - f.t);
+    // Age from the server clock: the flame's own record does not change while it burns.
+    const age = Math.max(0, Math.min(18, Math.floor(this.clock - f.born)));
     const n = Math.max(1, Math.min(10, f.d || 1));
     let frame;
     if (f.kind === 'c') frame = age < 4 ? age : age < 7 + n ? 2 + ((age - 4) & 1) : 2 + ((7 + n - 4) & 1);

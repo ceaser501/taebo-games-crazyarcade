@@ -24,7 +24,7 @@ export const stage = {
     const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
     const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
     this.cssW = vw; this.cssH = vh;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 3);
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2); // 3× phones draw at 2×: same look, far less work
     this.canvas.style.width = vw + 'px'; this.canvas.style.height = vh + 'px';
     this.canvas.width = Math.round(vw * this.dpr); this.canvas.height = Math.round(vh * this.dpr);
     this.scale = Math.min(vw / W, vh / H);

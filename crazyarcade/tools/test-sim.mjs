@@ -68,6 +68,18 @@ const check = (ok, what) => { if (!ok) { bad++; console.log(`item test failed: $
   check(a.x > 60 + 40, `conveyor (x ${a.x})`);
 }
 
+{
+  // Positions reported by a phone: a short move is taken, a teleport or a move into a wall is not.
+  const { g, a } = field({ objs: (() => { const o = new Array(15 * 13).fill(-1); o[1 * 15 + 3] = 0; return o; })(), tiles: [['x', 'floor'], ['w', 'hard']] });
+  g.objs[1 * 15 + 3] = { t: 1, k: 'hard', item: null, breakT: 0 };
+  step(g, { a: { dir: 4, x: 66, y: 60 } });
+  check(a.x === 66, `report taken (x ${a.x})`);
+  step(g, { a: { dir: 4, x: 400, y: 60 } });
+  check(a.x === 66, `teleport refused (x ${a.x})`);
+  step(g, { a: { dir: 4, x: 126, y: 60 } });
+  check(a.x < 100, `wall refused (x ${a.x})`);
+}
+
 // The room: join, bot, start, tick to the end.
 const sent = [];
 const room = new RoomCore({ code: '0000', send: (id, m) => sent.push([id, m.t]), broadcast: (m) => sent.push(['*', m.t]) });

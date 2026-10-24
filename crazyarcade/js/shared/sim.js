@@ -142,6 +142,30 @@ export function walk(g, p, d) {
   } else p.moving = false;
 }
 
+// Conveyor belts carry whoever stands on them.
+export function carry(g, p) {
+  if (!g.conv || p.state === 'dead') return;
+  const cd = g.conv[idx(cellOf(p.x), cellOf(p.y))];
+  if (cd) { const [dx, dy] = DIRS[cd]; if (dx) move(g, p, 0, dx, CONVEYOR_PX / HZ); else move(g, p, 1, dy, CONVEYOR_PX / HZ); }
+}
+
+// A position sent by the player's phone: accepted if it is no farther than the fastest
+// possible move over a few ticks (messages bunch up on mobile data) and not inside a wall.
+const REPORT_TICKS = 5;
+function takePosition(g, p, inp) {
+  if (!Number.isFinite(inp.x) || !Number.isFinite(inp.y)) return false;
+  const max = ((speedPx(10) + CONVEYOR_PX) / HZ) * REPORT_TICKS + 4;
+  if (Math.hypot(inp.x - p.x, inp.y - p.y) > max) return false;
+  const lim = (n) => n * TILE - HALF;
+  if (inp.x < HALF || inp.y < HALF || inp.x > lim(COLS) || inp.y > lim(ROWS)) return false;
+  const c = cellOf(inp.x), r = cellOf(inp.y);
+  if ((c !== cellOf(p.x) || r !== cellOf(p.y)) && blocked(g, c, r, p)) return false;
+  p.x = inp.x; p.y = inp.y;
+  if (inp.dir) p.dir = inp.dir;
+  p.moving = !!inp.dir;
+  return true;
+}
+
 // Walking into a balloon with the shoe kicks it: it slides until something stops it.
 function tryKick(g, p, d) {
   const [dx, dy] = DIRS[d];
@@ -327,12 +351,14 @@ export function step(g, inputs = {}) {
     if (inp.item === 'shield' && p.state === 'normal' && p.shield > 0 && p.shieldT <= 0) { p.shield--; p.shieldT = SHIELD_TIME; emit(g, 'shield', { id: p.id }); }
     if (inp.item === 'dart' && p.state === 'normal' && p.dart > 0) { p.dart--; throwDart(g, p); }
     if (p.curseT > 0 && --p.curseT <= 0) p.curse = null;
-    walk(g, p, inp.dir | 0);
+    // A phone reports where its own player is (it moved it already, with no lag); the server
+    // takes that when it is a move the rules allow, and walks the player itself otherwise.
+    // Between reports (they arrive in bunches) the player stays put rather than being walked
+    // ahead of the phone; players who never report (computers) walk here.
+    if (inp.x != null && takePosition(g, p, inp)) p.reportT = g.tick;
+    else if (p.reportT && g.tick - p.reportT < HZ) { if (inp.dir) p.dir = inp.dir | 0; p.moving = !!inp.dir; }
+    else { walk(g, p, inp.dir | 0); carry(g, p); }
     if (p.kick && p.state === 'normal' && inp.dir) tryKick(g, p, inp.dir | 0);
-    if (g.conv && p.state !== 'dead') {
-      const cd = g.conv[idx(cellOf(p.x), cellOf(p.y))];
-      if (cd) { const [dx, dy] = DIRS[cd]; if (dx) move(g, p, 0, dx, CONVEYOR_PX / HZ); else move(g, p, 1, dy, CONVEYOR_PX / HZ); }
-    }
     if ((inp.bomb || p.curse === 'leak') && p.state === 'normal') placeBomb(g, p);
     if (p.state === 'normal') {
       const i = idx(cellOf(p.x), cellOf(p.y));

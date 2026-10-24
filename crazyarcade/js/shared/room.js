@@ -196,6 +196,8 @@ export class RoomCore {
           if (msg.b) cur.bomb = 1;
           if (msg.i === 'needle' || msg.i === 'shield' || msg.i === 'dart') cur.item = msg.i;
           cur.ct = msg.ct | 0;
+          // The phone's own position for its player (see takePosition in sim.js).
+          if (Number.isFinite(msg.x) && Number.isFinite(msg.y)) { cur.x = msg.x; cur.y = msg.y; } else cur.x = cur.y = undefined;
           this.inputs.set(id, cur);
         }
         break;
@@ -246,7 +248,10 @@ export class RoomCore {
     const g = this.game;
     if (!g) return;
     const inputs = {};
-    for (const [id, inp] of this.inputs) { inputs[id] = { dir: inp.dir, bomb: !!inp.bomb, item: inp.item }; inp.bomb = 0; inp.item = null; }
+    for (const [id, inp] of this.inputs) {
+      inputs[id] = { dir: inp.dir, bomb: !!inp.bomb, item: inp.item, x: inp.x, y: inp.y };
+      inp.bomb = 0; inp.item = null; inp.x = inp.y = undefined;
+    }
     for (const [id, bot] of this.bots) inputs[id] = bot.think(g);
     step(g, inputs);
     const snap = snapshot(g);
