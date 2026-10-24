@@ -1,5 +1,5 @@
 // Game controls. Keyboard as on the PC client (arrows or WASD, Space for a balloon, Ctrl for the
-// item), and on touch screens the layout of the mobile game: a stick on the left, a big
+// item, C for a dart), and on touch screens the layout of the mobile game: a stick on the left, a big
 // balloon button on the right with the needle and shield buttons above it. The touch controls
 // are drawn on the main canvas in screen pixels, in the space beside the 800×600 picture when
 // there is room, over its edges when there is not.
@@ -20,28 +20,35 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !e.repeat) { bombQueued = true; e.preventDefault(); }
   if ((e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyZ') && !e.repeat) itemQueued = 'auto';
   if (e.code === 'KeyX' && !e.repeat) itemQueued = 'shield';
+  if (e.code === 'KeyC' && !e.repeat) itemQueued = 'dart';
 });
 window.addEventListener('keyup', (e) => { keys.delete(e.code); if (lastDirKey === e.code) lastDirKey = [...keys].reverse().find((k) => KEYDIR[k]) || null; });
 window.addEventListener('blur', () => keys.clear());
 
 // Touch state.
 const stick = { id: null, cx: 0, cy: 0, x: 0, y: 0, r: 60, dir: 0, baseX: 0, baseY: 0 };
-const btn = { bomb: { x: 0, y: 0, r: 52, id: null }, needle: { x: 0, y: 0, r: 30, id: null }, shield: { x: 0, y: 0, r: 30, id: null } };
-let counts = { needle: 0, shield: 0 };
+const btn = { bomb: { x: 0, y: 0, r: 52, id: null }, needle: { x: 0, y: 0, r: 30, id: null }, shield: { x: 0, y: 0, r: 30, id: null },
+  dart: { x: 0, y: 0, r: 30, id: null } };
+let counts = { needle: 0, shield: 0, dart: 0 };
 
 function layout() {
   const vw = stage.cssW, vh = stage.cssH;
   const margin = stage.ox; // free width on each side of the picture
-  const unit = Math.max(0.75, Math.min(1.25, Math.min(vw, vh) / 380));
-  stick.r = 58 * unit; btn.bomb.r = 50 * unit; btn.needle.r = btn.shield.r = 27 * unit;
+  const unit = Math.max(0.75, Math.min(1.1, Math.min(vw, vh) / 380));
+  // The stick is about the size of a thumb's reach (radius ~45 px on a phone held sideways).
+  stick.r = 42 * unit; btn.bomb.r = 46 * unit; btn.needle.r = btn.shield.r = btn.dart.r = 25 * unit;
   const side = margin >= stick.r * 2.2 ? margin / 2 : stick.r + 18;
   stick.baseX = side; stick.baseY = vh - Math.max(stick.r + 24, vh * 0.3);
   if (!stick.id) { stick.cx = stick.baseX; stick.cy = stick.baseY; }
   const rx = vw - (margin >= btn.bomb.r * 2.4 ? margin / 2 : btn.bomb.r + 20);
   btn.bomb.x = rx; btn.bomb.y = vh - Math.max(btn.bomb.r + 26, vh * 0.28);
-  btn.needle.x = rx - btn.bomb.r * 0.95; btn.needle.y = btn.bomb.y - btn.bomb.r * 1.75;
-  btn.shield.x = rx + btn.bomb.r * 0.55; btn.shield.y = btn.bomb.y - btn.bomb.r * 2.0;
-  if (margin < btn.bomb.r * 2.4) { btn.shield.x = rx; btn.shield.y = btn.bomb.y - btn.bomb.r * 2.3; btn.needle.x = rx - btn.bomb.r * 1.5; btn.needle.y = btn.bomb.y - btn.bomb.r * 1.2; }
+  // Needle, dart and shield in an arc above the balloon button.
+  btn.needle.x = rx - btn.bomb.r * 1.15; btn.needle.y = btn.bomb.y - btn.bomb.r * 1.35;
+  btn.dart.x = rx - btn.bomb.r * 0.2; btn.dart.y = btn.bomb.y - btn.bomb.r * 2.05;
+  btn.shield.x = rx + btn.bomb.r * 0.85; btn.shield.y = btn.bomb.y - btn.bomb.r * 1.75;
+  if (margin < btn.bomb.r * 2.4) { btn.shield.x = rx; btn.shield.y = btn.bomb.y - btn.bomb.r * 2.3; btn.needle.x = rx - btn.bomb.r * 1.5; btn.needle.y = btn.bomb.y - btn.bomb.r * 1.2;
+    btn.dart.x = rx - btn.bomb.r * 1.75; btn.dart.y = btn.bomb.y; }
+
 }
 
 function inCircle(b, x, y, extra = 1.25) { return Math.hypot(x - b.x, y - b.y) <= b.r * extra; }
@@ -57,6 +64,7 @@ export function attach(canvas) {
     if (!enabled || !touchMode.on) return;
     const x = e.clientX, y = e.clientY;
     for (const [k, b] of Object.entries(btn)) {
+      if (k === 'dart' && !counts.dart) continue;
       if (b.id === null && inCircle(b, x, y)) {
         b.id = e.pointerId;
         if (k === 'bomb') bombQueued = true; else itemQueued = k;
@@ -139,10 +147,11 @@ export function draw() {
   circle(c, b.x, b.y, b.r * (pressed ? 0.95 : 1), g, '#e9f8ff', 4);
   const bf = A.frameOf('Item/Bomb', 0);
   if (bf && bf.img) { const s = (b.r * 1.15) / bf.h; c.drawImage(bf.img, bf.sx, bf.sy, bf.w, bf.h, b.x - (bf.w * s) / 2, b.y - (bf.h * s) / 2, bf.w * s, bf.h * s); }
-  for (const k of ['needle', 'shield']) {
+  for (const k of ['needle', 'shield', 'dart']) {
     const t = btn[k], n = counts[k] || 0;
+    if (k === 'dart' && !n) continue;
     circle(c, t.x, t.y, t.r, n ? 'rgba(30,110,200,0.9)' : 'rgba(40,60,90,0.6)', '#d9eeff', 3);
-    const f = A.frameOf(k === 'needle' ? 'Item/Niddle' : 'Item/Shield', 0);
+    const f = A.frameOf({ needle: 'Item/Niddle', shield: 'Item/Shield', dart: 'Item/Dart' }[k], 0);
     if (f && f.img) { const s = (t.r * 1.3) / Math.max(f.w, f.h); c.globalAlpha *= n ? 1 : 0.5; c.drawImage(f.img, f.sx, f.sy, f.w, f.h, t.x - (f.w * s) / 2, t.y - (f.h * s) / 2, f.w * s, f.h * s); c.globalAlpha = overlay ? 0.55 : 0.92; }
     c.font = `bold ${Math.round(t.r * 0.62)}px ${FONT}`; c.textAlign = 'center';
     c.lineWidth = 3; c.strokeStyle = '#03224a'; c.strokeText(String(n), t.x + t.r * 0.62, t.y - t.r * 0.55);

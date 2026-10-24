@@ -3,7 +3,8 @@
 // practice games against the computer. No DOM, no timers, no Math.random (seeded RNG).
 import {
   COLS, ROWS, TILE, HZ, ROUND_SECONDS, HURRY_SECONDS, FUSE, FLAME, TRAP, START_DELAY, END_DELAY,
-  speedPx, TRAPPED_PX, charById, ITEMS, ITEM_CHANCE, SHIELD_TIME,
+  speedPx, TRAPPED_PX, charById, ITEMS, ITEM_CHANCE, SHIELD_TIME, RIDES, CURSE_TIME, CURSES, KICK_PX, CONVEYOR_PX,
+  PUNCH_TICKS,
 } from './const.js';
 
 export const DIRS = [[0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]]; // none, up, down, left, right
@@ -45,8 +46,19 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
     g.objs.push(t >= 0 ? { t, k: g.tiles[t].k, item: null, breakT: 0 } : null);
   }
   // Hidden items: every breakable block gets a roll.
-  const weights = Object.entries(ITEMS).map(([k, it]) => [k, map.drops?.[k] ?? it.weight]).filter(([, w]) => w > 0);
+  // A map with a drop list gets exactly its items (plus the three basic ones if it leaves them out).
+  const listed = map.drops && Object.keys(map.drops).length;
+  const weights = Object.entries(ITEMS)
+    .map(([k, it]) => [k, listed ? map.drops[k] ?? (['bomb', 'potion', 'skate'].includes(k) ? it.weight : 0) : it.weight])
+    .filter(([, w]) => w > 0);
   for (const o of g.objs) if (o && o.k === 'soft') o.item = rollItem(g, weights);
+  for (const [k, c, r, chance] of map.places || []) {
+    if (!ITEMS[k] || rng(g) * 100 >= chance) continue;
+    const o = g.objs[r * COLS + c];
+    if (o && o.k === 'soft') o.item = k;
+    else if (!o) g.items[r * COLS + c] = { k, fresh: 0 };
+  }
+  g.conv = map.conv || null;
   const spawns = map.spawns.slice();
   // Shuffle spawn points so seats do not always start in the same corner.
   for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(rng(g) * (i + 1)); [spawns[i], spawns[j]] = [spawns[j], spawns[i]]; }
@@ -58,6 +70,7 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
       x: c * TILE + HALF, y: r * TILE + HALF, dir: 2, moving: false,
       bombs: ch.bombs[0], power: ch.power[0], speed: ch.speed[0], max: { bombs: ch.bombs[1], power: ch.power[1], speed: ch.speed[1] },
       state: 'normal', stateT: 0, needle: 0, shield: 0, shieldT: 0, ride: null, invT: 0, kills: 0, anim: 0,
+      dart: 0, kick: false, punch: false, curse: null, curseT: 0, lucci: 0,
     });
   });
   return g;
@@ -67,7 +80,7 @@ const idx = (c, r) => r * COLS + c;
 const inside = (c, r) => c >= 0 && r >= 0 && c < COLS && r < ROWS;
 export const cellOf = (v) => Math.floor(v / TILE);
 
-function bombAt(g, c, r) { return g.bombs.find((b) => b.c === c && b.r === r); }
+function bombAt(g, c, r) { return g.bombs.find((b) => b.c === c && b.r === r && !b.fly); }
 
 function blocked(g, c, r, p) {
   if (!inside(c, r)) return true;
@@ -119,24 +132,47 @@ function move(g, p, ax, s, dist) {
 // player between server updates.
 export function walk(g, p, d) {
   if (d) {
+    if (p.curse === 'reverse') d = [0, 2, 1, 4, 3][d];
     p.dir = d;
-    const px = p.state === 'trapped' ? TRAPPED_PX : speedPx(p.ride === 'turtle' ? 1 : p.ride === 'owl' ? Math.max(p.speed, 6) : p.speed);
+    const level = p.ride ? RIDES[p.ride].speed : p.curse === 'slow' ? 1 : p.curse === 'fast' ? 10 : p.speed;
+    const px = p.state === 'trapped' ? TRAPPED_PX : speedPx(level);
     const [dx, dy] = DIRS[d];
     if (dx) move(g, p, 0, dx, px / HZ); else move(g, p, 1, dy, px / HZ);
     p.moving = true;
   } else p.moving = false;
 }
 
+// Walking into a balloon with the shoe kicks it: it slides until something stops it.
+function tryKick(g, p, d) {
+  const [dx, dy] = DIRS[d];
+  const c = cellOf(p.x), r = cellOf(p.y);
+  const lane = dx ? Math.abs(p.y - (r * TILE + HALF)) : Math.abs(p.x - (c * TILE + HALF));
+  if (lane > CORNER) return;
+  const ahead = dx ? (p.x - (c * TILE + HALF)) * dx : (p.y - (r * TILE + HALF)) * dy;
+  if (ahead < -1) return; // not yet up against the next cell
+  const b = bombAt(g, c + dx, r + dy);
+  if (!b || b.kick || b.pass.includes(p.id) || !openFor(g, b.c + dx, b.r + dy)) return;
+  b.kick = d; b.off = 0;
+  emit(g, 'kick', { c: b.c, r: b.r });
+}
+
 function emit(g, type, data = {}) { g.events.push({ type, ...data }); }
 
 function placeBomb(g, p) {
   const c = cellOf(p.x), r = cellOf(p.y);
+  if (p.curse === 'jam') return;
+  // With the punch, the balloon button sends a balloon right in front of you flying.
+  if (p.punch && !bombAt(g, c, r)) {
+    const [dx, dy] = DIRS[p.dir] || [0, 0];
+    const b = (dx || dy) && bombAt(g, c + dx, r + dy);
+    if (b && !b.fly) { punch(g, b, dx, dy); return; }
+  }
   if (g.bombs.filter((b) => b.owner === p.id).length >= p.bombs) return;
   if (bombAt(g, c, r)) return;
   const o = g.objs[idx(c, r)];
   if (o && o.k !== 'bush') return;
   const pass = g.players.filter((q) => q.state !== 'dead' && overlapsCell(q, c, r)).map((q) => q.id);
-  g.bombs.push({ id: g.nextId++, c, r, owner: p.id, power: p.power, t: FUSE, pass });
+  g.bombs.push({ id: g.nextId++, c, r, owner: p.id, power: p.power, t: FUSE, pass, off: 0, kick: 0, fly: null });
   emit(g, 'place', { c, r });
 }
 
@@ -144,6 +180,62 @@ function placeBomb(g, p) {
 // longest arm; it picks the animation (the stream dries up from the tips inwards).
 function setFlame(g, c, r, kind, end, d) {
   g.flames[idx(c, r)] = { t: FLAME, kind, end, born: g.tick, d };
+}
+
+// Can a sliding balloon go into this cell?
+function openFor(g, c, r) {
+  if (!inside(c, r)) return false;
+  const o = g.objs[idx(c, r)];
+  if (o && o.k !== 'bush') return false;
+  if (bombAt(g, c, r)) return false;
+  return !g.players.some((q) => q.state !== 'dead' && cellOf(q.x) === c && cellOf(q.y) === r);
+}
+
+// Kicked or carried balloons: off is the distance from the cell centre along the direction.
+function slide(g, b) {
+  const dir = b.kick || (g.conv && g.conv[idx(b.c, b.r)]);
+  if (!dir) { b.off = 0; return; }
+  const [dx, dy] = DIRS[dir];
+  const v = (b.kick ? KICK_PX : CONVEYOR_PX) / HZ;
+  if (b.off <= 0 && b.off + v > 0 && !openFor(g, b.c + dx, b.r + dy)) { b.off = 0; b.kick = 0; return; }
+  b.off += v;
+  if (b.off > TILE / 2) { b.c += dx; b.r += dy; b.off -= TILE; b.pass = []; }
+  b.dir = dir;
+}
+
+// Punched balloons fly three cells (wrapping round the edges, as in the original) and bounce
+// on one cell at a time while they would land on something.
+function punch(g, b, dx, dy) {
+  b.fly = { fc: b.c, fr: b.r, dx, dy, t: PUNCH_TICKS, n: PUNCH_TICKS };
+  b.c = (b.c + 3 * dx + COLS) % COLS; b.r = (b.r + 3 * dy + ROWS) % ROWS;
+  b.off = 0; b.kick = 0; b.pass = [];
+  emit(g, 'punch', { c: b.c, r: b.r });
+}
+function land(g, b) {
+  const { dx, dy } = b.fly;
+  const o = g.objs[idx(b.c, b.r)];
+  if ((o && o.k !== 'bush') || g.bombs.some((x) => x !== b && !x.fly && x.c === b.c && x.r === b.r)) {
+    const n = Math.round(PUNCH_TICKS / 3);
+    b.fly = { fc: b.c, fr: b.r, dx, dy, t: n, n };
+    b.c = (b.c + dx + COLS) % COLS; b.r = (b.r + dy + ROWS) % ROWS;
+    return;
+  }
+  b.fly = null;
+  b.pass = g.players.filter((q) => q.state !== 'dead' && overlapsCell(q, b.c, b.r)).map((q) => q.id);
+}
+
+function throwDart(g, p) {
+  const [dx, dy] = DIRS[p.dir] || [0, 1];
+  let c = cellOf(p.x), r = cellOf(p.y), n = 0;
+  for (;;) {
+    c += dx; r += dy; n++;
+    if (!inside(c, r)) break;
+    const o = g.objs[idx(c, r)];
+    if (o && o.k !== 'bush' && !o.breakT) break;
+    const b = bombAt(g, c, r);
+    if (b) { b.t = Math.min(b.t, 1); break; }
+  }
+  emit(g, 'dart', { id: p.id, c: cellOf(p.x), r: cellOf(p.y), dx: dx || 0, dy: dy || 0, n });
 }
 
 function explode(g, b) {
@@ -180,7 +272,13 @@ function applyItem(g, p, k) {
     case 'devil': p.speed = p.max.speed; break;
     case 'needle': p.needle++; break;
     case 'shield': p.shield++; break;
-    case 'turtle': case 'owl': if (!p.ride) p.ride = k; break;
+    case 'dart': p.dart++; break;
+    case 'shoe': p.kick = true; break;
+    case 'punch': p.punch = true; break;
+    case 'skull': p.curse = CURSES[Math.floor(rng(g) * CURSES.length)]; p.curseT = CURSE_TIME; break;
+    default:
+      if (ITEMS[k]?.ride && !p.ride) p.ride = k;
+      if (ITEMS[k]?.lucci) p.lucci += ITEMS[k].lucci;
   }
   emit(g, 'pick', { id: p.id, item: k });
 }
@@ -227,8 +325,15 @@ export function step(g, inputs = {}) {
     if (!playing) { p.moving = false; continue; }
     if (inp.item === 'needle' && p.state === 'trapped' && p.needle > 0) { p.needle--; free(g, p, null); emit(g, 'needle', { id: p.id }); }
     if (inp.item === 'shield' && p.state === 'normal' && p.shield > 0 && p.shieldT <= 0) { p.shield--; p.shieldT = SHIELD_TIME; emit(g, 'shield', { id: p.id }); }
+    if (inp.item === 'dart' && p.state === 'normal' && p.dart > 0) { p.dart--; throwDart(g, p); }
+    if (p.curseT > 0 && --p.curseT <= 0) p.curse = null;
     walk(g, p, inp.dir | 0);
-    if (inp.bomb && p.state === 'normal') placeBomb(g, p);
+    if (p.kick && p.state === 'normal' && inp.dir) tryKick(g, p, inp.dir | 0);
+    if (g.conv && p.state !== 'dead') {
+      const cd = g.conv[idx(cellOf(p.x), cellOf(p.y))];
+      if (cd) { const [dx, dy] = DIRS[cd]; if (dx) move(g, p, 0, dx, CONVEYOR_PX / HZ); else move(g, p, 1, dy, CONVEYOR_PX / HZ); }
+    }
+    if ((inp.bomb || p.curse === 'leak') && p.state === 'normal') placeBomb(g, p);
     if (p.state === 'normal') {
       const i = idx(cellOf(p.x), cellOf(p.y));
       if (g.items[i] && !(g.items[i].fresh > g.tick)) { applyItem(g, p, g.items[i].k); g.items[i] = null; }
@@ -238,11 +343,15 @@ export function step(g, inputs = {}) {
   // Players leave the bombs they were standing on.
   for (const b of g.bombs) b.pass = b.pass.filter((id) => { const q = g.players.find((x) => x.id === id); return q && overlapsCell(q, b.c, b.r); });
 
+  for (const b of g.bombs) {
+    if (b.fly) { if (--b.fly.t <= 0) land(g, b); } else slide(g, b);
+  }
+
   if (playing || g.phase === 'end') {
-    for (const b of g.bombs.slice()) if (--b.t <= 0 && g.bombs.includes(b)) explode(g, b);
+    for (const b of g.bombs.slice()) if (!b.fly && --b.t <= 0 && g.bombs.includes(b)) explode(g, b);
     // A bomb set off by a stream this tick goes off now too.
     let again = true;
-    while (again) { again = false; for (const b of g.bombs.slice()) if (b.t <= 0) { explode(g, b); again = true; } }
+    while (again) { again = false; for (const b of g.bombs.slice()) if (b.t <= 0 && !b.fly) { explode(g, b); again = true; } }
   }
 
   for (let i = 0; i < g.flames.length; i++) {
@@ -293,8 +402,10 @@ export function snapshot(g) {
   return {
     k: g.tick, ph: g.phase, pt: g.phaseT, tm: g.timer, hu: g.hurry, rs: g.result,
     p: g.players.map((p) => [p.id, Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10, p.dir, p.moving ? 1 : 0, p.state, p.stateT,
-      p.bombs, p.power, p.speed, p.needle, p.shield, p.shieldT, p.ride, p.invT, p.kills]),
-    b: g.bombs.map((b) => [b.id, b.c, b.r, b.t, b.owner, b.pass]),
+      p.bombs, p.power, p.speed, p.needle, p.shield, p.shieldT, p.ride, p.invT, p.kills,
+      p.dart, p.kick ? 1 : 0, p.punch ? 1 : 0, p.curse, p.curseT, p.lucci]),
+    b: g.bombs.map((b) => [b.id, b.c, b.r, b.t, b.owner, b.pass, Math.round(b.off), b.dir || 0,
+      b.fly ? [b.fly.fc, b.fly.fr, b.fly.dx, b.fly.dy, b.fly.t, b.fly.n] : 0]),
     ev: g.events,
   };
 }

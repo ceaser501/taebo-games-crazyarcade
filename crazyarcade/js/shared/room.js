@@ -168,7 +168,7 @@ export class RoomCore {
           const cur = this.inputs.get(id) || { dir: 0, bomb: 0, item: null, ct: 0 };
           cur.dir = msg.d | 0;
           if (msg.b) cur.bomb = 1;
-          if (msg.i === 'needle' || msg.i === 'shield') cur.item = msg.i;
+          if (msg.i === 'needle' || msg.i === 'shield' || msg.i === 'dart') cur.item = msg.i;
           cur.ct = msg.ct | 0;
           this.inputs.set(id, cur);
         }

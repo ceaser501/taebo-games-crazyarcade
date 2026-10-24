@@ -71,21 +71,46 @@ export const TEAMS = [
 ];
 
 // Items: what lies on the floor after a block breaks. `active` ones go to the item box and are
-// used with the item button (Ctrl on PC). `weight` is the client's Attr/ItemAttr weight; a map's
-// own drop list (maps-data drops) overrides it for the items it names. Needle and shield only
-// drop where a map lists them.
+// used with the item button (Ctrl on PC). `weight` is the client's Attr/ItemAttr weight, used on
+// maps without a drop list; a map's own list (maps-data drops) decides everything else.
 export const ITEMS = {
   bomb: { sprite: 'Item/Bomb', weight: 3650 },
   potion: { sprite: 'Item/Potion', weight: 2800 },
   skate: { sprite: 'Item/Skate', weight: 2000 },
   maxpower: { sprite: 'Item/MaxPower', weight: 150 },
   devil: { sprite: 'Item/RedDevil', weight: 0 },
+  shoe: { sprite: 'Item/Shoe', weight: 150 }, // kick balloons
+  punch: { sprite: 'Item/Punch', weight: 300 }, // punch the balloon in front over three cells
+  skull: { sprite: 'Item/Skeleton0', weight: 200 }, // a curse for a while
   needle: { sprite: 'Item/Niddle', weight: 0, active: true },
   shield: { sprite: 'Item/Shield', weight: 0, active: true },
-  turtle: { sprite: 'Item/Turtle0', weight: 400 },
-  owl: { sprite: 'Item/Owl', weight: 350 },
+  dart: { sprite: 'Item/Dart', weight: 0, active: true }, // thrown, pops the first balloon it hits
+  turtle: { sprite: 'Item/Turtle0', weight: 340, ride: true },
+  turtle2: { sprite: 'Item/Turtle1', weight: 60, ride: true },
+  owl: { sprite: 'Item/Owl', weight: 350, ride: true },
+  ufo: { sprite: 'Item/Airship', weight: 150, ride: true },
+  // Lucci, the in-game money (spent in the shop).
+  coinB: { sprite: 'Item/CoinBronze', weight: 0, lucci: 10 },
+  coinS: { sprite: 'Item/CoinSilver', weight: 0, lucci: 50 },
+  coinG: { sprite: 'Item/CoinGold', weight: 0, lucci: 100 },
+  pocketB: { sprite: 'Item/CoinPocketBronze', weight: 0, lucci: 100 },
+  pocketS: { sprite: 'Item/CoinPocketSilver', weight: 0, lucci: 300 },
+  pocketG: { sprite: 'Item/CoinPocketGold', weight: 0, lucci: 1000 },
+};
+// Ride speed levels from Attr/ItemAttr (Ship/Turtle0 2, Turtle1 9, Owl 5, Airship 10) and the
+// ride's picture (Ship/<name>-<Dir> in FxMonster; the item picture when that pack is missing).
+export const RIDES = {
+  turtle: { speed: 2, ship: 'Ship/Turtle0' },
+  turtle2: { speed: 9, ship: 'Ship/Turtle1' },
+  owl: { speed: 5, ship: 'Ship/Owl' },
+  ufo: { speed: 10, ship: 'Ship/Airship' },
 };
 // A breakable block hides an item this often (per mille; remake value, the original is unknown).
 export const ITEM_CHANCE = 350;
+export const CURSE_TIME = Math.round(10 * HZ);
+export const CURSES = ['slow', 'fast', 'reverse', 'leak', 'jam']; // leak: drops balloons by itself; jam: cannot place
+export const KICK_PX = 300; // a kicked balloon slides this fast (px/s)
+export const CONVEYOR_PX = 60; // belts carry players and balloons this fast (px/s; not measured)
+export const PUNCH_TICKS = Math.round(0.5 * HZ); // a punched balloon flies three cells in this long
 export const SHIELD_TIME = Math.round(3 * HZ);
 export const DEVIL_TIME = Math.round(10 * HZ);

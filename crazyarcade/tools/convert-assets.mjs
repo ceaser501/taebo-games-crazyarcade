@@ -41,6 +41,7 @@ function archive(base) {
   return new Archive(SRC, base);
 }
 
+const hasPack = (base) => fs.existsSync(path.join(SRC, `${base}.idx`));
 const glob = (pat) => new RegExp('^' + pat.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
 const pick = (ar, pats) => { const res = pats.map(glob); return ar.names().filter((n) => res.some((r) => r.test(n))); };
 
@@ -54,7 +55,10 @@ const GROUPS = [
     ['FxDesktop', ['Bomb/Bomb00', 'Bomb/Bomb02', 'Bomb/Bomb03', 'Bomb/Fire00', 'Bomb/Bubble00', 'Bomb/BombExplosion0*', 'Bomb/HELP!']],
     ['fx', ['Item/Bomb', 'Item/Potion', 'Item/MaxPower', 'Item/Skate', 'Item/RedDevil', 'Item/Niddle', 'Item/Shield', 'Item/Dart',
       'Item/Spring', 'Item/Turtle0', 'Item/Turtle1', 'Item/Owl', 'Item/Shoe', 'Item/Kart', 'Item/ShieldOn', 'Item/ShieldFlash',
+      'Item/Punch', 'Item/Airship', 'Item/Skeleton0', 'Item/Skeleton1', 'Item/Coin*',
       'Item/RescuedEffect', 'Item/ThrownDart', 'Item/UFO*', 'Item/Swimming']],
+    // Rides (the animal under the character); FxMonster is optional, the item picture stands in.
+    ['FxMonster?', ['Ship/Turtle0-*', 'Ship/Turtle1-*', 'Ship/Owl-*', 'Ship/Airship-*']],
     ['FxStage', ['Game/Start', 'Game/Win', 'Game/Lose', 'Game/Draw', 'Game/HurryUp', 'Game/Timer', 'Game/TeamColor', 'Game/SelfIndicator*',
       'Game/StartIndicator*', 'Game/UserItemBox00', 'Game/UserItemkey00', 'Game/ItemBox0*', 'Game/Player0*', 'Game/Rank', 'Game/Tie',
       'Game/ResultImg', 'Game/ResultInfoBar', 'Game/ResultEffect01', 'Game/Nice', 'Game/Perfect', 'Game/First', 'Game/Kill_Image*']],
@@ -91,7 +95,9 @@ const SFX = ['Wave/BombExplosion0*', 'Wave/Bt_*', 'Wave/Cha_*', 'Wave/Itm_*', 'W
 
 function emitGroup(group) {
   const images = [], table = {};
-  for (const [base, pats] of group.from) {
+  for (const [pack, pats] of group.from) {
+    const optional = pack.endsWith('?'), base = optional ? pack.slice(0, -1) : pack;
+    if (optional && !hasPack(base)) { console.warn(`${base} not found; skipping ${pats[0]}...`); continue; }
     const ar = archive(base);
     for (const name of pick(ar, pats)) {
       let b = ar.read(name);

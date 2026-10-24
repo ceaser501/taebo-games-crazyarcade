@@ -23,6 +23,51 @@ for (const map of MAPS) {
   if (moved < 2 || places === 0) { bad++; console.log(`stuck? ${map.id}: moved ${moved}, balloons ${places}`); }
 }
 
+// Items on an empty test field: kick, punch, dart, conveyor.
+function field(extra = {}) {
+  const map = { id: 't', tiles: [['x', 'floor']], floor: new Array(15 * 13).fill(0), objs: new Array(15 * 13).fill(-1),
+    spawns: [[1, 1], [13, 11]], drops: { bomb: 1 }, ...extra };
+  const g = createGame({ map, players: [{ id: 'a', char: 'C00', team: 0, color: 0 }, { id: 'b', char: 'C00', team: 1, color: 5 }], seed: 1, mode: 'solo' });
+  g.phase = 'play';
+  const a = g.players.find((p) => p.id === 'a'), b = g.players.find((p) => p.id === 'b');
+  a.x = 1 * 40 + 20; a.y = 1 * 40 + 20; b.x = 13 * 40 + 20; b.y = 11 * 40 + 20;
+  return { g, a };
+}
+const check = (ok, what) => { if (!ok) { bad++; console.log(`item test failed: ${what}`); } };
+{
+  const { g, a } = field();
+  a.kick = true;
+  step(g, { a: { bomb: true } });
+  for (let i = 0; i < 20; i++) step(g, { a: { dir: 3 } }); // step off to the left
+  for (let i = 0; i < 20; i++) step(g, { a: { dir: 4 } }); // walk back into it
+  for (let i = 0; i < 30; i++) step(g, {});
+  check(g.bombs.length === 1 && g.bombs[0].c > 3, `kick (balloon at ${g.bombs[0]?.c})`);
+}
+{
+  const { g, a } = field();
+  a.punch = true;
+  g.bombs.push({ id: 99, c: 2, r: 1, owner: 'b', power: 1, t: 60, pass: [], off: 0, kick: 0, fly: null });
+  a.dir = 4;
+  step(g, { a: { bomb: true } });
+  for (let i = 0; i < 20; i++) step(g, {});
+  check(g.bombs[0] && !g.bombs[0].fly && g.bombs[0].c === 5, `punch (balloon at ${g.bombs[0]?.c})`);
+}
+{
+  const { g, a } = field();
+  a.dart = 1; a.dir = 4;
+  g.bombs.push({ id: 99, c: 6, r: 1, owner: 'b', power: 1, t: 60, pass: [], off: 0, kick: 0, fly: null });
+  step(g, { a: { item: 'dart' } });
+  step(g, {});
+  check(g.bombs.length === 0 && a.dart === 0, 'dart');
+}
+{
+  const conv = new Array(15 * 13).fill(0); for (let c = 0; c < 15; c++) conv[5 * 15 + c] = 4;
+  const { g, a } = field({ conv });
+  a.y = 5 * 40 + 20;
+  for (let i = 0; i < 60; i++) step(g, {});
+  check(a.x > 60 + 40, `conveyor (x ${a.x})`);
+}
+
 // The room: join, bot, start, tick to the end.
 const sent = [];
 const room = new RoomCore({ code: '0000', send: (id, m) => sent.push([id, m.t]), broadcast: (m) => sent.push(['*', m.t]) });

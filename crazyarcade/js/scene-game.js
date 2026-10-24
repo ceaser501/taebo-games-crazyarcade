@@ -6,8 +6,8 @@ import * as A from './assets.js';
 import { stage, ui, text, roundRect, W } from './stage.js';
 import * as input from './input.js';
 import { sfx, playMusic, stopMusic } from './audio.js';
-import { COLS, ROWS, TILE, HZ, FLAME, TEAMS, ITEMS, charById } from './shared/const.js';
-import { createGame, walk, cellOf, DIR_NAMES } from './shared/sim.js';
+import { COLS, ROWS, TILE, HZ, FLAME, TEAMS, ITEMS, RIDES, PUNCH_TICKS, charById } from './shared/const.js';
+import { createGame, walk, cellOf, DIR_NAMES, DIRS } from './shared/sim.js';
 import { mapById } from './shared/room.js';
 
 const MX = 20, MY = 40; // map origin on the 800×600 screen
@@ -33,7 +33,7 @@ export class GameScene {
     this.buffers = new Map(this.g.players.map((p) => [p.id, []]));
     this.deathAt = new Map(); this.trapAt = new Map(); this.effects = [];
     this.localTick = 0; this.acc = 0; this.last = performance.now();
-    this.hist = []; this.lastSent = { d: -1 }; this.pendingBombs = [];
+    this.hist = []; this.lastSent = { d: -1 }; this.pendingBombs = []; this.darts = [];
     this.snapTick = 0; this.snapTime = 0; this.result = null; this.endAt = 0;
     this.floorCanvas = null;
     this.ready = this.load();
@@ -56,7 +56,7 @@ export class GameScene {
     c.fillStyle = '#5a8d3a'; c.fillRect(0, 0, cv.width, cv.height);
     for (let r = 0; r < ROWS; r++) for (let col = 0; col < COLS; col++) {
       const t = this.map.tiles[this.map.floor[r * COLS + col]];
-      if (t) A.draw(c, t[0], 0, col * TILE, r * TILE + TILE - 1);
+      if (t && !this.map.conv?.[r * COLS + col]) A.draw(c, t[0], 0, col * TILE, r * TILE + TILE - 1);
     }
     this.floorCanvas = cv;
   }
@@ -69,10 +69,12 @@ export class GameScene {
     g.phase = m.ph; g.phaseT = m.pt; g.timer = m.tm; g.hurry = m.hu; g.result = m.rs;
     this.snapTick = m.k; this.snapTime = performance.now();
     for (const row of m.p) {
-      const [id, x, y, dir, moving, state, stateT, bombs, power, speed, needle, shield, shieldT, ride, invT, kills] = row;
+      const [id, x, y, dir, moving, state, stateT, bombs, power, speed, needle, shield, shieldT, ride, invT, kills,
+        dart, kick, punch, curse, curseT, lucci] = row;
       const p = g.players.find((q) => q.id === id);
       if (!p) continue;
-      Object.assign(p, { state, stateT, bombs, power, speed, needle, shield, shieldT, ride, invT, kills });
+      Object.assign(p, { state, stateT, bombs, power, speed, needle, shield, shieldT, ride, invT, kills,
+        dart, kick: !!kick, punch: !!punch, curse, curseT, lucci });
       if (id === this.me) this.reconcile(p, x, y, dir, moving);
       else {
         const b = this.buffers.get(id);
@@ -80,7 +82,8 @@ export class GameScene {
         if (b.length > 20) b.shift();
       }
     }
-    g.bombs = m.b.map(([id, c, r, t, owner, pass]) => ({ id, c, r, t, owner, pass, power: 1 }));
+    g.bombs = m.b.map(([id, c, r, t, owner, pass, off, dir, fly]) => ({ id, c, r, t, owner, pass, power: 1, off, dir,
+      fly: fly ? { fc: fly[0], fr: fly[1], dx: fly[2], dy: fly[3], t: fly[4], n: fly[5], at: performance.now() } : null }));
     this.pendingBombs = this.pendingBombs.filter((pb) => !g.bombs.some((b) => b.c === pb.c && b.r === pb.r) && performance.now() - pb.at < 400);
     if (m.m) for (const [i, ot, bt, it, f] of m.m) {
       g.objs[i] = ot >= 0 ? { t: ot, k: g.tiles[ot].k, breakT: bt } : null;
@@ -113,10 +116,18 @@ export class GameScene {
       case 'trap': this.trapAt.set(e.id, performance.now()); sfx('Cha_LockedIn'); break;
       case 'pop': this.deathAt.set(e.id, performance.now()); sfx('Cha_Die'); break;
       case 'free': sfx('Cha_Release'); break;
-      case 'pick': if (e.id === this.me) sfx('Itm_ItemEaten', 0.7); break;
+      case 'pick':
+        if (e.id !== this.me) break;
+        if (ITEMS[e.item]?.lucci) sfx('Itm_TakeCoin', 0.7);
+        else if (e.item === 'skull') sfx('Itm_Devil_Start', 0.8);
+        else sfx('Itm_ItemEaten', 0.7);
+        break;
       case 'needle': sfx('Itm_Niddle'); break;
       case 'shield': sfx('Itm_ShieldOn'); break;
       case 'unride': sfx('Cha_Release', 0.5); break;
+      case 'kick': sfx('Cha_KickBomb', 0.8); break;
+      case 'punch': sfx('Cha_ThrowBomb', 0.8); break;
+      case 'dart': sfx('Itm_ThrowDart', 0.8); this.darts.push({ ...e, at: performance.now() }); break;
       case 'hurry': sfx('Ntc_HurryUp'); break;
       case 'end': {
         const mine = g.players.find((p) => p.id === this.me);
@@ -143,7 +154,7 @@ export class GameScene {
     const inp = input.read();
     if (!p) return;
     let item = inp.item;
-    if (item === 'auto') item = p.state === 'trapped' ? 'needle' : 'shield';
+    if (item === 'auto') item = p.state === 'trapped' ? 'needle' : p.dart > 0 ? 'dart' : 'shield';
     const msg = { t: 'in', d: inp.dir, ct: this.localTick };
     let send = inp.dir !== this.lastSent.d || this.localTick - (this.lastSent.at || 0) > HZ;
     if (inp.bomb) { msg.b = 1; send = true; this.predictBomb(p); }
@@ -154,7 +165,7 @@ export class GameScene {
     p.anim = (p.anim || 0) + 1;
     this.hist.push({ t: this.localTick, x: p.x, y: p.y });
     if (this.hist.length > 60) this.hist.shift();
-    input.setCounts({ needle: p.needle, shield: p.shield });
+    input.setCounts({ needle: p.needle, shield: p.shield, dart: p.dart || 0 });
   }
 
   predictBomb(p) {
@@ -206,6 +217,13 @@ export class GameScene {
   drawWorld(c, now) {
     const g = this.g, t = now / 1000;
     const views = g.players.map((p) => ({ p, v: this.view(p) }));
+    if (this.map.conv) {
+      for (let i = 0; i < this.map.conv.length; i++) {
+        if (!this.map.conv[i]) continue;
+        const t = this.map.tiles[this.map.floor[i]];
+        if (t) A.draw(c, t[0], Math.floor(now / 90) % Math.max(1, A.frames(t[0])), (i % COLS) * TILE, Math.floor(i / COLS) * TILE + TILE - 1);
+      }
+    }
     for (let r = 0; r < ROWS; r++) {
       // Water streams and items lie on the floor.
       for (let col = 0; col < COLS; col++) {
@@ -220,8 +238,8 @@ export class GameScene {
           A.drawAt(c, ITEMS[it.k].sprite, 0, ax + 20 - w / 2, ay - h - 4 + bob);
         }
       }
-      for (const b of g.bombs) if (b.r === r) this.drawBomb(c, b.c, b.r, now, b.t);
-      for (const b of this.pendingBombs) if (b.r === r) this.drawBomb(c, b.c, b.r, now, 99);
+      for (const b of g.bombs) if (!b.fly && b.r === r) this.drawBomb(c, b, now);
+      for (const b of this.pendingBombs) if (b.r === r) this.drawBomb(c, b, now);
       for (let col = 0; col < COLS; col++) {
         const o = g.objs[r * COLS + col];
         if (!o) continue;
@@ -241,6 +259,9 @@ export class GameScene {
       const here = views.filter(({ v }) => cellOf(v.y) === r).sort((a, b) => a.v.y - b.v.y);
       for (const { p, v } of here) this.drawPlayer(c, p, v, now);
     }
+    // Punched balloons fly over everything.
+    for (const b of g.bombs) if (b.fly) this.drawBomb(c, b, now);
+    this.drawDarts(c, now);
     // Names over everyone, never hidden behind houses.
     for (const { p, v } of views) {
       if (p.state === 'dead' || this.inBush(v) && p.id !== this.me) continue;
@@ -257,11 +278,37 @@ export class GameScene {
     return o && o.k === 'bush';
   }
 
-  drawBomb(c, col, r, now, fuse) {
-    const n = Math.max(1, A.frames('Bomb/Bomb00'));
-    const ax = col * TILE, ay = r * TILE + TILE - 1;
-    if (!A.draw(c, 'Bomb/Bomb00', Math.floor(now / 140) % n, ax, ay)) {
-      c.fillStyle = '#3ab0ff'; c.beginPath(); c.arc(ax + 20, ay - 18, 15, 0, Math.PI * 2); c.fill();
+  // A balloon where it is: sliding (off along its direction) or in the air after a punch.
+  drawBomb(c, b, now) {
+    const sprite = 'Bomb/Bomb00';
+    const n = Math.max(1, A.frames(sprite));
+    let x = b.c * TILE, y = b.r * TILE + TILE - 1, lift = 0;
+    if (b.fly) {
+      const total = b.fly.n === PUNCH_TICKS ? 3 : 1;
+      const f = Math.min(1, 1 - (b.fly.t - ((now - b.fly.at) / 1000) * HZ) / b.fly.n);
+      const fx = b.fly.fc + b.fly.dx * total * f, fy = b.fly.fr + b.fly.dy * total * f;
+      x = (((fx % COLS) + COLS) % COLS) * TILE; y = (((fy % ROWS) + ROWS) % ROWS) * TILE + TILE - 1;
+      lift = Math.sin(Math.max(0, f) * Math.PI) * (total === 3 ? 60 : 24);
+    } else if (b.off && b.dir) {
+      const [dx, dy] = DIRS[b.dir];
+      x += dx * b.off; y += dy * b.off;
+    }
+    if (lift) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(x + 20, y - 4, 12, 4, 0, 0, Math.PI * 2); c.fill(); }
+    if (!A.draw(c, sprite, Math.floor(now / 140) % n, x, y - lift)) {
+      c.fillStyle = '#3ab0ff'; c.beginPath(); c.arc(x + 20, y - 18 - lift, 15, 0, Math.PI * 2); c.fill();
+    }
+  }
+
+  // Thrown darts fly out from the thrower for a short moment.
+  drawDarts(c, now) {
+    this.darts = this.darts.filter((d) => now - d.at < 60 * d.n + 120);
+    for (const d of this.darts) {
+      const k = Math.min(d.n, (now - d.at) / 60);
+      const x = (d.c + d.dx * k) * TILE, y = (d.r + d.dy * k) * TILE + TILE - 1;
+      const dirFrame = d.dx < 0 ? 0 : d.dy < 0 ? 1 : d.dx > 0 ? 2 : 3;
+      if (!A.draw(c, 'Item/ThrownDart', Math.min(dirFrame, Math.max(0, A.frames('Item/ThrownDart') - 1)), x, y)) {
+        c.fillStyle = '#fff'; c.fillRect(x + 16, y - 24, 8, 8);
+      }
     }
   }
 
@@ -309,7 +356,11 @@ export class GameScene {
     }
     // Shadow.
     c.fillStyle = 'rgba(0,0,0,0.28)'; c.beginPath(); c.ellipse(v.x, ay - 3, 14, 5, 0, 0, Math.PI * 2); c.fill();
-    if (p.ride) A.draw(c, p.ride === 'turtle' ? 'Item/Turtle1' : 'Item/Owl', 0, ax, ay + 2);
+    if (p.ride) {
+      const ship = `${RIDES[p.ride]?.ship}-${dirName}`;
+      const n = A.frames(ship);
+      if (!n || !A.draw(c, ship, v.moving ? [0, 1, 2, 3, 2, 1][Math.floor(now / 100) % 6] % n : 0, ax, ay)) A.draw(c, ITEMS[p.ride]?.sprite || 'Item/Owl', 0, ax, ay + 2);
+    }
     if (!A.drawChar(c, ch, action, frame, ax, ay, team, alpha)) {
       c.fillStyle = TEAMS[team]?.css || '#f44'; c.beginPath(); c.arc(v.x, v.y - 8, 15, 0, Math.PI * 2); c.fill();
     }
@@ -319,6 +370,7 @@ export class GameScene {
       const bf = age < 200 ? Math.floor(age / 70) : left < 1 ? 7 + (Math.floor(now / 120) % 2) : 6;
       A.draw(c, 'Bomb/Bubble00', bf, ax, ay - 6, 0.92);
     }
+    if (p.curse) A.drawAt(c, 'Item/Skeleton0', 0, v.x - 12, v.y - 70 + Math.sin(now / 150) * 2, 24, 24);
     if (p.shieldT > 0) {
       c.strokeStyle = `rgba(255,240,120,${0.5 + 0.3 * Math.sin(now / 80)})`; c.lineWidth = 3;
       c.beginPath(); c.arc(v.x, v.y - 8, 24, 0, Math.PI * 2); c.stroke();
@@ -383,7 +435,10 @@ export class GameScene {
     });
     const me = this.myPlayer();
     if (me) {
-      const items = [['Item/Niddle', me.needle], ['Item/Shield', me.shield], ['Item/Bomb', me.bombs], ['Item/Potion', me.power], ['Item/Skate', me.speed]];
+      const items = [['Item/Niddle', me.needle], ['Item/Shield', me.shield], ['Item/Dart', me.dart || 0], ['Item/Bomb', me.bombs], ['Item/Potion', me.power], ['Item/Skate', me.speed]];
+
+      // Kept powers (shoe, punch) as small marks beside the ITEM label.
+      [['Item/Shoe', me.kick], ['Item/Punch', me.punch]].filter(([, on]) => on).forEach(([sp], k) => A.drawAt(c, sp, 0, 712 + k * 24, 448, 22, 22));
       items.forEach(([s, n], k) => {
         const x = 656 + (k % 3) * 44, y = 472 + Math.floor(k / 3) * 38;
         const [w, h] = A.size(s);
