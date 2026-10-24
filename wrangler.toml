@@ -1,0 +1,15 @@
+# Cloudflare Pages site (dist/) plus its /api function, bound to the room server's Durable
+# Objects (server/wrangler.toml, deployed first).
+name = "taesu-crazyarcade"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-09-23"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+script_name = "taebo-crazyarcade-server"
+
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "Lobby"
+script_name = "taebo-crazyarcade-server"

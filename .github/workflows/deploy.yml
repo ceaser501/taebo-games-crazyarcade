@@ -1,0 +1,92 @@
+# Builds the site and deploys it to Cloudflare on every push to main (or by hand from the Actions tab):
+# the room server (Worker + Durable Objects, server/) first, then the site (Pages, dist/ + functions/).
+# Needs three repository secrets:
+#   CLOUDFLARE_API_TOKEN   Cloudflare API token with "Workers Scripts: Edit" and "Cloudflare Pages: Edit"
+#   CLOUDFLARE_ACCOUNT_ID  the Cloudflare account ID
+#   CA_ASSETS_TOKEN        GitHub token that can read ceaser501/taebo-games-crazyarcade-assets
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Simulated bot matches on every map
+        run: node crazyarcade/tools/test-sim.mjs
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secrets
+        id: secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CA_ASSETS_TOKEN: ${{ secrets.CA_ASSETS_TOKEN }}
+        run: |
+          missing=""
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CA_ASSETS_TOKEN; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::Deploy skipped; missing secrets:$missing"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
+
+      - name: Check out the original game data
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ceaser501/taebo-games-crazyarcade-assets
+          token: ${{ secrets.CA_ASSETS_TOKEN }}
+          path: ca-assets
+          sparse-checkout: pc
+
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          npm ci
+          npm run ca:assets -- ca-assets
+          rm -rf ca-assets
+          npm run build
+
+      - name: Deploy the room server
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run deploy:server
+
+      - name: Deploy the site
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx -y wrangler@3 pages project create taesu-crazyarcade --production-branch main || true
+          npm run deploy

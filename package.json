@@ -1,0 +1,22 @@
+{
+  "name": "taebo-games-crazyarcade",
+  "version": "0.1.0",
+  "description": "크레이지 아케이드 PC판을 휴대폰 브라우저에서 (온라인 1:1, 2:2 팀전·개인전)",
+  "private": true,
+  "license": "",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node crazyarcade/tools/dev-server.mjs",
+    "build": "webpack --config webpack.config.prod.js",
+    "ca:assets": "node crazyarcade/tools/convert-assets.mjs",
+    "deploy:server": "npx -y wrangler@3 deploy --config server/wrangler.toml",
+    "deploy": "npx -y wrangler@3 pages deploy dist --project-name taesu-crazyarcade --branch main --commit-dirty=true",
+    "test": "node crazyarcade/tools/test-sim.mjs"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^11.0.0",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4",
+    "ws": "^8.18.0"
+  }
+}

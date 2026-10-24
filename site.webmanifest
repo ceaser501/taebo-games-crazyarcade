@@ -1,0 +1,17 @@
+{
+  "name": "크레이지 아케이드",
+  "short_name": "크아",
+  "description": "크레이지 아케이드 PC판을 휴대폰에서",
+  "lang": "ko",
+  "start_url": "/crazyarcade/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0b3f8f",
+  "theme_color": "#0b3f8f",
+  "icons": [
+    { "src": "/icon.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,14 @@
+node_modules
+dist
+.cache
+.wrangler
+
+# JetBrains IDE
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+
+# Converted from taebo-games-crazyarcade-assets by `npm run ca:assets`
+crazyarcade/assets/

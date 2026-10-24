@@ -1,0 +1,17 @@
+# The room server (Durable Objects). Deployed with `npm run deploy:server`.
+name = "taebo-crazyarcade-server"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "Lobby"
+
+# SQLite-backed classes are what the free plan allows.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room", "Lobby"]

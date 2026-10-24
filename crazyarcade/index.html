@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="크아">
+  <title>크레이지 아케이드</title>
+  <meta name="description" content="크레이지 아케이드 PC판을 휴대폰에서. 1:1, 2:2 팀전과 개인전 온라인 대전.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0b3f8f">
+</head>
+
+<body>
+  <canvas id="game"></canvas>
+  <input id="name-input" class="over" maxlength="10" placeholder="닉네임" autocomplete="nickname" hidden>
+  <input id="code-input" class="over" maxlength="4" inputmode="numeric" placeholder="1234" hidden>
+  <input id="chat-input" class="over" maxlength="80" placeholder="채팅 입력 후 Enter" hidden>
+  <div id="chat-log" class="over" hidden></div>
+  <div id="toast" hidden></div>
+  <div id="rotate">가로로 돌려 주세요 ↻</div>
+  <div id="gate" hidden>
+    <form id="gate-form"><p>비밀번호</p><input id="gate-pass" type="password" autofocus><button>확인</button></form>
+  </div>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
