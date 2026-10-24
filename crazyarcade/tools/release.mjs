@@ -26,16 +26,18 @@ if (assets) {
 
 // Deploy only what is on GitHub: stop when this folder is behind or has its own edits.
 console.log('\n▶ 게임 코드 확인');
-run('git fetch -q origin main');
 const out = (cmd) => execSync(cmd, { cwd: root }).toString().trim();
-const behind = Number(out('git rev-list --count HEAD..origin/main'));
+// Compare with the same branch on GitHub (whichever branch this folder is on).
+const branch = out('git rev-parse --abbrev-ref HEAD');
+run(`git fetch -q origin ${branch}`);
+const behind = Number(out(`git rev-list --count HEAD..origin/${branch}`));
 // npm on another machine may rewrite package-lock.json; that changes nothing that ships.
 const dirty = out('git status --porcelain --untracked-files=no -- . ":(exclude)package-lock.json"');
 if (behind || dirty) {
-  console.error(`\n배포를 멈췄어요. 이 폴더(${root})의 게임 코드가 GitHub 최신이 아니에요.`);
+  console.error(`\n배포를 멈췄어요. 이 폴더(${root})의 게임 코드가 GitHub 최신(${branch})이 아니에요.`);
   if (behind) console.error(`- 최신보다 ${behind}개 커밋 뒤에 있어요.`);
   if (dirty) console.error(`- 이 폴더에서 바뀐 파일이 있어요:\n${dirty}`);
-  console.error('\n최신으로 맞추려면(이 폴더에서 바꾼 내용은 사라져요):\n  git fetch origin main && git reset --hard origin/main\n그다음 다시 npm run release');
+  console.error(`\n최신으로 맞추려면(이 폴더에서 바꾼 내용은 사라져요):\n  git fetch origin ${branch} && git reset --hard origin/${branch}\n그다음 다시 npm run release`);
   process.exit(1);
 }
 console.log(`게임 코드 ${out('git rev-parse --short HEAD')} (최신)`);
