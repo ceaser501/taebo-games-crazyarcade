@@ -35,8 +35,8 @@ function layout() {
   const vw = stage.cssW, vh = stage.cssH;
   const margin = sides ?? stage.ox; // free width on each side of the picture (or of the game's map)
   const unit = Math.max(0.75, Math.min(1.1, Math.min(vw, vh) / 380));
-  // Small controls low in the corners, where the thumbs rest (radius ~35 px on a phone held sideways).
-  stick.r = 34 * unit; btn.bomb.r = 36 * unit; btn.needle.r = btn.shield.r = btn.dart.r = 19 * unit;
+  // Small controls low in the corners, where the thumbs rest (radius ~40 px on a phone held sideways).
+  stick.r = 40 * unit; btn.bomb.r = 42 * unit; btn.needle.r = btn.shield.r = btn.dart.r = 22 * unit;
   // Lifted a little off the bottom edge, where the thumbs rest holding the phone with both hands.
   const lift = 16 + Math.round(vh * 0.08);
   const side = margin >= stick.r * 2.2 ? margin / 2 : stick.r + 18;

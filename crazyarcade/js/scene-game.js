@@ -7,7 +7,7 @@ import { stage, ui, text, roundRect, W } from './stage.js';
 import * as input from './input.js';
 import { sfx, playMusic, stopMusic } from './audio.js';
 import { COLS, ROWS, TILE, HZ, TEAMS, ITEMS, RIDES, PUNCH_TICKS, charById } from './shared/const.js';
-import { createGame, walk, carry, cellOf, DIR_NAMES, DIRS } from './shared/sim.js';
+import { createGame, walk, carry, cellOf, DIR_NAMES, DIRS, PUSH_SLIDE } from './shared/sim.js';
 import { mapById } from './shared/room.js';
 import * as Wallet from './wallet.js';
 
@@ -94,8 +94,8 @@ export class GameScene {
     g.bombs = m.b.map(([id, c, r, t, owner, pass, off, dir, fly]) => ({ id, c, r, t, owner, pass, power: 1, off, dir,
       fly: fly ? { fc: fly[0], fr: fly[1], dx: fly[2], dy: fly[3], t: fly[4], n: fly[5], at: performance.now() } : null }));
     this.pendingBombs = this.pendingBombs.filter((pb) => !g.bombs.some((b) => b.c === pb.c && b.r === pb.r) && performance.now() - pb.at < 400);
-    if (m.m) for (const [i, ot, bt, it, f] of m.m) {
-      g.objs[i] = ot >= 0 ? { t: ot, k: g.tiles[ot].k, breakT: bt } : null;
+    if (m.m) for (const [i, ot, bt, it, f, sl] of m.m) {
+      g.objs[i] = ot >= 0 ? { t: ot, k: g.tiles[ot].k, breakT: bt, push: !!g.tiles[ot].push, sl: sl ? { d: sl[0], at: sl[1] } : null } : null;
       g.items[i] = it ? { k: it, fresh: 0 } : null;
       g.flames[i] = f ? { kind: f[0], end: !!f[1], born: f[2], d: f[3] } : null;
     }
@@ -138,6 +138,7 @@ export class GameScene {
       case 'shield': sfx('Itm_ShieldOn'); break;
       case 'unride': sfx('Cha_Release', 0.5); break;
       case 'kick': sfx('Cha_KickBomb', 0.8); break;
+      case 'push': sfx('Cha_KickBomb', 0.4); break;
       case 'punch': sfx('Cha_ThrowBomb', 0.8); break;
       case 'dart': sfx('Itm_ThrowDart', 0.8); this.darts.push({ ...e, at: performance.now() }); break;
       case 'hurry': sfx('Ntc_HurryUp'); break;
@@ -282,7 +283,14 @@ export class GameScene {
         if (!o) continue;
         const tile = this.map.tiles[o.t];
         if (!tile || tile[0] === '$cover') continue;
-        const name = tile[0], ax = col * TILE, ay = r * TILE + TILE - 1;
+        let ax = col * TILE, ay = r * TILE + TILE - 1;
+        const name = tile[0];
+        // A pushed crate slides in from the cell it left.
+        if (o.sl) {
+          const f = Math.max(0, 1 - (this.clock - o.sl.at) / PUSH_SLIDE);
+          const [dx, dy] = DIRS[o.sl.d];
+          ax -= dx * TILE * f; ay -= dy * TILE * f;
+        }
         if (o.breakT) {
           const brk = tile[4] || name;
           A.draw(c, brk, Math.min(A.frames(brk) - 1, o.breakT), ax, ay);

@@ -40,10 +40,10 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
     bombs: [], flames: new Array(ROWS * COLS).fill(null), players: [], events: [], nextId: 1,
     result: null, hurry: false,
   };
-  g.tiles = map.tiles.map((t) => (Array.isArray(t) ? { s: t[0], k: t[1], w: t[2] || 1, h: t[3] || 1 } : t));
+  g.tiles = map.tiles.map((t) => (Array.isArray(t) ? { s: t[0], k: t[1], w: t[2] || 1, h: t[3] || 1, push: t[5] === 1 } : t));
   for (let i = 0; i < ROWS * COLS; i++) {
     const t = map.objs[i];
-    g.objs.push(t >= 0 ? { t, k: g.tiles[t].k, item: null, breakT: 0 } : null);
+    g.objs.push(t >= 0 ? { t, k: g.tiles[t].k, item: null, breakT: 0, push: !!g.tiles[t].push } : null);
   }
   // Hidden items: every breakable block gets a roll.
   // A map with a drop list gets exactly its items (plus the three basic ones if it leaves them out).
@@ -167,6 +167,29 @@ function takePosition(g, p, inp) {
 }
 
 // Walking into a balloon with the shoe kicks it: it slides until something stops it.
+// Pushing a crate: keep walking into it for a moment and it slides one cell on, if that cell
+// is empty (no block, balloon, player or item). sl = { d, at } lets the screens slide it.
+const PUSH_DELAY = Math.round(0.2 * HZ);
+export const PUSH_SLIDE = Math.round(0.2 * HZ);
+function tryPush(g, p, d) {
+  const [dx, dy] = DIRS[d];
+  const c = cellOf(p.x), r = cellOf(p.y);
+  const lane = dx ? Math.abs(p.y - (r * TILE + HALF)) : Math.abs(p.x - (c * TILE + HALF));
+  const ahead = dx ? (p.x - (c * TILE + HALF)) * dx : (p.y - (r * TILE + HALF)) * dy;
+  const o = inside(c + dx, r + dy) && g.objs[idx(c + dx, r + dy)];
+  if (!o || !o.push || o.breakT || o.sl || lane > CORNER || ahead < -1) { p.pushT = 0; return; }
+  const tc = c + 2 * dx, tr = r + 2 * dy;
+  const busy = !inside(tc, tr) || g.objs[idx(tc, tr)] || bombAt(g, tc, tr) || g.items[idx(tc, tr)]
+    || g.players.some((q) => q.state !== 'dead' && cellOf(q.x) === tc && cellOf(q.y) === tr);
+  if (busy) { p.pushT = 0; return; }
+  p.pushT = (p.pushT || 0) + 1;
+  if (p.pushT < PUSH_DELAY) return;
+  p.pushT = 0;
+  g.objs[idx(tc, tr)] = o; g.objs[idx(c + dx, r + dy)] = null;
+  o.sl = { d, at: g.tick };
+  emit(g, 'push', { c: tc, r: tr });
+}
+
 function tryKick(g, p, d) {
   const [dx, dy] = DIRS[d];
   const c = cellOf(p.x), r = cellOf(p.y);
@@ -359,6 +382,7 @@ export function step(g, inputs = {}) {
     else if (p.reportT && g.tick - p.reportT < HZ) { if (inp.dir) p.dir = inp.dir | 0; p.moving = !!inp.dir; }
     else { walk(g, p, inp.dir | 0); carry(g, p); }
     if (p.kick && p.state === 'normal' && inp.dir) tryKick(g, p, inp.dir | 0);
+    if (p.state === 'normal' && inp.dir) tryPush(g, p, inp.dir | 0); else p.pushT = 0;
     if ((inp.bomb || p.curse === 'leak') && p.state === 'normal') placeBomb(g, p);
     if (p.state === 'normal') {
       const i = idx(cellOf(p.x), cellOf(p.y));
@@ -388,6 +412,7 @@ export function step(g, inputs = {}) {
     for (const p of g.players) if (p.state === 'normal' && cellOf(p.x) === c && cellOf(p.y) === r) trap(g, p);
   }
 
+  for (const o of g.objs) if (o && o.sl && g.tick - o.sl.at >= PUSH_SLIDE) o.sl = null;
   for (let i = 0; i < g.objs.length; i++) {
     const o = g.objs[i];
     if (o && o.breakT && ++o.breakT > BREAK) {

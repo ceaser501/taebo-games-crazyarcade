@@ -215,3 +215,46 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
   #shop-tabs button { padding: 4px; font-size: 14px; } #shop-preview { width: 140px; height: 133px; }
   #shop-grid canvas { width: 44px; height: 44px; } #shop-grid { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); }
 }
+
+/* ---- map button and map choice dialog (in the client's sky-blue dialog style) ---- */
+.map-btn {
+  display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border-radius: 12px; cursor: pointer; text-align: left;
+  border: 2px solid #9fe0ff; background: rgba(0, 30, 90, 0.6); color: #fff; font: 800 15px "Nanum Gothic", sans-serif; flex: 1; min-width: 0;
+}
+.map-btn canvas { width: 74px; height: 64px; border-radius: 6px; image-rendering: pixelated; background: #0a3a8a; flex: none; }
+.map-btn span { display: flex; flex-direction: column; min-width: 0; }
+.map-btn small { font-size: 11px; color: #9fd0f5; font-weight: 700; }
+.map-btn:disabled { cursor: default; }
+.map-btn:disabled small { visibility: hidden; }
+#map-pick { position: fixed; inset: 0; z-index: 12; display: flex; align-items: center; justify-content: center; padding: 10px; background: rgba(0, 10, 40, 0.65); }
+.map-card {
+  width: min(760px, 100%); height: min(560px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px;
+  border-radius: 16px; background: linear-gradient(180deg, #5fd8ff 0%, #22a8f0 12%, #1782da 100%); border: 3px solid #e6fbff;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 12px 30px rgba(0, 0, 0, 0.55);
+}
+.map-card h2 {
+  margin: 0; font-size: 24px; font-weight: 800; color: #fff; letter-spacing: 2px;
+  text-shadow: 0 2px 0 #0a5ab8, 2px 0 0 #0a5ab8, -2px 0 0 #0a5ab8, 0 -2px 0 #0a5ab8, 0 4px 0 #063a80;
+}
+#map-themes { display: flex; gap: 4px; overflow-x: auto; flex: none; padding-bottom: 2px; }
+#map-themes button { flex: none; font: 800 13px "Nanum Gothic", sans-serif; color: #fff; padding: 5px 10px; border-radius: 999px; border: 2px solid rgba(255, 255, 255, 0.6); background: rgba(5, 60, 150, 0.55); cursor: pointer; }
+#map-themes button.on { color: #4a2a00; background: #ffd23a; border-color: #fff3a0; }
+.map-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 10px; }
+.map-preview { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; border-radius: 12px; background: #0b4fae; border: 2px solid #9fe0ff; }
+#map-big { width: 200px; height: 173px; border-radius: 8px; border: 2px solid #e6fbff; image-rendering: pixelated; background: #0a3a8a; }
+#map-name { font-size: 18px; color: #ffe95a; text-shadow: 0 2px 0 #021a50; }
+#map-info { font-size: 13px; color: #cfe8ff; font-weight: 700; }
+#map-list { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; align-content: start; padding: 8px; border-radius: 12px; background: #0b4fae; border: 2px solid #9fe0ff; }
+#map-list button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; border-radius: 10px; border: 2px solid transparent; background: rgba(0, 20, 70, 0.45); color: #fff; font: 800 12px "Nanum Gothic", sans-serif; cursor: pointer; }
+#map-list button canvas { width: 92px; height: 80px; border-radius: 5px; image-rendering: pixelated; }
+#map-list button small { font-size: 10px; color: #9fd0f5; }
+#map-list button.sel { border-color: #ffe95a; background: rgba(255, 220, 60, 0.3); }
+#map-list button.full { opacity: 0.45; }
+.map-actions { display: flex; gap: 10px; justify-content: center; align-items: center; flex: none; }
+.map-actions .big-btn { padding: 8px 26px; font-size: 17px; }
+@media (max-width: 560px) { .map-body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); } .map-preview { flex-direction: row; } #map-big { width: 110px; height: 95px; } }
+@media (max-height: 460px) and (orientation: landscape) {
+  .map-card { padding: 8px 12px; gap: 5px; } .map-card h2 { font-size: 19px; } #map-big { width: 160px; height: 139px; }
+  .map-body { grid-template-columns: 190px minmax(0, 1fr); } #map-list button canvas { width: 74px; height: 64px; }
+  #map-list { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+}

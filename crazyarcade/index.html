@@ -74,7 +74,7 @@
       <section class="card" id="practice-card">
         <h2><b>1</b>컴퓨터와 연습</h2>
         <label class="opt"><span>대결</span><select id="practice-size"></select></label>
-        <label class="opt"><span>맵</span><select id="practice-map"></select></label>
+        <button type="button" id="practice-map" class="map-btn"><canvas width="74" height="64"></canvas><span><b></b><small>눌러서 맵 바꾸기</small></span></button>
         <button type="button" id="practice-start" class="big-btn">연습 시작</button>
       </section>
       <section class="card" id="online-card">
@@ -107,8 +107,7 @@
       </div>
       <div id="seats"></div>
       <div class="lobby-foot">
-        <canvas id="lobby-mm" width="74" height="64"></canvas>
-        <label class="opt lobby-map"><span>맵</span><select id="lobby-map"></select></label>
+        <button type="button" id="lobby-map" class="map-btn"><canvas width="74" height="64"></canvas><span><b></b><small>눌러서 맵 바꾸기</small></span></button>
         <button type="button" id="lobby-char" class="chip">캐릭터 바꾸기</button>
         <button type="button" id="lobby-shop" class="chip shop">상점</button>
       </div>
@@ -145,6 +144,23 @@
           <span id="shop-price"></span>
           <button type="button" id="shop-act" class="big-btn" hidden></button>
         </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- Map choice, in the style of the client's 맵 선택하기 dialog. -->
+  <div id="map-pick" hidden>
+    <div class="map-card">
+      <h2>맵 선택하기</h2>
+      <div id="map-themes"></div>
+      <div class="map-body">
+        <div class="map-preview"><canvas id="map-big" width="148" height="128"></canvas><b id="map-name"></b><span id="map-info"></span></div>
+        <div id="map-list"></div>
+      </div>
+      <div class="map-actions">
+        <button type="button" id="map-ok" class="big-btn">확인</button>
+        <button type="button" id="map-random" class="big-btn blue">랜덤</button>
+        <button type="button" id="map-cancel" class="chip">닫기</button>
       </div>
     </div>
   </div>

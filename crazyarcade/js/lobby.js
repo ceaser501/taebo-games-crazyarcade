@@ -9,14 +9,11 @@ import { MAPS } from './shared/maps.js';
 import { RED, BLUE } from './shared/room.js';
 import * as W from './wallet.js';
 import { pickChar } from './home.js';
+import { mapButton, pickMap, mapById } from './map-pick.js';
 
 const $ = (id) => document.getElementById(id);
 const click = () => sfx('Bt_c_Pop', 0.6);
-const mapLabel = (m) => `${m.name} (최대 ${m.spawns.length}명)`;
-const fillMaps = (sel, value) => {
-  if (!sel.options.length) for (const m of MAPS) sel.add(new Option(mapLabel(m), m.id));
-  sel.value = value;
-};
+let practiceMap = 'Village10';
 
 // ---- menu
 const SIZES = [
@@ -27,11 +24,13 @@ export function showMenu(app, status = '') {
   $('menu').hidden = false;
   const size = $('practice-size');
   if (!size.options.length) SIZES.forEach(([, , label], i) => size.add(new Option(label, String(i))));
-  fillMaps($('practice-map'), $('practice-map').value || 'Village10');
+  const need = () => SIZES[Number(size.value)][1] + 1;
+  const drawMap = () => mapButton($('practice-map'), practiceMap, () => pickMap(practiceMap, need(), (id) => { practiceMap = id; drawMap(); }));
+  drawMap();
   $('net-status').textContent = status;
   $('practice-start').onclick = () => {
     const [mode, bots] = SIZES[Number(size.value)];
-    const map = MAPS.find((m) => m.id === $('practice-map').value) || MAPS[0];
+    const map = mapById(practiceMap);
     if (bots + 1 > map.spawns.length) { app.toast(`${map.name}은(는) ${map.spawns.length}명까지 하는 맵이에요.`); return; }
     click(); hideMenu(); app.practice({ mode, bots, map: map.id });
   };
@@ -131,15 +130,7 @@ export function renderLobby(app) {
     seats.replaceChildren(...Array.from({ length: 8 }, (_, i) => seat(list[i], 0)));
   }
   // Map: the host chooses, everyone sees it.
-  const sel = $('lobby-map');
-  fillMaps(sel, room.map);
-  sel.disabled = !host;
-  sel.onchange = () => app.send({ t: 'settings', map: sel.value });
-  A.loadGroup('maps').then(() => {
-    const c = $('lobby-mm').getContext('2d');
-    c.clearRect(0, 0, 74, 64);
-    A.drawAt(c, `Etc/${room.map}_mm`, 0, 0, 0, 74, 64);
-  });
+  mapButton($('lobby-map'), room.map, host ? () => pickMap(room.map, room.members.length, (id) => app.send({ t: 'settings', map: id })) : null);
   $('lobby-char').onclick = () => pickChar(app, (id) => app.send({ t: 'set', char: id }));
   $('lobby-shop').onclick = () => { click(); app.toShop('lobby'); };
   $('lobby-leave').onclick = () => { click(); app.leaveRoom(); };

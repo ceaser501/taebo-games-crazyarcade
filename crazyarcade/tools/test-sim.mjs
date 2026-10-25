@@ -80,6 +80,17 @@ const check = (ok, what) => { if (!ok) { bad++; console.log(`item test failed: $
   check(a.x < 100, `wall refused (x ${a.x})`);
 }
 
+{
+  // A crate is pushed one cell after walking into it for a moment; a plain block is not.
+  const objs = new Array(15 * 13).fill(-1); objs[1 * 15 + 2] = 1; objs[3 * 15 + 2] = 2;
+  const { g, a } = field({ objs, tiles: [['x', 'floor'], ['crate', 'soft', 1, 1, 'crate', 1], ['block', 'soft', 1, 1, 'block']] });
+  for (let i = 0; i < 20; i++) step(g, { a: { dir: 4 } });
+  check(!g.objs[1 * 15 + 2] && [3, 4, 5].some((c) => g.objs[1 * 15 + c]?.push), 'crate pushed');
+  a.x = 60; a.y = 140;
+  for (let i = 0; i < 20; i++) step(g, { a: { dir: 4 } });
+  check(g.objs[3 * 15 + 2] && !g.objs[3 * 15 + 3], 'block not pushed');
+}
+
 // The room: join, bot, start, tick to the end.
 const sent = [];
 const room = new RoomCore({ code: '0000', send: (id, m) => sent.push([id, m.t]), broadcast: (m) => sent.push(['*', m.t]) });

@@ -105,7 +105,7 @@ export class RoomCore {
       const g = this.game;
       this.send(id, { t: 'start', seed: this.startInfo.seed, map: this.startInfo.map, mode: this.mode, players: this.startInfo.players });
       const snap = snapshot(g);
-      snap.m = g.objs.map((o, i) => [i, o ? o.t : -1, o ? o.breakT : 0, g.items[i] ? g.items[i].k : 0, g.flames[i] ? [g.flames[i].kind, g.flames[i].end ? 1 : 0, g.flames[i].born, g.flames[i].d] : 0]);
+      snap.m = g.objs.map((o, i) => [i, o ? o.t : -1, o ? o.breakT : 0, g.items[i] ? g.items[i].k : 0, g.flames[i] ? [g.flames[i].kind, g.flames[i].end ? 1 : 0, g.flames[i].born, g.flames[i].d] : 0, o && o.sl ? [o.sl.d, o.sl.at] : 0]);
       this.send(id, { t: 's', ...snap, a: 0 });
     }
     return true;
@@ -257,11 +257,11 @@ export class RoomCore {
     const snap = snapshot(g);
     // Map changes: only the cells that differ from what was last sent.
     const cells = [];
-    const cur = g.objs.map((o, i) => `${o ? o.t + ':' + o.breakT : '-'}|${g.items[i] ? g.items[i].k : ''}|${g.flames[i] ? g.flames[i].kind + (g.flames[i].end ? 1 : 0) + ':' + g.flames[i].born : ''}`);
+    const cur = g.objs.map((o, i) => `${o ? o.t + ':' + o.breakT + (o.sl ? ':' + o.sl.at : '') : '-'}|${g.items[i] ? g.items[i].k : ''}|${g.flames[i] ? g.flames[i].kind + (g.flames[i].end ? 1 : 0) + ':' + g.flames[i].born : ''}`);
     if (!this.lastObjs) this.lastObjs = new Array(cur.length).fill('');
     for (let i = 0; i < cur.length; i++) if (cur[i] !== this.lastObjs[i]) {
       const o = g.objs[i], it = g.items[i], f = g.flames[i];
-      cells.push([i, o ? o.t : -1, o ? o.breakT : 0, it ? it.k : 0, f ? [f.kind, f.end ? 1 : 0, f.born, f.d] : 0]);
+      cells.push([i, o ? o.t : -1, o ? o.breakT : 0, it ? it.k : 0, f ? [f.kind, f.end ? 1 : 0, f.born, f.d] : 0, o && o.sl ? [o.sl.d, o.sl.at] : 0]);
     }
     this.lastObjs = cur;
     if (cells.length) snap.m = cells;

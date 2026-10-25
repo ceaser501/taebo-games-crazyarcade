@@ -83,6 +83,16 @@ function steer(me, c, r, fallback) {
   return Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 3 : 4) : (dy < 0 ? 1 : 2);
 }
 
+// Towards the middle of the current cell, but only while more than a step away: a shorter
+// move would overshoot and the bot would shake around the middle.
+function center(me) {
+  const step = speedPx(me.speed) / HZ;
+  const dx = cellOf(me.x) * TILE + TILE / 2 - me.x, dy = cellOf(me.y) * TILE + TILE / 2 - me.y;
+  if (Math.abs(dx) >= step) return dx < 0 ? 3 : 4;
+  if (Math.abs(dy) >= step) return dy < 0 ? 1 : 2;
+  return 0;
+}
+
 function lineHits(g, c, r, power, test) {
   for (const [dc, dr] of NB) for (let k = 1; k <= power; k++) {
     const cc = c + dc * k, rr = r + dr * k;
@@ -113,22 +123,28 @@ export class Bot {
 
     // 1. In danger: run to the nearest safe cell.
     if (when[mi] !== Infinity) {
-      let best = -1;
-      for (let i = 0; i < S.dist.length; i++) if (S.dist[i] > 0 && safe(i) && (best < 0 || S.dist[i] < S.dist[best])) best = i;
+      // Keep the escape picked before while it is still safe and reachable, so the bot does not
+      // turn back and forth between two equally near cells.
+      let best = this.escape != null && S.dist[this.escape] > 0 && safe(this.escape) ? this.escape : -1;
+      if (best < 0) for (let i = 0; i < S.dist.length; i++) if (S.dist[i] > 0 && safe(i) && (best < 0 || S.dist[i] < S.dist[best])) best = i;
+      this.escape = best >= 0 ? best : null;
       if (best >= 0) return this.go(me, S, best);
       if (me.shield > 0 && when[mi] < 6) return { dir: 0, item: 'shield' };
       return { dir: 0 };
     }
 
+    // Out of danger: plan routes that never step into a cell a balloon is about to hit, or the
+    // bot steps in, sees the danger, steps back out, and shakes at the edge.
+    const SS = search(g, me, when, (c, r) => when[idx(c, r)] !== Infinity);
     const enemies = g.players.filter((p) => p.state !== 'dead' && p.id !== me.id && (g.mode !== 'team' || p.team !== me.team));
     const friends = g.players.filter((p) => p.state === 'trapped' && p.id !== me.id && g.mode === 'team' && p.team === me.team);
 
     // 2. Burst a trapped enemy or free a trapped friend.
     for (const t of [...enemies.filter((p) => p.state === 'trapped'), ...friends]) {
       const ti = idx(cellOf(t.x), cellOf(t.y));
-      if (S.dist[ti] >= 0 && S.dist[ti] < 12) {
-        if (S.dist[ti] === 0) return { dir: steer(me, cellOf(t.x), cellOf(t.y), 0) || (t.x < me.x ? 3 : 4) };
-        return this.go(me, S, ti);
+      if (SS.dist[ti] >= 0 && SS.dist[ti] < 12) {
+        if (SS.dist[ti] === 0) return { dir: steer(me, cellOf(t.x), cellOf(t.y), 0) || (t.x < me.x ? 3 : 4) };
+        return this.go(me, SS, ti);
       }
     }
 
@@ -152,36 +168,37 @@ export class Bot {
 
     // 4. Items close by.
     let target = -1;
-    for (let i = 0; i < g.items.length; i++) if (g.items[i] && S.dist[i] > 0 && S.dist[i] < 9 && safe(i) && (target < 0 || S.dist[i] < S.dist[target])) target = i;
-    if (target >= 0) return this.go(me, S, target);
+    for (let i = 0; i < g.items.length; i++) if (g.items[i] && SS.dist[i] > 0 && SS.dist[i] < 9 && safe(i) && (target < 0 || SS.dist[i] < SS.dist[target])) target = i;
+    if (target >= 0) return this.go(me, SS, target);
 
     // 5. Head for a cell next to a breakable block or towards an enemy.
-    if (!this.plan || this.plan.until < g.tick || S.dist[this.plan.cell] < 0 || !safe(this.plan.cell)) {
+    // Arrived (and settled in the middle): pick the next place at once instead of idling.
+    if (this.plan && SS.dist[this.plan.cell] === 0 && !center(me)) this.plan = null;
+    if (!this.plan || this.plan.until < g.tick || SS.dist[this.plan.cell] < 0 || !safe(this.plan.cell)) {
       const cands = [];
-      for (let i = 0; i < S.dist.length; i++) {
-        if (S.dist[i] <= 0 || !safe(i)) continue;
+      for (let i = 0; i < SS.dist.length; i++) {
+        if (SS.dist[i] <= 0 || !safe(i)) continue;
         const c = i % COLS, r = (i / COLS) | 0;
         let score = 0;
         for (const [dc, dr] of NB) { const o = inside(c + dc, r + dr) && g.objs[idx(c + dc, r + dr)]; if (o && o.k === 'soft' && !o.breakT) score += 3; }
         for (const e of enemies) score += Math.max(0, 6 - (Math.abs(cellOf(e.x) - c) + Math.abs(cellOf(e.y) - r))) * 1.5;
-        score -= S.dist[i] * 0.6;
+        score -= SS.dist[i] * 0.6;
         score += this.rand() * 2;
         cands.push([score, i]);
       }
       cands.sort((a, b) => b[0] - a[0]);
       this.plan = cands.length ? { cell: cands[0][1], until: g.tick + HZ * 3 } : null;
     }
-    if (this.plan && S.dist[this.plan.cell] > 0) return this.go(me, S, this.plan.cell);
+    if (this.plan && SS.dist[this.plan.cell] >= 0) return this.go(me, SS, this.plan.cell);
     return { dir: 0 };
   }
 
-  // One step along the BFS path to cell i: head for the next cell's centre.
+  // One step along the BFS path to cell i: just the direction of the first move. Lining up
+  // with the lane is left to the walking rules (they slide onto it without overshooting);
+  // steering sideways by hand made fast bots overshoot and shake from side to side.
   go(me, S, i) {
-    const dir = S.first[i];
-    if (!dir) return { dir: 0 };
-    const mc = cellOf(me.x), mr = cellOf(me.y);
-    const [dc, dr] = NB[dir - 1];
-    return { dir: steer(me, mc + dc, mr + dr, dir) || dir };
+    if (S.dist[i] === 0) return { dir: center(me) };
+    return { dir: S.first[i] || 0 };
   }
 }
 
