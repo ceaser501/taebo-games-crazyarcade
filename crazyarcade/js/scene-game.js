@@ -417,7 +417,9 @@ export class GameScene {
       const t0 = this.trapAt.get(p.id) || now;
       const age = now - t0, left = p.stateT / HZ;
       const bf = age < 200 ? Math.floor(age / 70) : left < 1 ? 7 + (Math.floor(now / 120) % 2) : 6;
-      A.draw(c, 'Bomb/Bubble00', bf, ax, ay - 6, 0.92);
+      // The bubble's pictures carry no alpha of their own; drawn see-through, the character
+      // shows inside it, as in the client.
+      A.draw(c, 'Bomb/Bubble00', bf, ax, ay - 6, 0.55);
     }
     // A hat from the shop follows the walking frames (four per direction).
     if (look.hat && action.startsWith('Walk')) {
