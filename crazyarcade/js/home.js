@@ -58,7 +58,7 @@ export function introReady(onTap) {
     $('intro').hidden = true;
     onTap();
   };
-  $('intro').addEventListener('pointerup', go);
+  $('intro').addEventListener('click', go); // click, not pointerup: a pointerup would let the same tap's click land on the home screen's buttons
   window.addEventListener('keydown', (e) => { if (!$('intro').hidden && (e.key === 'Enter' || e.key === ' ')) go(); });
 }
 

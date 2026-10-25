@@ -104,6 +104,8 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
   border: 2px solid #9fe0ff; background: rgba(0, 40, 120, 0.7); touch-action: manipulation;
 }
 .chip.shop { border-color: #ffe95a; color: #ffe95a; }
+#ios-help { margin: 0; max-width: 560px; font-size: 13px; color: #cfe8ff; text-align: center; text-shadow: 0 1px 2px #000; word-break: keep-all; }
+#ios-help b { color: #ffe95a; }
 #char-pick { position: fixed; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 10, 40, 0.7); }
 #char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; margin: 8px 0 14px; max-height: 60vh; overflow-y: auto; }
 #char-grid button { position: relative; padding: 2px 0 4px; border-radius: 10px; border: 2px solid transparent; background: rgba(0, 20, 70, 0.5); color: #fff; font: 700 11px "Nanum Gothic", sans-serif; cursor: pointer; }

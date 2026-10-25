@@ -117,10 +117,33 @@ window.caApp = app;
 class Backdrop { draw() { const c = stage.begin(); c.fillStyle = '#0b3f8f'; c.fillRect(0, 0, 800, 600); } }
 
 // Phones play full screen held sideways from the intro tap on, as in the other taebo games, and
-// ask again on the next button press if they dropped out of it.
-function landscape() {
-  if (!matchMedia('(pointer: coarse)').matches || !document.documentElement.requestFullscreen || document.fullscreenElement) return;
-  document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+// ask again on the next button press if they dropped out of it. iPhones cannot do that from a
+// page: opened from a home screen icon (Share → 홈 화면에 추가) they already are full screen.
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
+const canFullscreen = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+async function landscape() {
+  if (!matchMedia('(pointer: coarse)').matches || !canFullscreen || standalone || document.fullscreenElement || document.webkitFullscreenElement) return;
+  const el = document.documentElement;
+  try {
+    await (el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : el.webkitRequestFullscreen());
+    await screen.orientation?.lock?.('landscape');
+  } catch { /* the browser said no; play on as is */ }
+}
+
+// Installing: Android browsers offer a prompt opened from a button; iPhones need Share → 홈 화면에 추가.
+function installing() {
+  let prompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); prompt = e; $('install').hidden = false; });
+  $('install').onclick = async () => {
+    if (!prompt) return;
+    prompt.prompt();
+    await prompt.userChoice.catch(() => null);
+    prompt = null;
+    $('install').hidden = true;
+  };
+  window.addEventListener('appinstalled', () => { $('install').hidden = true; });
+  if (isIOS && !standalone) $('ios-help').hidden = false;
 }
 
 function frame(now) {
@@ -174,6 +197,7 @@ async function main() {
   await Promise.all([A.loadGroup('game'), A.loadGroup('ui'), ...['C00', 'C06', 'C01', 'C04', 'C05'].map((c) => A.loadGroup(`char_${c}`))]);
   // ?room=1234 in a shared link opens that room directly (after the nickname on a first visit).
   const code = new URLSearchParams(location.search).get('room');
+  installing();
   if (matchMedia('(pointer: coarse)').matches) {
     for (const id of ['home-play', 'practice-start', 'host', 'join', 'lobby-start']) $(id).addEventListener('click', landscape);
   }
