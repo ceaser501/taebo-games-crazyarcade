@@ -219,11 +219,12 @@ export class GameScene {
 
   // Laid out for the phone rather than the PC's 800×600. 'full' view: the map as tall as the
   // screen in the middle, the timer and players in the left margin, my items and the exit in
-  // the right one, and the touch controls low in both margins. 'big' view (as the mobile game):
-  // the map fills the whole screen, the camera follows me and everything else sits over it.
+  // the right one, and the touch controls low in both margins. 'big': the same, the map 1.2
+  // times larger, the camera following me up and down. 'fill' (as the mobile game): the map
+  // fills the whole screen, the camera follows me and everything else sits over it.
   layout() {
     const vw = stage.cssW, vh = stage.cssH, mode = viewMode();
-    if (mode === 'big') {
+    if (mode === 'fill') {
       const k = Math.max(vw / WW, vh / WH);
       this.L = { k, x: 0, y: 0, vw, vh, mode };
       input.setSides(0);
@@ -232,30 +233,31 @@ export class GameScene {
     let k = (vh - 8) / WH;
     const side = (vw - WW * k) / 2;
     if (side < 130) k = Math.max((vh - 8) / WH * 0.72, Math.min((vh - 8) / WH, (vw - 260) / WW));
+    if (mode === 'big') k *= 1.2;
     if (WW * k > vw) k = vw / WW;
     this.L = { k, x: Math.round((vw - WW * k) / 2), y: Math.round((vh - WH * k) / 2), vw, vh, mode };
     input.setSides(this.L.x);
   }
 
-  // Big view: the map's offset on screen, centred on me (or where the camera last was) and kept
-  // inside the map's edges.
+  // Big and fill views: the map's offset on screen, centred on me (or where the camera last was)
+  // and kept inside the map's edges; a map narrower than the screen stays centred across.
   camera() {
     const { k, vw, vh } = this.L, me = this.myPlayer();
     if (me && me.state !== 'dead') { const v = this.view(me); this.cam = { x: v.x, y: v.y }; }
     const at = this.cam || { x: WW / 2, y: WH / 2 };
     const clamp = (v, lo) => Math.round(Math.min(0, Math.max(lo, v)));
-    this.L.x = clamp(vw / 2 - at.x * k, vw - WW * k);
-    this.L.y = clamp(vh / 2 - at.y * k, vh - WH * k);
+    this.L.x = WW * k > vw ? clamp(vw / 2 - at.x * k, vw - WW * k) : Math.round((vw - WW * k) / 2);
+    this.L.y = WH * k > vh ? clamp(vh / 2 - at.y * k, vh - WH * k) : Math.round((vh - WH * k) / 2);
   }
 
   draw(now) {
     this.update(now);
     if (!this.L || this.L.vw !== stage.cssW || this.L.vh !== stage.cssH || this.L.mode !== viewMode()) this.layout();
-    const big = this.L.mode === 'big';
-    if (big) this.camera();
+    const fill = this.L.mode === 'fill';
+    if (this.L.mode !== 'full') this.camera();
     const { k, x, y, vw, vh } = this.L;
     const c = stage.begin();
-    if (big) { c.fillStyle = '#04163f'; c.fillRect(0, 0, vw, vh); } else {
+    if (fill) { c.fillStyle = '#04163f'; c.fillRect(0, 0, vw, vh); } else {
       const sky = c.createLinearGradient(0, 0, 0, vh);
       sky.addColorStop(0, '#1a5fc8'); sky.addColorStop(1, '#0a2f78');
       c.fillStyle = sky; c.fillRect(0, 0, vw, vh);
@@ -268,9 +270,9 @@ export class GameScene {
     c.beginPath(); c.rect(0, 0, WW, WH); c.clip();
     if (this.floorCanvas) c.drawImage(this.floorCanvas, 0, 0);
     this.drawWorld(c, now);
-    this.drawOverlay(c, now, big ? (vw / 2 - x) / k : WW / 2, big ? (vh / 2 - y) / k : WH / 2);
+    this.drawOverlay(c, now, Math.min(WW, Math.max(0, (vw / 2 - x) / k)), Math.min(WH, Math.max(0, (vh / 2 - y) / k)));
     c.restore();
-    if (big) this.drawHudBig(c, now); else this.drawHud(c, now);
+    if (fill) this.drawHudFill(c, now); else this.drawHud(c, now);
     ui.end();
     input.draw();
   }
@@ -515,7 +517,7 @@ export class GameScene {
   // Timer and players at the left, my items and the exit at the right (over the map's top
   // corners when the screen has no margins).
   drawHud(c, now) {
-    const g = this.g, { k, x, y, vw } = this.L;
+    const g = this.g, { k, x, vw } = this.L, y = Math.max(4, this.L.y);
     const left = x - 16, right = vw - (x + WW * k) - 20;
     const lx = left >= 110 ? 8 : x + 6, rx = right >= 110 ? x + WW * k + 12 : x + WW * k - 116;
     const lw = Math.min(left >= 110 ? left : 150, 190), rw = Math.min(right >= 110 ? right : 110, 190);
@@ -563,10 +565,10 @@ export class GameScene {
     });
   }
 
-  // Big view, laid out like the mobile game: a small player list at the top left, the timer at
+  // Fill view, laid out like the mobile game: a small player list at the top left, the timer at
   // the top centre, settings and exit at the top right, my items along the bottom, and arrows
   // at the screen's edge pointing to players out of sight.
-  drawHudBig(c, now) {
+  drawHudFill(c, now) {
     const g = this.g, { k, x, y, vw, vh } = this.L;
     const panel = (px, py, w, h, a = 0.6) => { c.fillStyle = `rgba(2, 22, 70, ${a})`; roundRect(c, px, py, w, h, 8); c.fill(); c.strokeStyle = 'rgba(127, 212, 255, 0.5)'; c.lineWidth = 1.2; c.stroke(); };
     const top = 6;

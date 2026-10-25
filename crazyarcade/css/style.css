@@ -295,7 +295,7 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
 .switch.on { background: #ffd23a; border-color: #fff3a0; }
 .switch.on i { justify-content: flex-start; color: #4a2a00; }
 .switch.on::after { left: 53px; background: #fff; }
-#set-view { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#set-view { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 #set-view button { display: flex; flex-direction: column; gap: 2px; align-items: center; padding: 8px 4px; border-radius: 12px; cursor: pointer; border: 2px solid rgba(159, 224, 255, 0.6); background: rgba(0, 20, 70, 0.5); color: #fff; font: 800 15px "Nanum Gothic", sans-serif; word-break: keep-all; }
 #set-view button small { font-size: 11px; color: #9fd0f5; }
 #set-view button.on { background: #ffd23a; border-color: #fff3a0; color: #4a2a00; }
