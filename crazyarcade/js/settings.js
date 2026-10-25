@@ -5,15 +5,15 @@ import { sfx, musicOn, soundOn, toggleMusic, toggleSound } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
 const KEY = 'ca-settings';
-const prefs = { view: 'full' };
+const prefs = { view: 'big' };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch { /* private mode */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch { /* ignore */ } };
 
 // 'full': the whole map as on the PC; 'big': 1.2 times larger, following me; 'fill': the map
 // fills the screen and follows me.
 const VIEWS = ['full', 'big', 'fill'];
-export const viewMode = () => (VIEWS.includes(prefs.view) ? prefs.view : 'full');
-export function setViewMode(v) { prefs.view = VIEWS.includes(v) ? v : 'full'; save(); }
+export const viewMode = () => (VIEWS.includes(prefs.view) ? prefs.view : 'big');
+export function setViewMode(v) { prefs.view = VIEWS.includes(v) ? v : 'big'; save(); }
 
 export const settingsShown = () => !$('settings').hidden;
 

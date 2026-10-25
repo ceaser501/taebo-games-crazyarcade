@@ -273,6 +273,7 @@ export class GameScene {
     this.drawOverlay(c, now, Math.min(WW, Math.max(0, (vw / 2 - x) / k)), Math.min(WH, Math.max(0, (vh / 2 - y) / k)));
     c.restore();
     if (fill) this.drawHudFill(c, now); else this.drawHud(c, now);
+    if (this.L.mode === 'big') this.drawOffscreen(c, x, Math.max(0, y), x + WW * k, Math.min(vh, y + WH * k));
     ui.end();
     input.draw();
   }
@@ -594,21 +595,7 @@ export class GameScene {
     panel(vw - 6 - bw, top, bw, bh, 0.7);
     text('나가기', vw - 6 - bw / 2, top + 19, { size: 12, bold: true, align: 'center', color: '#fff' });
     if (ui.area('exit', vw - 6 - bw, top, bw, bh)) this.app.leaveRoom();
-    // Players out of sight: an arrow in their colour at the edge, towards them.
-    const pad = 16;
-    for (const p of g.players) {
-      if (p.id === this.me || p.state === 'dead') continue;
-      const v = this.view(p);
-      if (this.inBush(v) && p.state === 'normal') continue;
-      const sx = x + v.x * k, sy = y + v.y * k;
-      if (sx > -10 && sx < vw + 10 && sy > -10 && sy < vh + 10) continue;
-      const ex = Math.max(pad, Math.min(vw - pad, sx)), ey = Math.max(pad + 34, Math.min(vh - pad, sy));
-      const ang = Math.atan2(sy - ey, sx - ex);
-      c.save(); c.translate(ex, ey); c.rotate(ang);
-      c.fillStyle = TEAMS[p.color]?.css || '#fff'; c.strokeStyle = '#fff'; c.lineWidth = 2;
-      c.beginPath(); c.moveTo(10, 0); c.lineTo(-7, -8); c.lineTo(-7, 8); c.closePath(); c.fill(); c.stroke();
-      c.restore();
-    }
+    this.drawOffscreen(c, 0, 34, vw, vh);
     // My items, small, at the bottom centre between the controls.
     const me = this.myPlayer();
     if (!me) return;
@@ -623,6 +610,24 @@ export class GameScene {
       if (w) { const sc = Math.min(1, 22 / Math.max(w, h)); A.drawAt(c, sp, 0, ix + 2, iy + (24 - h * sc) / 2, w * sc, h * sc); }
       text(String(n), ix + 40, iy + 18, { size: 13, bold: true, color: '#fff', align: 'right', shadow: '#03306e' });
     });
+  }
+
+  // Players out of sight: an arrow in their colour at the edge of the visible map (the screen
+  // rectangle left..right, top..bottom), pointing towards them.
+  drawOffscreen(c, left, top, right, bottom) {
+    const { k, x, y } = this.L, pad = 16;
+    for (const p of this.g.players) {
+      if (p.id === this.me || p.state === 'dead') continue;
+      const v = this.view(p);
+      if (this.inBush(v) && p.state === 'normal') continue;
+      const sx = x + v.x * k, sy = y + (v.y - 20) * k;
+      if (sx > left - 10 && sx < right + 10 && sy > top - 10 && sy < bottom + 10) continue;
+      const ex = Math.max(left + pad, Math.min(right - pad, sx)), ey = Math.max(top + pad, Math.min(bottom - pad, sy));
+      c.save(); c.translate(ex, ey); c.rotate(Math.atan2(sy - ey, sx - ex));
+      c.fillStyle = TEAMS[p.color]?.css || '#fff'; c.strokeStyle = '#fff'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(10, 0); c.lineTo(-7, -8); c.lineTo(-7, 8); c.closePath(); c.fill(); c.stroke();
+      c.restore();
+    }
   }
 
   leave() { input.enable(false); }
