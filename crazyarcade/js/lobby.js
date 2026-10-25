@@ -131,6 +131,8 @@ export function renderLobby(app) {
   }
   // Map: the host chooses, everyone sees it.
   mapButton($('lobby-map'), room.map, host ? () => pickMap(room.map, room.members.length, (id) => app.send({ t: 'settings', map: id })) : null);
+  const mine = room.members.find((x) => x.id === app.me);
+  if (mine) portrait($('lobby-char').querySelector('canvas'), mine);
   $('lobby-char').onclick = () => pickChar(app, (id) => app.send({ t: 'set', char: id }));
   $('lobby-shop').onclick = () => { click(); app.toShop('lobby'); };
   $('lobby-leave').onclick = () => { click(); app.leaveRoom(); };
