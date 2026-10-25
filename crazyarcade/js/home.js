@@ -3,7 +3,8 @@
 // whole sign-up; the name stays on this phone), and the home card with my character, record
 // and lucci, from which "게임하러 가기" opens the lobby.
 import * as A from './assets.js';
-import { playMusic, sfx, toggleMusic, musicOn } from './audio.js';
+import { playMusic, sfx } from './audio.js';
+import { showSettings } from './settings.js';
 import { CHARACTERS, charById } from './shared/const.js';
 import * as W from './wallet.js';
 
@@ -107,9 +108,7 @@ export function showHome(app) {
   $('home-play').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toMenu(); };
   $('home-shop').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toShop('home'); };
   $('home-chars').onclick = $('home-figure').onclick = () => pickChar(app, () => showHome(app));
-  const music = () => { $('home-music').textContent = musicOn() ? '♪ 배경음악 켜짐' : '♪ 배경음악 꺼짐'; $('home-music').classList.toggle('off', !musicOn()); };
-  music();
-  $('home-music').onclick = () => { toggleMusic(); music(); };
+  $('home-settings').onclick = () => { sfx('Bt_c_Pop', 0.6); showSettings(); };
 }
 export function hideHome() { $('home').hidden = true; $('char-pick').hidden = true; }
 export const isHomeShown = () => !$('home').hidden;

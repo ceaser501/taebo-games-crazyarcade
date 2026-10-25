@@ -59,7 +59,7 @@
         <div class="home-actions">
           <button type="button" id="home-chars">캐릭터 바꾸기</button>
           <button type="button" id="home-shop" class="shop">상점 · 꾸미기</button>
-          <button type="button" id="home-music">♪ 배경음악</button>
+          <button type="button" id="home-settings">⚙ 설정</button>
         </div>
       </div>
     </section>
@@ -146,6 +146,22 @@
           <button type="button" id="shop-act" class="big-btn" hidden></button>
         </aside>
       </div>
+    </div>
+  </div>
+
+  <!-- Settings: sound and the game screen's view, from home and from the game. -->
+  <div id="settings" hidden>
+    <div class="set-card">
+      <h2>설정</h2>
+      <div class="set-row"><span>배경음악</span><button type="button" id="set-music" class="switch" role="switch"><i></i></button></div>
+      <div class="set-row"><span>효과음</span><button type="button" id="set-sound" class="switch" role="switch"><i></i></button></div>
+      <div class="set-row view"><span>화면 모드</span>
+        <div id="set-view">
+          <button type="button" data-view="full"><b>전체 보기</b><small>PC처럼 맵 전체</small></button>
+          <button type="button" data-view="big"><b>크게 보기</b><small>화면 가득, 나를 따라감</small></button>
+        </div>
+      </div>
+      <button type="button" id="set-close" class="big-btn">확인</button>
     </div>
   </div>
 

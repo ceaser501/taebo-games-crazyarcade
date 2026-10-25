@@ -10,6 +10,7 @@ import { COLS, ROWS, TILE, HZ, TEAMS, ITEMS, RIDES, PUNCH_TICKS, charById } from
 import { createGame, walk, carry, cellOf, DIR_NAMES, DIRS, PUSH_SLIDE } from './shared/sim.js';
 import { mapById } from './shared/room.js';
 import * as Wallet from './wallet.js';
+import { viewMode, showSettings, settingsShown } from './settings.js';
 
 const WW = COLS * TILE, WH = ROWS * TILE; // the map in world pixels (600×520)
 const INTERP = 4; // ticks others are drawn behind the server clock (smooths uneven arrival)
@@ -216,41 +217,66 @@ export class GameScene {
     return { x: a.x + (c.x - a.x) * f, y: a.y + (c.y - a.y) * f, dir: c.dir, moving: !!c.moving };
   }
 
-  // Laid out for the phone rather than the PC's 800×600: the map as tall as the screen in the
-  // middle, the timer and players in the left margin, my items and the exit in the right one,
-  // and the touch controls low in both margins.
+  // Laid out for the phone rather than the PC's 800×600. 'full' view: the map as tall as the
+  // screen in the middle, the timer and players in the left margin, my items and the exit in
+  // the right one, and the touch controls low in both margins. 'big' view (as the mobile game):
+  // the map fills the whole screen, the camera follows me and everything else sits over it.
   layout() {
-    const vw = stage.cssW, vh = stage.cssH;
+    const vw = stage.cssW, vh = stage.cssH, mode = viewMode();
+    if (mode === 'big') {
+      const k = Math.max(vw / WW, vh / WH);
+      this.L = { k, x: 0, y: 0, vw, vh, mode };
+      input.setSides(0);
+      return;
+    }
     let k = (vh - 8) / WH;
     const side = (vw - WW * k) / 2;
     if (side < 130) k = Math.max((vh - 8) / WH * 0.72, Math.min((vh - 8) / WH, (vw - 260) / WW));
     if (WW * k > vw) k = vw / WW;
-    this.L = { k, x: Math.round((vw - WW * k) / 2), y: Math.round((vh - WH * k) / 2), vw, vh };
+    this.L = { k, x: Math.round((vw - WW * k) / 2), y: Math.round((vh - WH * k) / 2), vw, vh, mode };
     input.setSides(this.L.x);
+  }
+
+  // Big view: the map's offset on screen, centred on me (or where the camera last was) and kept
+  // inside the map's edges.
+  camera() {
+    const { k, vw, vh } = this.L, me = this.myPlayer();
+    if (me && me.state !== 'dead') { const v = this.view(me); this.cam = { x: v.x, y: v.y }; }
+    const at = this.cam || { x: WW / 2, y: WH / 2 };
+    const clamp = (v, lo) => Math.round(Math.min(0, Math.max(lo, v)));
+    this.L.x = clamp(vw / 2 - at.x * k, vw - WW * k);
+    this.L.y = clamp(vh / 2 - at.y * k, vh - WH * k);
   }
 
   draw(now) {
     this.update(now);
-    if (!this.L || this.L.vw !== stage.cssW || this.L.vh !== stage.cssH) this.layout();
+    if (!this.L || this.L.vw !== stage.cssW || this.L.vh !== stage.cssH || this.L.mode !== viewMode()) this.layout();
+    const big = this.L.mode === 'big';
+    if (big) this.camera();
     const { k, x, y, vw, vh } = this.L;
     const c = stage.begin();
-    const sky = c.createLinearGradient(0, 0, 0, vh);
-    sky.addColorStop(0, '#1a5fc8'); sky.addColorStop(1, '#0a2f78');
-    c.fillStyle = sky; c.fillRect(0, 0, vw, vh);
-    // The map with a frame round it.
-    c.fillStyle = '#04163f'; roundRect(c, x - 4, y - 4, WW * k + 8, WH * k + 8, 8); c.fill();
-    c.strokeStyle = '#7fd4ff'; c.lineWidth = 2; c.stroke();
+    if (big) { c.fillStyle = '#04163f'; c.fillRect(0, 0, vw, vh); } else {
+      const sky = c.createLinearGradient(0, 0, 0, vh);
+      sky.addColorStop(0, '#1a5fc8'); sky.addColorStop(1, '#0a2f78');
+      c.fillStyle = sky; c.fillRect(0, 0, vw, vh);
+      // The map with a frame round it.
+      c.fillStyle = '#04163f'; roundRect(c, x - 4, y - 4, WW * k + 8, WH * k + 8, 8); c.fill();
+      c.strokeStyle = '#7fd4ff'; c.lineWidth = 2; c.stroke();
+    }
     c.save();
     c.translate(x, y); c.scale(k, k);
     c.beginPath(); c.rect(0, 0, WW, WH); c.clip();
     if (this.floorCanvas) c.drawImage(this.floorCanvas, 0, 0);
     this.drawWorld(c, now);
-    this.drawOverlay(c, now);
+    this.drawOverlay(c, now, big ? (vw / 2 - x) / k : WW / 2, big ? (vh / 2 - y) / k : WH / 2);
     c.restore();
-    this.drawHud(c, now);
+    if (big) this.drawHudBig(c, now); else this.drawHud(c, now);
     ui.end();
     input.draw();
   }
+
+  // Opens the settings over the game (the view switches as soon as it is picked).
+  openSettings() { if (!settingsShown()) { sfx('Bt_c_Pop', 0.6); showSettings(); } }
 
   drawWorld(c, now) {
     const g = this.g, t = now / 1000;
@@ -450,9 +476,9 @@ export class GameScene {
     if (n) A.draw(c, sprite, moving ? Math.floor(now / 110) % n : 0, at.x - TILE / 2 + 8, at.y + TILE / 2 - 1);
   }
 
-  drawOverlay(c, now) {
+  // Words over the map (start, hurry up, the result), centred on (cx, cy) in map pixels.
+  drawOverlay(c, now, cx, cy) {
     const g = this.g;
-    const cx = WW / 2, cy = WH / 2;
     const word = (sprite, t0, dur = 9e9) => {
       const n = A.frames(sprite);
       if (!n) return false;
@@ -514,9 +540,13 @@ export class GameScene {
     });
     // Exit, map name, my items.
     ui.begin();
-    panel(rx, y + 2, rw, 34);
-    text('나가기', rx + rw / 2, y + 24, { size: 14, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
-    if (ui.area('exit', rx, y + 2, rw, 34)) this.app.leaveRoom();
+    const hw = (rw - 6) / 2;
+    panel(rx, y + 2, hw, 34);
+    text('⚙ 설정', rx + hw / 2, y + 24, { size: 13, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
+    if (ui.area('settings', rx, y + 2, hw, 34)) this.openSettings();
+    panel(rx + hw + 6, y + 2, hw, 34);
+    text('나가기', rx + hw + 6 + hw / 2, y + 24, { size: 13, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
+    if (ui.area('exit', rx + hw + 6, y + 2, hw, 34)) this.app.leaveRoom();
     text(this.map.name, rx + rw / 2, y + 56, { size: 12, bold: true, color: '#cfe8ff', align: 'center', maxW: rw });
     const me = this.myPlayer();
     if (!me) return;
@@ -530,6 +560,66 @@ export class GameScene {
       const [w, h] = A.size(sp);
       if (w) { const sc = Math.min(1, 28 / Math.max(w, h)); A.drawAt(c, sp, 0, ix, iy + (32 - h * sc) / 2, w * sc, h * sc); }
       text(String(n), ix + 46, iy + 26, { size: 14, bold: true, color: '#fff', align: 'right', shadow: '#03306e' });
+    });
+  }
+
+  // Big view, laid out like the mobile game: a small player list at the top left, the timer at
+  // the top centre, settings and exit at the top right, my items along the bottom, and arrows
+  // at the screen's edge pointing to players out of sight.
+  drawHudBig(c, now) {
+    const g = this.g, { k, x, y, vw, vh } = this.L;
+    const panel = (px, py, w, h, a = 0.6) => { c.fillStyle = `rgba(2, 22, 70, ${a})`; roundRect(c, px, py, w, h, 8); c.fill(); c.strokeStyle = 'rgba(127, 212, 255, 0.5)'; c.lineWidth = 1.2; c.stroke(); };
+    const top = 6;
+    // Timer.
+    const secs = Math.max(0, Math.ceil(g.timer / HZ));
+    panel(vw / 2 - 46, top, 92, 30, 0.45);
+    text(`${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`, vw / 2, top + 22, { size: 19, bold: true, align: 'center', color: g.hurry ? '#ff5a5a' : '#fff', shadow: '#02163f' });
+    // Players.
+    const rowH = 18, lw = 128;
+    panel(6, top, lw, g.players.length * rowH + 6, 0.5);
+    g.players.forEach((p, i) => {
+      const ry = top + 3 + i * rowH, dead = p.state === 'dead';
+      c.fillStyle = TEAMS[p.color]?.css || '#888'; c.fillRect(11, ry + 4, 5, 10);
+      text(p.name, 21, ry + 14, { size: 11, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - 50, shadow: '#000' });
+      text(dead ? '-' : p.state === 'trapped' ? '갇힘' : `${p.kills}`, lw, ry + 14, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : '#cfe8ff', align: 'right', shadow: '#000' });
+    });
+    // Settings and exit.
+    ui.begin();
+    const bw = 58, bh = 28;
+    panel(vw - 6 - bw * 2 - 6, top, bw, bh, 0.7);
+    text('⚙ 설정', vw - 6 - bw * 1.5 - 6, top + 19, { size: 12, bold: true, align: 'center', color: '#fff' });
+    if (ui.area('settings', vw - 6 - bw * 2 - 6, top, bw, bh)) this.openSettings();
+    panel(vw - 6 - bw, top, bw, bh, 0.7);
+    text('나가기', vw - 6 - bw / 2, top + 19, { size: 12, bold: true, align: 'center', color: '#fff' });
+    if (ui.area('exit', vw - 6 - bw, top, bw, bh)) this.app.leaveRoom();
+    // Players out of sight: an arrow in their colour at the edge, towards them.
+    const pad = 16;
+    for (const p of g.players) {
+      if (p.id === this.me || p.state === 'dead') continue;
+      const v = this.view(p);
+      if (this.inBush(v) && p.state === 'normal') continue;
+      const sx = x + v.x * k, sy = y + v.y * k;
+      if (sx > -10 && sx < vw + 10 && sy > -10 && sy < vh + 10) continue;
+      const ex = Math.max(pad, Math.min(vw - pad, sx)), ey = Math.max(pad + 34, Math.min(vh - pad, sy));
+      const ang = Math.atan2(sy - ey, sx - ex);
+      c.save(); c.translate(ex, ey); c.rotate(ang);
+      c.fillStyle = TEAMS[p.color]?.css || '#fff'; c.strokeStyle = '#fff'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(10, 0); c.lineTo(-7, -8); c.lineTo(-7, 8); c.closePath(); c.fill(); c.stroke();
+      c.restore();
+    }
+    // My items, small, at the bottom centre between the controls.
+    const me = this.myPlayer();
+    if (!me) return;
+    const items = [['Item/Bomb', me.bombs], ['Item/Potion', me.power], ['Item/Skate', me.speed]];
+    if (me.kick) items.push(['Item/Shoe', '✓']);
+    if (me.punch) items.push(['Item/Punch', '✓']);
+    const iw = 46, ix0 = vw / 2 - (items.length * iw) / 2, iy = vh - 30;
+    panel(ix0 - 4, iy - 2, items.length * iw + 8, 28, 0.55);
+    items.forEach(([sp, n], i) => {
+      const ix = ix0 + i * iw;
+      const [w, h] = A.size(sp);
+      if (w) { const sc = Math.min(1, 22 / Math.max(w, h)); A.drawAt(c, sp, 0, ix + 2, iy + (24 - h * sc) / 2, w * sc, h * sc); }
+      text(String(n), ix + 40, iy + 18, { size: 13, bold: true, color: '#fff', align: 'right', shadow: '#03306e' });
     });
   }
 
