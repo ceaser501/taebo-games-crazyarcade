@@ -20,9 +20,9 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
 }
 #rotate {
   display: none; position: fixed; inset: 0; z-index: 20; align-items: center; justify-content: center;
-  background: rgba(3, 20, 60, 0.85); color: #fff; font-size: 22px; font-weight: 800; pointer-events: none;
+  background: #06266a; color: #fff; font-size: 22px; font-weight: 800; pointer-events: none;
 }
-@media (orientation: portrait) and (pointer: coarse) { body.canvas-mode #rotate { display: flex; } }
+@media (orientation: portrait) and (pointer: coarse) { body.canvas-mode #rotate, body.sideways #rotate { display: flex; } }
 #gate { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: #0b3f8f; }
 #gate[hidden] { display: none; }
 #gate form { background: #fff; padding: 20px; border-radius: 10px; text-align: center; }
@@ -81,9 +81,9 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
   border: 2px solid rgba(160, 225, 255, 0.5); background: radial-gradient(ellipse at 50% 85%, rgba(120, 220, 120, 0.55), rgba(10, 60, 150, 0.4) 70%);
 }
 #home-char { width: 160px; height: 160px; image-rendering: pixelated; }
-.home-figure { overflow: hidden; }
+.home-figure { overflow: hidden; position: relative; }
 .home-info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-#home-charname { font-size: 15px; font-weight: 800; color: #ffe95a; }
+#home-charname { position: absolute; left: 6px; top: 5px; font-size: 13px; font-weight: 800; color: #4a2a00; background: #ffd23a; border-radius: 999px; padding: 2px 9px; }
 .home-name { display: flex; align-items: center; gap: 8px; font-weight: 800; color: #bfe6ff; }
 .home-name span { white-space: nowrap; }
 #home-name { font-size: 16px; padding: 7px 10px; }
@@ -91,7 +91,14 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
 #home-stats div { background: rgba(0, 20, 70, 0.45); border-radius: 8px; padding: 5px 9px; }
 #home-stats dt { font-size: 11px; color: #9fd0f5; }
 #home-stats dd { margin: 0; font-size: 16px; font-weight: 800; }
-.home-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.home-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.home-actions button {
+  min-height: 44px; padding: 6px 4px; border-radius: 12px; cursor: pointer; touch-action: manipulation; word-break: keep-all;
+  font: 800 14px "Nanum Gothic", sans-serif; color: #fff; border: 2px solid #9fe0ff; background: rgba(0, 30, 90, 0.6);
+}
+.home-actions button.shop { border-color: #ffe95a; color: #ffe95a; }
+.home-actions button.off { color: #9fb6d6; border-color: rgba(159, 224, 255, 0.4); }
+.home-actions button:active { transform: translateY(1px); filter: brightness(1.15); }
 .chip {
   font: 800 14px "Nanum Gothic", sans-serif; color: #fff; padding: 8px 14px; border-radius: 999px; cursor: pointer;
   border: 2px solid #9fe0ff; background: rgba(0, 40, 120, 0.7); touch-action: manipulation;
@@ -105,8 +112,11 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
 #char-grid canvas { display: block; width: 56px; height: 54px; margin: 0 auto; image-rendering: pixelated; }
 @media (max-width: 520px) { #home-card { grid-template-columns: 1fr; } .home-figure { height: 150px; } #home-char { width: 140px; height: 140px; } }
 @media (max-height: 460px) and (orientation: landscape) {
-  #intro, #home { gap: 10px; } .logo.small h1 { font-size: 26px; } #home-card { padding: 10px 14px; }
-  #home-char { width: 120px; height: 120px; } .big-btn { padding: 10px 28px; font-size: 18px; }
+  #intro, #home { gap: 10px; } .logo.small h1 { font-size: 26px; }
+  #home-card { padding: 10px 14px; width: min(720px, 100%); grid-template-columns: 150px minmax(0, 1fr); gap: 12px; }
+  #home-char { width: 130px; height: 130px; } .big-btn { padding: 10px 28px; font-size: 18px; }
+  #home-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; } #home-stats dd { font-size: 15px; }
+  #home-stats dt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .home-actions button { min-height: 40px; }
 }
 
 /* ---- menu (practice / online) ---- */

@@ -47,20 +47,19 @@
   <div id="home" hidden>
     <header class="logo small"><h1>크레이지 아케이드</h1></header>
     <section id="home-card">
-      <button type="button" class="home-figure" id="home-figure" aria-label="캐릭터 바꾸기"><canvas id="home-char" width="180" height="180"></canvas></button>
+      <button type="button" class="home-figure" id="home-figure" aria-label="캐릭터 바꾸기"><canvas id="home-char" width="180" height="180"></canvas><span id="home-charname"></span></button>
       <div class="home-info">
-        <span id="home-charname"></span>
         <label class="home-name"><span>내 이름</span><input id="home-name" type="text" maxlength="10" autocomplete="nickname"></label>
         <dl id="home-stats">
           <div><dt>루찌</dt><dd id="home-lucci">-</dd></div>
           <div><dt>전적</dt><dd id="home-record">-</dd></div>
           <div><dt>승률</dt><dd id="home-rate">-</dd></div>
-          <div><dt>물풍선으로 가둔 수</dt><dd id="home-kills">-</dd></div>
+          <div><dt>가둔 횟수</dt><dd id="home-kills">-</dd></div>
         </dl>
         <div class="home-actions">
-          <button type="button" id="home-chars" class="chip">캐릭터 바꾸기</button>
-          <button type="button" id="home-shop" class="chip shop">상점·꾸미기</button>
-          <button type="button" id="home-music" class="chip">♪</button>
+          <button type="button" id="home-chars">캐릭터 바꾸기</button>
+          <button type="button" id="home-shop" class="shop">상점 · 꾸미기</button>
+          <button type="button" id="home-music">♪ 배경음악</button>
         </div>
       </div>
     </section>

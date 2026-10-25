@@ -107,7 +107,7 @@ export function showHome(app) {
   $('home-play').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toMenu(); };
   $('home-shop').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toShop('home'); };
   $('home-chars').onclick = $('home-figure').onclick = () => pickChar(app, () => showHome(app));
-  const music = () => { $('home-music').textContent = musicOn() ? '♪ 배경음악 끄기' : '♪ 배경음악 켜기'; };
+  const music = () => { $('home-music').textContent = musicOn() ? '♪ 배경음악 켜짐' : '♪ 배경음악 꺼짐'; $('home-music').classList.toggle('off', !musicOn()); };
   music();
   $('home-music').onclick = () => { toggleMusic(); music(); };
 }

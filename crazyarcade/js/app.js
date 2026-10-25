@@ -116,7 +116,8 @@ window.caApp = app;
 // What the canvas shows behind the DOM screens.
 class Backdrop { draw() { const c = stage.begin(); c.fillStyle = '#0b3f8f'; c.fillRect(0, 0, 800, 600); } }
 
-// On phones, going into the canvas screens asks for full screen held sideways.
+// Phones play full screen held sideways from the intro tap on, as in the other taebo games, and
+// ask again on the next button press if they dropped out of it.
 function landscape() {
   if (!matchMedia('(pointer: coarse)').matches || !document.documentElement.requestFullscreen || document.fullscreenElement) return;
   document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
@@ -173,9 +174,13 @@ async function main() {
   await Promise.all([A.loadGroup('game'), A.loadGroup('ui'), ...['C00', 'C06', 'C01', 'C04', 'C05'].map((c) => A.loadGroup(`char_${c}`))]);
   // ?room=1234 in a shared link opens that room directly (after the nickname on a first visit).
   const code = new URLSearchParams(location.search).get('room');
+  if (matchMedia('(pointer: coarse)').matches) {
+    for (const id of ['home-play', 'practice-start', 'host', 'join', 'lobby-start']) $(id).addEventListener('click', landscape);
+  }
   introReady(() => {
+    landscape();
     first();
-    const go = () => (code ? app.joinRoom(code) : app.toHome());
+    const go = () => { document.body.classList.add('sideways'); return code ? app.joinRoom(code) : app.toHome(); };
     if (app.name) go(); else askName((name) => { app.setName(name); go(); });
   });
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
