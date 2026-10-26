@@ -67,6 +67,17 @@ const check = (ok, what) => { if (!ok) { bad++; console.log(`item test failed: $
   for (let i = 0; i < 60; i++) step(g, {});
   check(a.x > 60 + 40, `conveyor (x ${a.x})`);
 }
+// Bubbles in team play: a teammate frees from a touch's distance, an opponent pops only up close.
+for (const [mate, dist, want] of [[true, 36, 'normal'], [false, 36, 'trapped'], [false, 20, 'dead']]) {
+  const map = { id: 't', tiles: [['x', 'floor']], floor: new Array(15 * 13).fill(0), objs: new Array(15 * 13).fill(-1), spawns: [[1, 1], [5, 1]], drops: { bomb: 1 } };
+  const g = createGame({ map, players: [{ id: 'a', char: 'C00', team: 0, color: 0 }, { id: 'b', char: 'C00', team: mate ? 0 : 5, color: mate ? 0 : 5 }], seed: 1, mode: 'team' });
+  g.phase = 'play';
+  const [a, b] = g.players;
+  a.x = 100; a.y = 60; b.x = 100 + dist; b.y = 60;
+  a.state = 'trapped'; a.stateT = 100;
+  step(g, {});
+  check(a.state === want, `${mate ? 'teammate' : 'opponent'} at ${dist} px: ${a.state}, want ${want}`);
+}
 
 {
   // Positions reported by a phone: a short move is taken, a teleport or a move into a wall is not.

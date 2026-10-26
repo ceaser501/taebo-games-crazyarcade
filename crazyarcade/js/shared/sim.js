@@ -12,7 +12,10 @@ export const DIR_NAMES = ['Down', 'Up', 'Down', 'Left', 'Right'];
 const HALF = TILE / 2;
 const CORNER = 9; // this far into the next row/column and you slide around a corner
 const BREAK = 9; // ticks a block takes to crumble
-const CONTACT = 28; // players this close touch (rescue or pop a bubble)
+const CONTACT = 28; // an opponent this close pops a bubble
+// A teammate frees one from a little further: the bubble is drawn about 60 px wide, and online
+// each phone shows the others slightly late, so a touch seen on screen must not fall short.
+const RESCUE = 38;
 const INVULN = Math.round(1 * HZ); // after losing a ride or being freed
 
 export function rng(state) {
@@ -425,12 +428,14 @@ export function step(g, inputs = {}) {
     for (const p of g.players) {
       if (p.state !== 'trapped') continue;
       if (--p.stateT <= 0) { die(g, p, null); continue; }
+      // The nearest touching player decides: a teammate frees, an opponent pops.
+      let near = null, nd = Infinity;
       for (const q of g.players) {
         if (q === p || q.state !== 'normal') continue;
-        if (Math.hypot(q.x - p.x, q.y - p.y) > CONTACT) continue;
-        if (g.mode === 'team' && q.team === p.team) free(g, p, q); else die(g, p, q);
-        break;
+        const d = Math.hypot(q.x - p.x, q.y - p.y), mate = g.mode === 'team' && q.team === p.team;
+        if (d <= (mate ? RESCUE : CONTACT) && d < nd) { near = q; nd = d; }
       }
+      if (near) { if (g.mode === 'team' && near.team === p.team) free(g, p, near); else die(g, p, near); }
     }
     const alive = new Set(g.players.filter((p) => p.state !== 'dead').map((p) => p.team));
     if (alive.size <= 1 && g.players.length > 1) finish(g, alive.size ? [...alive][0] : null);

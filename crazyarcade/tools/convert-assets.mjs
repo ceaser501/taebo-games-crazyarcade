@@ -129,6 +129,25 @@ const BGM = ['StageLogin', 'StageChannel', 'Prepare', 'Village', 'Desert', 'Ice'
 const SFX = ['Wave/BombExplosion0*', 'Wave/Bt_*', 'Wave/Cha_*', 'Wave/Itm_*', 'Wave/Ntc_*', 'Wave/Game_*', 'Wave/Stage_*', 'Wave/Sys_*',
   'Wave/Lobby_*', 'Wave/Room_*', 'Wave/Pre_*', 'Wave/Effect_*'];
 
+// A character's team colour is its LayerAdjust layer, tinted per team, with LayerStatic (face,
+// hands) drawn over it. Some frames (다오 walking right, among others) carry the whole picture
+// in LayerStatic, which then covers the tinted colour with red; pixels of LayerStatic that
+// repeat LayerAdjust's own pixel at the same place are taken out.
+function unbake(stat, adj) {
+  stat.forEach((s, i) => {
+    const a = adj[i];
+    if (!a || !s.w || !a.w) return;
+    for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+      const p = (y * s.w + x) * 4;
+      if (!s.rgba[p + 3]) continue;
+      const ax = x + s.dx - a.dx, ay = y + s.dy - a.dy;
+      if (ax < 0 || ay < 0 || ax >= a.w || ay >= a.h) continue;
+      const q = (ay * a.w + ax) * 4;
+      if (a.rgba[q + 3] && Math.abs(a.rgba[q] - s.rgba[p]) + Math.abs(a.rgba[q + 1] - s.rgba[p + 1]) + Math.abs(a.rgba[q + 2] - s.rgba[p + 2]) < 24) s.rgba[p + 3] = 0;
+    }
+  });
+}
+
 function emitGroup(group) {
   const images = [], table = {};
   for (const [pack, pats] of group.from) {
@@ -148,6 +167,7 @@ function emitGroup(group) {
     }
   }
   if (!images.length) { console.warn(`group ${group.name}: nothing`); return null; }
+  for (const [name, frames] of Object.entries(table)) if (name.endsWith('LayerStatic') && table[name.replace(/LayerStatic$/, 'LayerAdjust')]) unbake(frames, table[name.replace(/LayerStatic$/, 'LayerAdjust')]);
   const sheets = pack(images.filter((f) => f.w && f.h));
   const files = sheets.map((s, k) => {
     const file = `${group.name}_${k}.png`;
