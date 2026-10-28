@@ -50,7 +50,9 @@ try { run('node crazyarcade/tools/fetch-extra.mjs'); } catch { console.warn('⚠
 console.log('\n▶ 변환');
 run(`node crazyarcade/tools/convert-assets.mjs "${assets}"`);
 console.log('\n▶ 빌드');
-run('npx webpack --config webpack.config.prod.js');
+// A fresh folder has no node_modules; npx would fetch webpack without its command line.
+if (!fs.existsSync(path.join(root, 'node_modules', 'webpack-cli', 'package.json'))) run('npm install --no-audit --no-fund');
+run('npm run build');
 console.log('\n▶ 방 서버 배포 (Durable Objects)');
 run('npm run deploy:server');
 console.log('\n▶ 사이트 배포');
