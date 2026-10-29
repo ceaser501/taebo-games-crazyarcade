@@ -28,21 +28,49 @@ function thumb(cv, id) {
 export function mapButton(btn, id, onClick) {
   const m = mapById(id);
   thumb(btn.querySelector('canvas'), m.id);
-  btn.querySelector('b').textContent = `${m.name} (최대 ${m.spawns.length}명)`;
+  const sub = btn.querySelector('.sub');
+  btn.querySelector('b').textContent = sub ? m.name : `${m.name} (최대 ${m.spawns.length}명)`;
+  if (sub) sub.textContent = `최대 ${m.spawns.length}명`;
   btn.disabled = !onClick;
   btn.onclick = onClick ? () => { click(); onClick(); } : null;
 }
 
-// Opens the dialog on `current`; onPick(id) on 확인. `need` greys out maps too small for the room.
+// A line about each theme for the info card.
+const THEME_DESC = {
+  Village: '나무상자와 집이 많은 빌리지 맵이에요.', Patrit: '배와 나무통 사이로 싸우는 해적 맵이에요.', Camp: '텐트와 모닥불이 있는 캠프 맵이에요.',
+  Factory: '기계와 상자가 가득한 공장 맵이에요.', Forest: '나무와 덤불 사이에 숨을 수 있는 숲 맵이에요.', Tomb: '비석 사이를 누비는 으스스한 묘지 맵이에요.',
+  Ice: '얼음 블록으로 가득한 아이스 맵이에요.', Desert: '선인장과 모래 언덕이 있는 사막 맵이에요.', Cookie: '과자와 사탕으로 만든 쿠키 맵이에요.',
+  Mine: '광석과 수레가 있는 광산 맵이에요.', Ocean: '물속 바위와 산호 사이의 바다 맵이에요.', Xmas: '눈과 선물 상자가 쌓인 크리스마스 맵이에요.',
+  Space: '우주 기지 블록 사이를 누비는 우주 맵이에요.', Aqua: '물방울 기둥이 있는 아쿠아 맵이에요.',
+};
+// What sets a map apart, for its info card.
+function features(m) {
+  const out = [];
+  const pushable = new Set(m.tiles.map((t, i) => (Array.isArray(t) && t[5] === 1 ? i : -1)).filter((i) => i >= 0));
+  if (m.objs.some((t) => pushable.has(t))) out.push('밀 수 있는 상자');
+  if (m.conv && m.conv.some(Boolean)) out.push('움직이는 바닥');
+  return out;
+}
+
+// Opens the dialog on `current`: themes, the maps of one, and a card with the map tapped
+// (big picture, players, what is special) to take it. onPick(id); `need` greys out maps too
+// small for the room.
 export function pickMap(current, need, onPick) {
-  let sel = mapById(current).id, theme = themeOf(sel);
-  const show = () => {
-    const m = mapById(sel);
+  let theme = themeOf(mapById(current).id), sel = mapById(current).id;
+  const detail = (id) => {
+    const m = mapById(id);
+    sel = id;
     thumb($('map-big'), m.id);
     $('map-name').textContent = m.name;
-    $('map-info').textContent = `최대 ${m.spawns.length}명${m.spawns.length < need ? ' · 인원이 많아요' : ''}`;
+    const name = (THEMES.find(([p]) => p === themeOf(m.id)) || THEMES[0])[1];
+    const f = features(m);
+    const extra = { '밀 수 있는 상자': '밀 수 있는 상자가 있어요.', '움직이는 바닥': '움직이는 바닥이 있어요.' };
+    $('map-desc').textContent = [THEME_DESC[themeOf(m.id)] || '', ...f.map((x) => extra[x])].join(' ');
+    const chips = [`최대 ${m.spawns.length}명`, m.spawns.length >= 4 ? '팀전·개인전' : '1:1 · 개인전', name, ...f].map((t) => Object.assign(document.createElement('span'), { textContent: t }));
+    if (m.spawns.length < need) chips.push(Object.assign(document.createElement('span'), { className: 'warn', textContent: `지금 ${need}명이라 못 해요` }));
+    $('map-info').replaceChildren(...chips);
     $('map-ok').disabled = m.spawns.length < need;
-    for (const b of $('map-list').children) b.classList.toggle('sel', b.dataset.id === sel);
+    $('map-detail').hidden = false;
   };
   const list = () => {
     for (const b of $('map-themes').children) b.classList.toggle('on', b.dataset.theme === theme);
@@ -50,34 +78,36 @@ export function pickMap(current, need, onPick) {
       const b = document.createElement('button');
       b.type = 'button';
       b.dataset.id = m.id;
+      b.classList.toggle('sel', m.id === current);
       if (m.spawns.length < need) b.classList.add('full');
       const cv = document.createElement('canvas');
-      cv.width = 74; cv.height = 64;
+      cv.width = 80; cv.height = 69;
       thumb(cv, m.id);
       b.append(cv, document.createTextNode(m.name), Object.assign(document.createElement('small'), { textContent: `최대 ${m.spawns.length}명` }));
-      b.onclick = () => { click(); sel = m.id; show(); };
-      b.ondblclick = () => { if (m.spawns.length >= need) done(m.id); };
+      b.onclick = () => { click(); detail(m.id); };
       return b;
     }));
-    show();
+    $('map-list').scrollTop = 0;
     $('map-list').querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
   };
   $('map-themes').replaceChildren(...THEMES.filter(([p]) => MAPS.some((m) => themeOf(m.id) === p)).map(([p, name]) => {
     const b = Object.assign(document.createElement('button'), { type: 'button', textContent: name });
     b.dataset.theme = p;
-    b.onclick = () => { click(); theme = p; list(); };
+    b.onclick = () => { click(); theme = p; $('map-detail').hidden = true; list(); };
     return b;
   }));
   const close = () => { $('map-pick').hidden = true; };
-  const done = (id) => { sfx('Bt_c_Success', 0.6); close(); onPick(id); };
-  $('map-ok').onclick = () => done(sel);
+  $('map-ok').onclick = () => { sfx('Bt_c_Success', 0.6); close(); onPick(sel); };
+  $('map-back').onclick = () => { click(); $('map-detail').hidden = true; };
   $('map-random').onclick = () => {
+    click();
     const ok = MAPS.filter((m) => m.spawns.length >= need);
     const m = ok[Math.floor(Math.random() * ok.length)] || MAPS[0];
-    sel = m.id; theme = themeOf(sel); list();
+    theme = themeOf(m.id); list(); detail(m.id);
   };
   $('map-cancel').onclick = () => { click(); close(); };
   $('map-pick').onclick = (e) => { if (e.target === $('map-pick')) close(); };
+  $('map-detail').hidden = true;
   $('map-pick').hidden = false;
   list();
 }

@@ -82,7 +82,8 @@ const app = {
     if (!this.levelUp || this.scene instanceof GameScene) return;
     const { from, to } = this.levelUp;
     this.levelUp = null;
-    setTimeout(() => celebrate(from, to), 300);
+    const r = Account.rank(), me = this.room?.members?.find((m) => m.id === this.me);
+    setTimeout(() => celebrate({ from, to, char: W.myChar(), color: me ? me.color : 0, name: Account.name(), next: r.need ? r.need - r.into : 0 }), 300);
   },
   send(m) { if (this.conn) this.conn.send(m); },
 
@@ -158,7 +159,11 @@ function installing() {
     $('install').hidden = true;
   };
   window.addEventListener('appinstalled', () => { $('install').hidden = true; });
-  if (isIOS && !standalone) $('ios-help').hidden = false;
+  if (isIOS && !standalone) {
+    $('ios-add').hidden = false;
+    $('ios-add').onclick = () => { $('ios-guide').hidden = false; };
+    $('ios-close').onclick = () => { $('ios-guide').hidden = true; };
+  }
 }
 
 function frame(now) {

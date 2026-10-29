@@ -28,6 +28,7 @@ export class RoomCore {
     Object.assign(this, { code, send, broadcast, onChange, onResult });
     this.title = title || '즐거운 크레이지아케이드';
     this.mode = 'team'; // 'team' or 'solo'
+    this.size = 1; // team play: seats shown per team (at least as many as the players need)
     this.mapId = DEFAULT_MAP;
     this.slots = Array.from({ length: MAX_PLAYERS }, () => ({ open: true, id: null }));
     this.members = new Map(); // id -> { id, name, char, color, ready, bot, slot }
@@ -45,7 +46,7 @@ export class RoomCore {
 
   state() {
     return {
-      code: this.code, title: this.title, mode: this.mode, map: this.mapId, host: this.host, phase: this.phase,
+      code: this.code, title: this.title, mode: this.mode, size: this.size, map: this.mapId, host: this.host, phase: this.phase,
       slots: this.slots.map((s) => ({ open: s.open, id: s.id })),
       members: [...this.members.values()].map(({ id, name, char, color, ready, bot, slot, look, exp }) => ({ id, name, char, color, ready, bot, slot, look, lv: exp == null ? null : levelOf(exp) })),
     };
@@ -155,6 +156,7 @@ export class RoomCore {
           this.players().forEach((x, i) => { x.color = this.mode === 'team' ? (i % 2 ? BLUE : RED) : SOLO_COLORS[i % SOLO_COLORS.length]; });
         }
         if (msg.map && MAPS.some((x) => x.id === msg.map)) this.mapId = msg.map;
+        if (Number.isInteger(msg.size) && msg.size >= 1 && msg.size <= 4) this.size = msg.size;
         if (typeof msg.title === 'string' && msg.title.trim()) this.title = msg.title.trim().slice(0, 24);
         for (const x of this.members.values()) if (!x.bot) x.ready = false;
         this.changed(); break;

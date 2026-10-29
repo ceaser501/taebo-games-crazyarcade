@@ -61,90 +61,113 @@ function portrait(cv, m) {
     A.drawChar(c, m.char, 'Portrait', 0, 0, 0, m.color);
   });
 }
+// The whole character standing (a seat alone on its team has room for it).
+function figure(cv, m) {
+  A.loadGroup(`char_${m.char}`).then(() => {
+    const c = cv.getContext('2d');
+    c.clearRect(0, 0, cv.width, cv.height); c.imageSmoothingEnabled = false;
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(30, 64, 16, 4, 0, 0, Math.PI * 2); c.fill();
+    A.drawChar(c, m.char, 'WalkDown', 0, 10, 66, m.color);
+  });
+}
+const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
+
+// Seats open as people come: team play shows as many per team as the players need (1:1 for one
+// or two, 2:2 for three or four…), or more when the host asks; solo shows one free seat more.
+export function seatsPerTeam(room) {
+  const ms = room.members, red = ms.filter((m) => m.color === RED).length, blue = ms.filter((m) => m.color === BLUE).length;
+  return Math.min(4, Math.max(room.size || 1, Math.ceil(ms.length / 2), red, blue));
+}
 
 export function renderLobby(app) {
   const room = app.room;
   if (!room || $('lobby').hidden) return;
   const host = room.host === app.me;
+  const mine = room.members.find((x) => x.id === app.me);
   $('lobby-code').textContent = room.code;
   for (const b of document.querySelectorAll('#lobby-mode button')) {
     b.classList.toggle('on', b.dataset.mode === room.mode);
     b.disabled = !host;
     b.onclick = () => { if (host && room.mode !== b.dataset.mode) { click(); app.send({ t: 'settings', mode: b.dataset.mode }); } };
   }
+  const player = (m, big) => {
+    const s = el('div', `s p${big ? ' big' : ''}${m.id === app.me ? ' me' : ''}`);
+    s.style.setProperty('--c', TEAMS[m.color].css);
+    const cv = el('canvas', big ? 'fig' : 'face');
+    if (big) { cv.width = 60; cv.height = 70; figure(cv, m); } else { cv.width = 45; cv.height = 43; portrait(cv, m); }
+    const nm = el('div', 'nm'), b = el('b', null, m.name);
+    if (m.lv) b.prepend(rankCanvas(m.lv, 1));
+    nm.append(b, el('small', null, m.lv ? `Lv.${m.lv} · ${charById(m.char).name}` : charById(m.char).name));
+    s.append(cv, nm);
+    const tag = m.id === room.host ? '방장' : m.bot ? '컴퓨터' : m.id === app.me ? '나' : '';
+    if (tag) s.append(el('span', 'tag', tag));
+    if (host && m.id !== app.me) {
+      const k = el('button', 'kick', m.bot ? '빼기' : '내보내기');
+      k.type = 'button'; k.onclick = () => { click(); app.send({ t: 'kick', id: m.id }); };
+      s.append(k);
+    }
+    return s;
+  };
+  // An empty place: move there (team play), or the host puts a computer in it.
+  const empty = (color) => {
+    const s = el('div', 's e');
+    if (room.mode === 'team' && mine && mine.color !== color) {
+      const mv = el('button', null, '여기로 이동'); mv.type = 'button';
+      mv.onclick = () => { click(); app.send({ t: 'set', color }); };
+      s.append(mv);
+    }
+    if (host) {
+      const add = el('button', 'cpu', '+ 컴퓨터'); add.type = 'button';
+      add.onclick = () => { click(); app.send({ t: 'bot', color: room.mode === 'team' ? color : undefined }); };
+      s.append(add);
+    }
+    if (!s.children.length) s.textContent = '친구를 기다리는 중…';
+    return s;
+  };
   const seats = $('seats');
   seats.className = room.mode;
-  const seat = (m, color) => {
-    const el = document.createElement('div');
-    el.className = 'seat';
-    el.style.setProperty('--c', TEAMS[m ? m.color : color].css);
-    if (m) {
-      el.classList.add('taken');
-      el.classList.toggle('me', m.id === app.me);
-      const cv = document.createElement('canvas');
-      cv.width = 45; cv.height = 43;
-      portrait(cv, m);
-      const who = document.createElement('div');
-      who.className = 'who';
-      const nameRow = Object.assign(document.createElement('b'), { textContent: m.name });
-      if (m.lv) nameRow.prepend(rankCanvas(m.lv, 1));
-      who.append(nameRow, Object.assign(document.createElement('small'), { textContent: m.lv ? `Lv.${m.lv} · ${charById(m.char).name}` : charById(m.char).name }));
-      el.append(cv, who);
-      const tag = m.id === room.host ? '방장' : m.id === app.me ? '나' : m.bot ? '컴퓨터' : '';
-      if (tag) el.append(Object.assign(document.createElement('em'), { textContent: tag }));
-      if (host && m.id !== app.me) {
-        const k = Object.assign(document.createElement('button'), { type: 'button', className: 'kick', textContent: m.bot ? '빼기' : '내보내기' });
-        k.onclick = () => { click(); app.send({ t: 'kick', id: m.id }); };
-        el.append(k);
-      }
-    } else {
-      // An empty place: move there (team play), or the host puts a computer in it.
-      const mine = room.members.find((x) => x.id === app.me);
-      if (room.mode === 'team' && mine && mine.color !== color) {
-        const mv = Object.assign(document.createElement('button'), { type: 'button', className: 'seat-btn', textContent: '+ 여기로 이동' });
-        mv.style.cssText = 'all:unset;cursor:pointer;flex:1';
-        mv.onclick = () => { click(); app.send({ t: 'set', color }); };
-        el.append(mv);
-      }
-      if (host) {
-        const add = Object.assign(document.createElement('button'), { type: 'button', className: 'add', textContent: '+ 컴퓨터' });
-        add.style.cssText = 'all:unset;cursor:pointer;color:#ffe95a;font-weight:800';
-        add.onclick = () => { click(); app.send({ t: 'bot', color: room.mode === 'team' ? color : undefined }); };
-        el.append(add);
-      }
-      if (!el.children.length) el.textContent = '빈 자리';
-    }
-    return el;
-  };
   const members = [...room.members].sort((a, b) => a.slot - b.slot);
   if (room.mode === 'team') {
-    const col = (color, name) => {
+    const n = seatsPerTeam(room);
+    const team = (color, name) => {
       const list = members.filter((m) => m.color === color);
-      const box = document.createElement('div');
-      box.className = 'team-col';
+      const box = el('div', 'tm');
       box.style.setProperty('--c', TEAMS[color].css);
-      box.append(Object.assign(document.createElement('h3'), { innerHTML: `${name}<b>${list.length}/4</b>` }));
-      for (let i = 0; i < 4; i++) box.append(seat(list[i], color));
+      const h = el('h3', null, name); h.append(el('b', null, `${list.length}/${n}`));
+      const g = el('div', 'seatsg'); g.style.gridTemplateRows = `repeat(${n}, minmax(0, 1fr))`;
+      for (let i = 0; i < n; i++) g.append(list[i] ? player(list[i], n === 1) : empty(color));
+      box.append(h, g);
       return box;
     };
-    seats.replaceChildren(col(RED, '빨강팀'), Object.assign(document.createElement('div'), { className: 'vs', textContent: 'VS' }), col(BLUE, '파랑팀'));
+    const vs = el('div', 'vs');
+    vs.append(el('b', null, 'VS'), el('span', 'size', `${n}:${n}`));
+    if (host && n < 4) {
+      const grow = el('button', 'addrow'); grow.type = 'button'; grow.innerHTML = '+ 자리<br>늘리기';
+      grow.onclick = () => { click(); app.send({ t: 'settings', size: n + 1 }); };
+      vs.append(grow);
+    }
+    seats.replaceChildren(team(RED, '빨강팀'), vs, team(BLUE, '파랑팀'));
   } else {
-    const list = members.slice(0, 8);
-    seats.replaceChildren(...Array.from({ length: 8 }, (_, i) => seat(list[i], 0)));
+    const n = Math.min(8, Math.max(2, members.length + 1));
+    seats.replaceChildren(...Array.from({ length: n }, (_, i) => (members[i] ? player(members[i], false) : empty(0))));
   }
-  // Map: the host chooses, everyone sees it.
+  // Map (the host chooses), my character, the shop.
   mapButton($('lobby-map'), room.map, host ? () => pickMap(room.map, room.members.length, (id) => app.send({ t: 'settings', map: id })) : null);
-  const mine = room.members.find((x) => x.id === app.me);
-  if (mine) portrait($('lobby-char').querySelector('canvas'), mine);
+  if (mine) {
+    portrait($('lobby-char').querySelector('canvas'), mine);
+    $('lobby-char').querySelector('b').textContent = charById(mine.char).name;
+  }
   $('lobby-char').onclick = () => pickChar(app, (id) => app.send({ t: 'set', char: id }));
   $('lobby-shop').onclick = () => { click(); app.toShop('lobby'); };
   $('lobby-leave').onclick = () => { click(); app.leaveRoom(); };
   $('share-link').onclick = () => share(room.code);
   // Start: the host, once the room is ready.
   const why = whyNot(room);
-  $('lobby-start').hidden = !host;
-  $('lobby-start').disabled = !!why;
-  $('lobby-start').onclick = () => { if (!why) { sfx('Bt_c_GameStart'); app.send({ t: 'start' }); } };
+  const start = $('lobby-start');
+  start.classList.toggle('wait', !host);
+  start.textContent = host ? '게임 시작' : '방장이 시작해요';
+  start.disabled = !host || !!why;
+  start.onclick = () => { if (host && !why) { sfx('Bt_c_GameStart'); app.send({ t: 'start' }); } };
   lobbyStatus(why || (host ? '준비됐어요. 게임 시작을 누르세요!' : '방장이 게임을 시작하길 기다리는 중…'));
 }
 

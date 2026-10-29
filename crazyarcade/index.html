@@ -7,7 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="크아">
+  <meta name="apple-mobile-web-app-title" content="크레이지 아케이드">
   <title>크레이지 아케이드</title>
   <meta name="description" content="크레이지 아케이드 PC판을 휴대폰에서. 1:1, 2:2 팀전과 개인전 온라인 대전.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,7 +69,7 @@
     </section>
     <button type="button" id="home-play" class="big-btn">게임하러 가기</button>
     <button type="button" id="install" class="chip" hidden>홈 화면에 추가</button>
-    <p id="ios-help" hidden>아이폰은 Safari 아래쪽 <b>공유</b> 버튼 → <b>홈 화면에 추가</b>로 저장한 뒤 홈 화면 아이콘으로 열면 전체화면으로 할 수 있어요.</p>
+    <button type="button" id="ios-add" class="addbtn" hidden>📲 아이폰 전체화면으로 하기 (홈 화면에 추가)</button>
   </div>
 
   <!-- Menu: practice against the computer, or an online room with friends (as in worms). -->
@@ -102,25 +102,20 @@
 
   <!-- Waiting room: room number and invite link, team or solo, who sits where, map, start. -->
   <div id="lobby" hidden>
-    <div class="lobby-card">
-      <div class="lobby-head">
-        <div id="lobby-code-box"><span>방 번호</span><strong id="lobby-code">----</strong><button type="button" id="share-link" class="chip">초대 링크 보내기</button></div>
-        <div id="lobby-mode">
-          <button type="button" data-mode="team">팀전 <small>1:1 ~ 4:4</small></button>
-          <button type="button" data-mode="solo">개인전 <small>2~8명</small></button>
-        </div>
-      </div>
-      <div id="seats"></div>
-      <div class="lobby-foot">
-        <button type="button" id="lobby-map" class="map-btn"><canvas width="74" height="64"></canvas><span><b></b><small>눌러서 맵 바꾸기</small></span></button>
-        <button type="button" id="lobby-char" class="foot-tile"><canvas width="45" height="43"></canvas><b>캐릭터 바꾸기</b></button>
-        <button type="button" id="lobby-shop" class="foot-tile shop"><strong>상점</strong><b>꾸미기 · 펫</b></button>
-      </div>
-      <p id="lobby-status"></p>
-      <div class="lobby-actions">
-        <button type="button" id="lobby-start" class="big-btn" hidden>게임 시작</button>
-        <button type="button" id="lobby-leave" class="chip">나가기</button>
-      </div>
+    <div class="wr-top">
+      <button type="button" id="lobby-leave" class="back" aria-label="나가기">‹</button>
+      <div class="code"><small>방 번호</small><b id="lobby-code">----</b></div>
+      <button type="button" id="share-link" class="invite">초대 링크 보내기</button>
+      <div class="grow"></div>
+      <div id="lobby-mode" class="modes"><button type="button" data-mode="team">팀전</button><button type="button" data-mode="solo">개인전</button></div>
+    </div>
+    <div id="seats"></div>
+    <p id="lobby-status"></p>
+    <div class="bar">
+      <button type="button" id="lobby-map" class="tile map-tile"><canvas width="74" height="64"></canvas><span class="t"><small>맵 · 누르면 바꿔요</small><b></b><small class="sub"></small></span><span class="chev">›</span></button>
+      <button type="button" id="lobby-char" class="tile"><canvas width="45" height="43"></canvas><span class="t"><small>내 캐릭터</small><b></b><small>누르면 바꿔요</small></span><span class="chev">›</span></button>
+      <button type="button" id="lobby-shop" class="tile"><span class="bag">🛍</span><span class="t"><small>꾸미기 · 펫</small><b>상점</b><small>루찌로 사기</small></span><span class="chev">›</span></button>
+      <button type="button" id="lobby-start" class="start">게임 시작</button>
     </div>
   </div>
 
@@ -171,24 +166,36 @@
     </div>
   </div>
 
+  <!-- iPhone: how to add the game to the home screen (Safari cannot be asked to do it). -->
+  <div id="ios-guide" hidden>
+    <div class="ios-card">
+      <h2>아이폰은 홈 화면에 추가해서 하세요</h2>
+      <p class="sub">사파리에서는 화면이 꽉 차지 않아요. 홈 화면에 추가한 아이콘으로 열면 앱처럼 전체화면이 돼요. (처음 한 번만)</p>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div class="pic"><div class="url">taesu-crazyarcade.pages.dev</div><div class="safari"><span>‹</span><span>›</span><span class="hl">⬆︎</span><span>📖</span><span>⧉</span></div></div><b>공유 버튼 누르기</b><small>사파리 맨 아래 가운데, 네모에 화살표(⬆︎) 버튼</small></div>
+        <div class="step"><span class="n">2</span><div class="pic"><div class="sheet"><div>복사 <span>⧉</span></div><div>즐겨찾기 추가 <span>☆</span></div><div class="hl">홈 화면에 추가 <span>⊞</span></div></div></div><b>'홈 화면에 추가' 누르기</b><small>안 보이면 목록을 위로 올려 보세요. 그다음 오른쪽 위 '추가'</small></div>
+        <div class="step"><span class="n">3</span><div class="pic"><div class="homes"><span></span><span></span><span></span><span></span><span></span><span></span><span class="ca"></span><span></span></div></div><b>홈 화면 크레이지 아케이드 아이콘으로 열기</b><small>이제부터는 이 아이콘으로 들어오면 전체화면이에요</small></div>
+      </div>
+      <button type="button" id="ios-close" class="big-btn">알겠어요</button>
+    </div>
+  </div>
+
   <!-- Level up: the client's LEVEL UP badge over a sunburst, then the new rank. -->
   <div id="levelup" hidden><canvas id="levelup-canvas"></canvas><p>화면을 누르면 닫혀요</p></div>
 
   <!-- Map choice, in the style of the client's 맵 선택하기 dialog. -->
   <div id="map-pick" hidden>
     <div class="map-card">
-      <h2>맵 선택하기</h2>
+      <h2>맵 선택하기 <span class="map-head"><button type="button" id="map-random" class="chip">랜덤</button><button type="button" id="map-cancel" class="x" aria-label="닫기">✕</button></span></h2>
       <div id="map-themes"></div>
-      <div class="map-body">
-        <div class="map-preview"><canvas id="map-big" width="148" height="128"></canvas><b id="map-name"></b><span id="map-info"></span></div>
-        <div id="map-list"></div>
-      </div>
-      <div class="map-actions">
-        <button type="button" id="map-ok" class="big-btn">확인</button>
-        <button type="button" id="map-random" class="big-btn blue">랜덤</button>
-        <button type="button" id="map-cancel" class="chip">닫기</button>
+      <div id="map-list"></div>
+      <div id="map-detail" hidden>
+        <canvas id="map-big" width="220" height="190"></canvas>
+        <div class="meta"><b id="map-name"></b><div id="map-info"></div><p id="map-desc"></p>
+          <div class="acts"><button type="button" id="map-ok" class="big-btn">이 맵으로</button><button type="button" id="map-back" class="chip">다른 맵 보기</button></div></div>
       </div>
     </div>
+  </div>
   </div>
 
   <!-- Character choice (from the home screen or the waiting room). -->

@@ -78,13 +78,8 @@ const GROUPS = [
     ['FxMap', ['Prepare/PRE_*', 'Prepare/Dlg_PRE-*', 'Prepare/S_Selrandom', 'Prepare/UI_WaterDrop', 'Theme/*']],
     ['FxContents', ['CharacterSelect/*']],
   ] },
-  // Ranks: the level icon's parts (emblems, plates, dots), the beginner's icon, and the level-up
-  // popup with the sunburst behind it.
-  { name: 'rank', from: [
-    ['FxDesktop', ['Etc/LevelIcons', 'Level/Novice_LevelIcon']],
-    ['fx', ['Dialog/LayerPopUp_LevelUp']],
-    ['FxContents', ['UXMatching/LevelUp']],
-  ] },
+  // Ranks: the level icon's parts (emblems, plates, dots) and the beginner's icon.
+  { name: 'rank', from: [['FxDesktop', ['Etc/LevelIcons', 'Level/Novice_LevelIcon']]] },
   // Map previews for the map list (zlib-wrapped sprites in FxMap's Etc/).
   { name: 'maps', from: [['FxMap', MAPS.map((m) => `Etc/${m.id}_mm`)]] },
   ...TILESETS.map((t) => ({ name: `tile_${t}`, from: [[t === 'TileConv' ? 'fx' : 'FxTile', [`${t}/*`]]] })),
