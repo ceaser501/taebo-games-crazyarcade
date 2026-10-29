@@ -155,5 +155,12 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   for (let i = 0; i < HZ * 300 && r.phase === 'game'; i++) r.tick();
   check(got && got.length === 1 && got[0].acct === 'u:h' && ['win', 'lose', 'draw'].includes(got[0].result), `room result ${JSON.stringify(got)}`);
 }
+// The stylesheet's braces balance (a stray one silently drops the rule after it).
+{
+  const css = (await import('node:fs')).readFileSync(new URL('../css/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  let depth = 0, ok = true;
+  for (const ch of css) { if (ch === '{') depth++; else if (ch === '}' && --depth < 0) ok = false; }
+  check(ok && depth === 0, 'style.css braces');
+}
 console.log(`${MAPS.length} maps, ${bad ? bad + ' problems' : 'all fine'}`);
 process.exit(bad ? 1 : 0);
