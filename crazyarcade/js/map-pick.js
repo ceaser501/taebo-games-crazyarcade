@@ -44,14 +44,27 @@ export function mapButton(btn, id, onClick) {
   btn.onclick = onClick ? () => { click(); onClick(); } : null;
 }
 
+// The client's 랜덤 card (148×128) scaled to w×h, with RANDOM in yellow on the strip under the
+// question mark where a map card shows its name.
+function drawRandomCard(c, w, h) {
+  c.imageSmoothingEnabled = false;
+  A.drawAt(c, 'Theme/Random', 0, 0, 0, w, h);
+  const sx = w / 148, sy = h / 128, size = Math.round(17 * Math.min(sx, sy));
+  c.save();
+  c.font = `900 ${size}px "Nanum Gothic", sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.lineJoin = 'round'; c.lineWidth = Math.max(2, size / 4); c.strokeStyle = '#3a2200';
+  c.strokeText('RANDOM', 76 * sx, 95 * sy, 84 * sx);
+  c.fillStyle = '#ffe23a'; c.fillText('RANDOM', 76 * sx, 95 * sy, 84 * sx);
+  c.restore();
+}
+
 // 전체 랜덤 on the map button: the client's question mark card; the map is picked at the start.
 function randomButton(btn, onClick) {
   const cv = btn.querySelector('canvas');
   A.loadGroup('ui').then(() => {
     const c = cv.getContext('2d');
     c.imageSmoothingEnabled = false; c.clearRect(0, 0, cv.width, cv.height);
-    c.fillStyle = '#0b3f8f'; c.fillRect(0, 0, cv.width, cv.height);
-    A.drawAt(c, 'Theme/Random', 0, 0, 0, cv.width, cv.height);
+    drawRandomCard(c, cv.width, cv.height);
   });
   const sub = btn.querySelector('.sub');
   btn.querySelector('b').textContent = '전체 랜덤';
@@ -148,7 +161,7 @@ export function pickMap(current, need, onPick) {
     const ok = fits(), themes = new Set(ok.map((m) => themeOf(m.id))).size;
     const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
     const card = el('canvas', 'rnd-card'); card.width = 148; card.height = 128;
-    A.loadGroup('ui').then(() => { const c = card.getContext('2d'); c.imageSmoothingEnabled = false; A.drawAt(c, 'Theme/Random', 0, 0, 0); });
+    A.loadGroup('ui').then(() => drawRandomCard(card.getContext('2d'), card.width, card.height));
     const info = el('div', 'rnd-info');
     const chips = el('div', 'rnd-chips');
     chips.append(el('span', null, `테마 ${themes}개`), el('span', null, `맵 ${ok.length}개`), el('span', null, `지금 ${need}명`));
