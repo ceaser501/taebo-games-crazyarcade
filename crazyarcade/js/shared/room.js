@@ -30,6 +30,7 @@ export class RoomCore {
     Object.assign(this, { code, send, broadcast, onChange, onResult });
     this.title = title || '즐거운 크레이지아케이드';
     this.mode = 'team'; // 'team' or 'solo'
+    this.rule = 'normal'; // 'normal', or 'duel' (무한 결투: popped players come back, points decide)
     this.size = 1; // team play: seats shown per team (at least as many as the players need)
     this.mapId = DEFAULT_MAP;
     this.slots = Array.from({ length: MAX_PLAYERS }, () => ({ open: true, id: null }));
@@ -48,7 +49,7 @@ export class RoomCore {
 
   state() {
     return {
-      code: this.code, title: this.title, mode: this.mode, size: this.size, map: this.mapId, host: this.host, phase: this.phase,
+      code: this.code, title: this.title, mode: this.mode, rule: this.rule, size: this.size, map: this.mapId, host: this.host, phase: this.phase,
       slots: this.slots.map((s) => ({ open: s.open, id: s.id })),
       members: [...this.members.values()].map(({ id, name, char, color, ready, bot, slot, look, exp }) => ({ id, name, char, color, ready, bot, slot, look, lv: exp == null ? null : levelOf(exp) })),
     };
@@ -111,7 +112,7 @@ export class RoomCore {
     for (const line of this.chatLog.slice(-10)) this.send(id, { t: 'chat', ...line });
     if (this.phase === 'game' && this.game) {
       const g = this.game;
-      this.send(id, { t: 'start', seed: this.startInfo.seed, map: this.startInfo.map, mode: this.mode, players: this.startInfo.players });
+      this.send(id, { t: 'start', seed: this.startInfo.seed, map: this.startInfo.map, mode: this.mode, rule: this.startInfo.rule, players: this.startInfo.players });
       const snap = snapshot(g);
       snap.m = g.objs.map((o, i) => [i, o ? o.t : -1, o ? o.breakT : 0, g.items[i] ? g.items[i].k : 0, g.flames[i] ? [g.flames[i].kind, g.flames[i].end ? 1 : 0, g.flames[i].born, g.flames[i].d] : 0, o && o.sl ? [o.sl.d, o.sl.at] : 0]);
       this.send(id, { t: 's', ...snap, a: 0 });
@@ -165,6 +166,7 @@ export class RoomCore {
           this.mode = msg.mode;
           this.players().forEach((x, i) => { x.color = this.mode === 'team' ? (i % 2 ? BLUE : RED) : SOLO_COLORS[i % SOLO_COLORS.length]; });
         }
+        if (msg.rule === 'normal' || msg.rule === 'duel') this.rule = msg.rule;
         if (msg.map && (msg.map === RANDOM_MAP || MAPS.some((x) => x.id === msg.map))) this.mapId = msg.map;
         if (Number.isInteger(msg.size) && msg.size >= 1 && msg.size <= 4) this.size = msg.size;
         if (typeof msg.title === 'string' && msg.title.trim()) this.title = msg.title.trim().slice(0, 24);
@@ -245,13 +247,13 @@ export class RoomCore {
     const seed = (Math.random() * 2 ** 31) | 0;
     const list = this.players().map((m) => ({ id: m.id, name: m.name, char: m.char, color: m.color,
       team: this.mode === 'team' ? m.color : m.slot, bot: m.bot, look: m.look || null, lv: m.exp == null ? null : levelOf(m.exp) }));
-    this.game = createGame({ map, players: list, seed, mode: this.mode });
+    this.game = createGame({ map, players: list, seed, mode: this.mode, rule: this.rule });
     this.phase = 'game'; this.decided = false;
     this.inputs.clear(); this.bots.clear();
     for (const m of this.members.values()) if (m.bot) this.bots.set(m.id, new Bot(m.id));
     this.lastObjs = null;
-    this.startInfo = { seed, map: map.id, players: list };
-    this.broadcast({ t: 'start', seed, map: map.id, mode: this.mode, players: list });
+    this.startInfo = { seed, map: map.id, players: list, rule: this.rule };
+    this.broadcast({ t: 'start', seed, map: map.id, mode: this.mode, rule: this.rule, players: list });
     this.changed();
   }
 

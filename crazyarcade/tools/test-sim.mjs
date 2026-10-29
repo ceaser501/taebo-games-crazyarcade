@@ -1,7 +1,7 @@
 // Plays a short bot match on every map with the shared simulation and room code, to catch
 // crashes and maps nobody can move on. `npm test`.
 import { MAPS } from '../js/shared/maps.js';
-import { createGame, step, isOver } from '../js/shared/sim.js';
+import { createGame, step, isOver, RESPAWN } from '../js/shared/sim.js';
 import { Bot } from '../js/shared/ai.js';
 import { RoomCore } from '../js/shared/room.js';
 import { HZ } from '../js/shared/const.js';
@@ -231,6 +231,24 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   check(r.state().map === 'random', 'random map kept in the room');
   r.message('h', { t: 'start' });
   check(started && started.map !== 'random' && MAPS.some((m) => m.id === started.map && m.spawns.length >= 2), `random map at start ${started?.map}`);
+}
+// 무한 결투: a popped player comes back, the round runs to the clock, points decide.
+{
+  const map = MAPS.find((m) => m.id === 'Village10');
+  const g = createGame({ map, players: [{ id: 'a', char: 'C00', team: 0 }, { id: 'b', char: 'C00', team: 5 }], seed: 4, rule: 'duel' });
+  g.phase = 'play';
+  const [a, b] = g.players;
+  a.state = 'trapped'; a.stateT = 1;
+  step(g, {});
+  check(a.state === 'dead' && a.deaths === 1 && g.phase === 'play', `duel pop (${a.state}, ${g.phase})`);
+  for (let i = 0; i < RESPAWN; i++) step(g, {});
+  check(a.state === 'normal' && a.invT > 0, `duel respawn (${a.state})`);
+  b.kills = 1;
+  g.timer = 1; step(g, {});
+  check(g.phase === 'end' && g.result.team === 5, `duel points decide (${JSON.stringify(g.result)})`);
+  const d = createGame({ map, players: [{ id: 'a', char: 'C00', team: 0 }, { id: 'b', char: 'C00', team: 5 }], seed: 4, rule: 'duel' });
+  d.phase = 'play'; d.timer = 1; step(d, {});
+  check(d.result && d.result.draw, 'duel equal points draw');
 }
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {

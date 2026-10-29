@@ -2,6 +2,7 @@
 import * as A from './assets.js';
 import { sfx } from './audio.js';
 import { rankParts } from './shared/level.js';
+import { fanfareSound } from './fanfare.js';
 
 export const RANK_W = 16, RANK_H = 14;
 
@@ -37,6 +38,7 @@ export function celebrate(info) {
   Promise.all([A.loadGroup('rank'), A.loadGroup(`char_${char}`)]).then(() => {
     box.hidden = false;
     sfx('RPG_LevelUp');
+    setTimeout(fanfareSound, 500);
     const t0 = performance.now();
     let done = false;
     const close = () => { if (done) return; done = true; box.hidden = true; };

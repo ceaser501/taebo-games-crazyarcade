@@ -79,6 +79,7 @@
       <section class="card" id="practice-card">
         <h2><b>1</b>컴퓨터와 연습</h2>
         <label class="opt"><span>대결</span><select id="practice-size"></select></label>
+        <label class="opt"><span>규칙</span><select id="practice-rule"><option value="normal">일반</option><option value="duel">무한 결투 (죽어도 부활, 점수로 승부)</option></select></label>
         <button type="button" id="practice-map" class="map-btn"><canvas width="74" height="64"></canvas><span><b></b><small>눌러서 맵 바꾸기</small></span></button>
         <button type="button" id="practice-start" class="big-btn">연습 시작</button>
       </section>
@@ -109,6 +110,7 @@
       <span id="lobby-title" class="rtitle"></span>
       <div class="grow"></div>
       <div id="lobby-mode" class="modes"><button type="button" data-mode="team">팀전</button><button type="button" data-mode="solo">개인전</button></div>
+      <div id="lobby-rule" class="modes"><button type="button" data-rule="normal">일반</button><button type="button" data-rule="duel">⚔ 무한결투</button></div>
       <button type="button" id="chat-open" class="chat-btn" aria-label="채팅">💬<i hidden></i></button>
     </div>
     <div id="seats"></div>

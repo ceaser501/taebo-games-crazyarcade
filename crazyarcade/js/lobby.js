@@ -34,7 +34,7 @@ export function showMenu(app, status = '') {
     const [mode, bots] = SIZES[Number(size.value)];
     const map = mapById(practiceMap);
     if (practiceMap !== RANDOM_MAP && bots + 1 > map.spawns.length) { app.toast(`${map.name}은(는) ${map.spawns.length}명까지 하는 맵이에요.`); return; }
-    click(); hideMenu(); app.practice({ mode, bots, map: practiceMap === RANDOM_MAP ? RANDOM_MAP : map.id });
+    click(); hideMenu(); app.practice({ mode, bots, rule: $('practice-rule').value, map: practiceMap === RANDOM_MAP ? RANDOM_MAP : map.id });
   };
   $('host').onclick = () => { click(); app.hostRoom(); };
   const join = () => {
@@ -90,6 +90,11 @@ export function renderLobby(app) {
   const host = room.host === app.me;
   const mine = room.members.find((x) => x.id === app.me);
   $('lobby-code').textContent = room.code;
+  for (const b of document.querySelectorAll('#lobby-rule button')) {
+    b.classList.toggle('on', b.dataset.rule === (room.rule || 'normal'));
+    b.disabled = !host;
+    b.onclick = () => { if (host && room.rule !== b.dataset.rule) { click(); app.send({ t: 'settings', rule: b.dataset.rule }); } };
+  }
   for (const b of document.querySelectorAll('#lobby-mode button')) {
     b.classList.toggle('on', b.dataset.mode === room.mode);
     b.disabled = !host;

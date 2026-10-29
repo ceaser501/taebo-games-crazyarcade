@@ -69,7 +69,7 @@ export class Practice {
     queueMicrotask(() => {
       this.emit({ t: 'open' });
       this.room.join(this.me, name, opts.exp != null ? { key: null, exp: opts.exp } : null);
-      this.room.message(this.me, { t: 'settings', mode: opts.mode || 'team', map: opts.map });
+      this.room.message(this.me, { t: 'settings', mode: opts.mode || 'team', map: opts.map, rule: opts.rule || 'normal' });
       for (let i = 0; i < (opts.bots ?? 1); i++) this.room.message(this.me, { t: 'bot' });
       // Start once the page has answered the welcome with our character and decorations.
       setTimeout(() => this.room.message(this.me, { t: 'start' }), 120);

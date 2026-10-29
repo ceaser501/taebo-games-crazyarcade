@@ -36,12 +36,24 @@ function rollItem(g, weights) {
 
 // map: { tiles: [[sprite, kind, w, h]], floor: [ROWS*COLS] tile index, objs: [ROWS*COLS] tile index or -1,
 // spawns: [[c, r]...] }. players: [{ id, name, char, team, color, bot }].
-export function createGame({ map, players, seed = 1, mode = 'team' }) {
+// 무한 결투 (rule 'duel'): popped players come back after a few seconds and the round runs to
+// the end of the clock; a kill is worth KILL_POINTS, a death costs DEATH_POINTS, and the side
+// (team, or player in solo play) with the most points wins. Equal points at the top: a draw.
+export const KILL_POINTS = 10, DEATH_POINTS = 5;
+export const RESPAWN = Math.round(4 * HZ); // from the pop: about a second of the burst, then 3, 2, 1
+export const scoreOf = (p) => p.kills * KILL_POINTS - (p.deaths || 0) * DEATH_POINTS;
+export function sideScores(g) {
+  const out = new Map();
+  for (const p of g.players) out.set(p.team, (out.get(p.team) || 0) + scoreOf(p));
+  return out;
+}
+
+export function createGame({ map, players, seed = 1, mode = 'team', rule = 'normal' }) {
   const g = {
     tick: 0, phase: 'start', phaseT: START_DELAY, timer: ROUND_SECONDS * HZ, seed: seed | 0, mode,
     mapId: map.id, floor: map.floor.slice(), objs: [], items: new Array(ROWS * COLS).fill(null),
     bombs: [], flames: new Array(ROWS * COLS).fill(null), players: [], events: [], nextId: 1,
-    result: null, hurry: false,
+    result: null, hurry: false, rule: rule === 'duel' ? 'duel' : 'normal',
   };
   g.tiles = map.tiles.map((t) => (Array.isArray(t) ? { s: t[0], k: t[1], w: t[2] || 1, h: t[3] || 1, push: t[5] === 1 } : t));
   for (let i = 0; i < ROWS * COLS; i++) {
@@ -73,6 +85,7 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
     else if (!o) g.items[r * COLS + c] = { k, fresh: 0 };
   }
   g.conv = map.conv || null;
+  g.spawns = map.spawns;
   const spawns = spreadSpawns(g, map.spawns, players.length);
   players.forEach((pl, i) => {
     const ch = charById(pl.char);
@@ -82,7 +95,7 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
       x: c * TILE + HALF, y: r * TILE + HALF, dir: 2, moving: false,
       bombs: ch.bombs[0], power: ch.power[0], speed: ch.speed[0], max: { bombs: ch.bombs[1], power: ch.power[1], speed: ch.speed[1] },
       state: 'normal', stateT: 0, needle: 0, shield: 0, shieldT: 0, ride: null, invT: 0, kills: 0, anim: 0,
-      dart: 0, kick: false, punch: false, curse: null, curseT: 0, lucci: 0, got: [],
+      dart: 0, kick: false, punch: false, curse: null, curseT: 0, lucci: 0, got: [], deaths: 0, respawnT: 0,
     });
   });
   return g;
@@ -388,6 +401,8 @@ function trap(g, p) {
 function die(g, p, by) {
   p.state = 'dead'; p.stateT = 0;
   if (by && by.team !== p.team) by.kills++;
+  p.deaths = (p.deaths || 0) + 1;
+  if (g.rule === 'duel') p.respawnT = RESPAWN;
   emit(g, 'pop', { id: p.id, by: by ? by.id : null });
   scatter(g, p);
 }
@@ -416,6 +431,25 @@ function free(g, p, by) {
   emit(g, 'free', { id: p.id, by: by ? by.id : null });
 }
 
+// 무한 결투: back at the start point farthest from the other side's live players, with the
+// character's first power-ups (the rest sprang out at the pop) and two seconds of safety.
+function respawn(g, p) {
+  const foes = g.players.filter((q) => q !== p && q.state !== 'dead' && q.team !== p.team);
+  let best = null, bd = -1;
+  for (const [c, r] of g.spawns) {
+    const x = c * TILE + HALF, y = r * TILE + HALF;
+    if (g.objs[idx(c, r)] && g.objs[idx(c, r)].k !== 'bush') continue;
+    const d = foes.length ? Math.min(...foes.map((q) => Math.hypot(q.x - x, q.y - y))) : rng(g) * 1000;
+    if (d > bd) { bd = d; best = [x, y]; }
+  }
+  if (!best) best = [p.x, p.y];
+  const ch = charById(p.char);
+  Object.assign(p, { x: best[0], y: best[1], dir: 2, moving: false, state: 'normal', stateT: 0, respawnT: 0,
+    bombs: ch.bombs[0], power: ch.power[0], speed: ch.speed[0], needle: 0, shield: 0, shieldT: 0, ride: null, invT: 2 * HZ,
+    dart: 0, kick: false, punch: false, curse: null, curseT: 0 });
+  emit(g, 'respawn', { id: p.id });
+}
+
 // One tick. inputs: { [playerId]: { dir: 0-4, bomb: bool, item: 'needle' | 'shield' | null } }.
 export function step(g, inputs = {}) {
   g.tick++;
@@ -425,7 +459,7 @@ export function step(g, inputs = {}) {
   } else if (g.phase === 'play') {
     g.timer--;
     if (!g.hurry && g.timer <= HURRY_SECONDS * HZ) { g.hurry = true; emit(g, 'hurry'); }
-    if (g.timer <= 0) finish(g, null);
+    if (g.timer <= 0) finish(g, g.rule === 'duel' ? duelWinner(g) : null);
   } else if (g.phase === 'end') {
     g.phaseT--;
   }
@@ -502,11 +536,21 @@ export function step(g, inputs = {}) {
       }
       if (near) { if (g.mode === 'team' && near.team === p.team) free(g, p, near); else die(g, p, near); }
     }
-    const alive = new Set(g.players.filter((p) => p.state !== 'dead').map((p) => p.team));
-    if (alive.size <= 1 && g.players.length > 1) finish(g, alive.size ? [...alive][0] : null);
-    else if (g.players.length === 1 && alive.size === 0) finish(g, null);
+    if (g.rule === 'duel') {
+      for (const p of g.players) if (p.state === 'dead' && p.respawnT > 0 && --p.respawnT <= 0) respawn(g, p);
+    } else {
+      const alive = new Set(g.players.filter((p) => p.state !== 'dead').map((p) => p.team));
+      if (alive.size <= 1 && g.players.length > 1) finish(g, alive.size ? [...alive][0] : null);
+      else if (g.players.length === 1 && alive.size === 0) finish(g, null);
+    }
   }
   return g;
+}
+
+// The side with the most points, or null when the top is shared.
+function duelWinner(g) {
+  const sc = [...sideScores(g).entries()].sort((a, b) => b[1] - a[1]);
+  return sc.length && (sc.length === 1 || sc[0][1] > sc[1][1]) ? sc[0][0] : null;
 }
 
 function finish(g, team) {
@@ -524,7 +568,7 @@ export function snapshot(g) {
     k: g.tick, ph: g.phase, pt: g.phaseT, tm: g.timer, hu: g.hurry, rs: g.result,
     p: g.players.map((p) => [p.id, Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10, p.dir, p.moving ? 1 : 0, p.state, p.stateT,
       p.bombs, p.power, p.speed, p.needle, p.shield, p.shieldT, p.ride, p.invT, p.kills,
-      p.dart, p.kick ? 1 : 0, p.punch ? 1 : 0, p.curse, p.curseT, p.lucci]),
+      p.dart, p.kick ? 1 : 0, p.punch ? 1 : 0, p.curse, p.curseT, p.lucci, p.deaths || 0, p.respawnT || 0]),
     b: g.bombs.map((b) => [b.id, b.c, b.r, b.t, b.owner, b.pass, Math.round(b.off), b.dir || 0,
       b.fly ? [b.fly.fc, b.fly.fr, b.fly.dx, b.fly.dy, b.fly.t, b.fly.n] : 0]),
     ev: g.events,

@@ -7,7 +7,7 @@ import { stage, ui, text, roundRect, W, FONT } from './stage.js';
 import * as input from './input.js';
 import { sfx, playMusic, stopMusic } from './audio.js';
 import { COLS, ROWS, TILE, HZ, TEAMS, ITEMS, RIDES, PUNCH_TICKS, charById } from './shared/const.js';
-import { createGame, walk, carry, cellOf, DIR_NAMES, DIRS, PUSH_SLIDE, punchTarget } from './shared/sim.js';
+import { createGame, walk, carry, cellOf, DIR_NAMES, DIRS, PUSH_SLIDE, punchTarget, sideScores, scoreOf, KILL_POINTS, DEATH_POINTS } from './shared/sim.js';
 import { mapById } from './shared/room.js';
 import * as Wallet from './wallet.js';
 import { viewMode, showSettings, settingsShown } from './settings.js';
@@ -15,9 +15,11 @@ import * as Account from './account.js';
 import { showShop, shopShown } from './shop.js';
 import { drawRank } from './rank.js';
 import * as Chat from './chat.js';
+import { fanfareSound } from './fanfare.js';
 
 const WW = COLS * TILE, WH = ROWS * TILE; // the map in world pixels (600×520)
 const INTERP = 4; // ticks others are drawn behind the server clock (smooths uneven arrival)
+const HORROR = /^(Tomb|Cemetery|DarkCastle)/i, DARK_SECONDS = 60; // maps that go dark near the end
 
 // Flame/Flame states FireL01..FireL10 (left arm; up, right and down add 1, 2, 3): row n is the
 // cell n places from the arm's tip, so the tip dries up first and the stream recedes inwards.
@@ -34,7 +36,7 @@ export class GameScene {
   constructor(app, conn, start, me) {
     Object.assign(this, { app, conn, me });
     this.map = mapById(start.map);
-    this.g = createGame({ map: this.map, players: start.players, seed: start.seed, mode: start.mode });
+    this.g = createGame({ map: this.map, players: start.players, seed: start.seed, mode: start.mode, rule: start.rule });
     this.mode = start.mode;
     this.buffers = new Map(this.g.players.map((p) => [p.id, []]));
     this.deathAt = new Map(); this.trapAt = new Map(); this.freeAt = new Map(); this.mountAt = new Map(); this.effects = [];
@@ -68,6 +70,7 @@ export class GameScene {
     };
     box.onblur = () => { if (!box.value.trim()) form.hidden = true; };
     this.onKey = (e) => {
+      if (e.key === 'Tab' && this.g.rule === 'duel' && e.target.tagName !== 'INPUT') { e.preventDefault(); if (!e.repeat) this.toggleBoard(); return; }
       if (e.key !== 'Enter' || e.target.tagName === 'INPUT' || input.touchMode.on || settingsShown() || shopShown()) return;
       e.preventDefault(); this.openChat();
     };
@@ -151,11 +154,11 @@ export class GameScene {
     else this.clock += (m.k - this.clock) * 0.06;
     for (const row of m.p) {
       const [id, x, y, dir, moving, state, stateT, bombs, power, speed, needle, shield, shieldT, ride, invT, kills,
-        dart, kick, punch, curse, curseT, lucci] = row;
+        dart, kick, punch, curse, curseT, lucci, deaths, respawnT] = row;
       const p = g.players.find((q) => q.id === id);
       if (!p) continue;
       Object.assign(p, { state, stateT, bombs, power, speed, needle, shield, shieldT, ride, invT, kills,
-        dart, kick: !!kick, punch: !!punch, curse, curseT, lucci });
+        dart, kick: !!kick, punch: !!punch, curse, curseT, lucci, deaths: deaths || 0, respawnT: respawnT || 0 });
       if (id === this.me) this.reconcile(p, x, y, dir, moving);
       else {
         const b = this.buffers.get(id);
@@ -200,6 +203,7 @@ export class GameScene {
       case 'trap': this.trapAt.set(e.id, performance.now()); sfx('Cha_LockedIn'); break;
       case 'pop': this.deathAt.set(e.id, performance.now()); sfx('Cha_Die'); break;
       case 'free': this.freeAt.set(e.id, performance.now()); sfx('Cha_Release'); break;
+      case 'respawn': this.trails.delete(e.id); if (e.id === this.me) { this.hist = []; sfx('Cha_Release', 0.7); } break;
       case 'pick':
         if (ITEMS[e.item]?.ride) this.mountAt.set(e.id, performance.now());
         if (e.id !== this.me) break;
@@ -233,6 +237,8 @@ export class GameScene {
         }
         stopMusic();
         playMusic(this.result === 'win' ? 'Ntc_Win' : this.result === 'lose' ? 'Ntc_Lose' : 'Ntc_Draw');
+        // A win after three or more losses in a row: the fanfare, once.
+        if (mine && comeback(this.result)) setTimeout(fanfareSound, 600);
         break;
       }
     }
@@ -251,6 +257,7 @@ export class GameScene {
     this.localTick++;
     const g = this.g, p = this.myPlayer();
     const inp = input.read();
+    if (this.board && inp.dir && this.g.phase === 'play') this.board = false; // moving closes the board
     if (!p) return;
     let item = inp.item;
     if (item === 'auto') item = p.state === 'trapped' ? 'needle' : p.dart > 0 ? 'dart' : 'shield';
@@ -351,13 +358,15 @@ export class GameScene {
     c.beginPath(); c.rect(0, 0, WW, WH); c.clip();
     if (this.floorCanvas) c.drawImage(this.floorCanvas, 0, 0);
     // Until the map's pictures are in, nothing half-drawn: blocks would look like open ground.
-    if (this.loaded) this.drawWorld(c, now);
+    if (this.loaded) { this.drawWorld(c, now); this.drawDark(c, now); }
     else { c.fillStyle = '#04163f'; c.fillRect(0, 0, WW, WH); text('맵 불러오는 중…', WW / 2, WH / 2, { size: 22, bold: true, align: 'center', color: '#cfe8ff' }); }
     this.drawOverlay(c, now, Math.min(WW, Math.max(0, (vw / 2 - x) / k)), Math.min(WH, Math.max(0, (vh / 2 - y) / k)));
     c.restore();
     if (fill) this.drawHudFill(c, now); else this.drawHud(c, now);
     this.drawOutButton(c, now);
-    if (this.L.mode === 'big') this.drawOffscreen(c, x, Math.max(0, y), x + WW * k, Math.min(vh, y + WH * k));
+    // 무한 결투: the board on demand, and by itself once the round is over.
+    if (this.g.rule === 'duel' && (this.board || (this.g.phase === 'end' && now - this.endAt > 1800))) this.drawBoard(c, now);
+    if (this.L.mode === 'big' && !this.darkNow()) this.drawOffscreen(c, x, Math.max(0, y), x + WW * k, Math.min(vh, y + WH * k));
     ui.end();
     input.draw();
   }
@@ -366,7 +375,7 @@ export class GameScene {
   // to look at the decorations until the round ends.
   drawOutButton(c, now) {
     const me = this.myPlayer();
-    if (!me || me.state !== 'dead' || this.g.phase !== 'play' || shopShown() || now - (this.deathAt.get(me.id) || 0) < 1500) return;
+    if (!me || me.state !== 'dead' || this.g.phase !== 'play' || this.g.rule === 'duel' || shopShown() || now - (this.deathAt.get(me.id) || 0) < 1500) return;
     const { k, x, y, vw, vh } = this.L;
     const cx = Math.min(vw / 2, x + (WW * k) / 2), cy = Math.min(vh - 40, y + WH * k - 46);
     const w = 190, h = 42;
@@ -611,6 +620,7 @@ export class GameScene {
   // Words over the map (start, hurry up, the result), centred on (cx, cy) in map pixels.
   drawOverlay(c, now, cx, cy) {
     const g = this.g;
+    this.drawRespawn(c, cx, cy);
     const word = (sprite, t0, dur = 9e9) => {
       const n = A.frames(sprite);
       if (!n) return false;
@@ -637,7 +647,7 @@ export class GameScene {
       if (!this.hurryAt) this.hurryAt = now;
       if (now - this.hurryAt < 2500) word('Game/HurryUp', this.hurryAt);
     }
-    if (g.phase === 'end' && this.result) {
+    if (g.phase === 'end' && this.result && !(g.rule === 'duel' && now - this.endAt > 1800)) {
       const s = this.result === 'win' ? 'Game/Win' : this.result === 'lose' ? 'Game/Lose' : 'Game/Draw';
       if (this.paid && now - this.endAt > 900) text(`+${this.paid.toLocaleString()} 루찌`, cx, cy + 70, { size: 20, bold: true, align: 'center', color: '#ffe23a', shadow: '#5a2a00' });
       if (this.expGained && now - this.endAt > 1200) text(`+${this.expGained} 경험치`, cx, cy + 96, { size: 18, bold: true, align: 'center', color: '#8ff0ff', shadow: '#02306b' });
@@ -658,8 +668,11 @@ export class GameScene {
     panel(lx, y + 2, lw, 34);
     text('TIME', lx + 10, y + 24, { size: 11, bold: true, color: '#9fd0f5' });
     text(`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, lx + lw - 10, y + 27, { size: 20, bold: true, color: g.hurry ? '#ff5a5a' : '#ffe14a', align: 'right', shadow: '#02163f' });
-    // Players: portrait, name, kills.
-    const rowH = 27, py = y + 42;
+    // 무한 결투: the points so far (team against team, or my place in solo play).
+    const duel = g.rule === 'duel';
+    if (duel) this.drawDuelScore(c, lx, y + 40, lw, panel);
+    // Players: portrait, name, kills (무한 결투: kills/deaths).
+    const rowH = 27, py = y + (duel ? 76 : 42);
     panel(lx, py, lw, g.players.length * rowH + 8);
     g.players.forEach((p, i) => {
       const ry = py + 4 + i * rowH, dead = p.state === 'dead';
@@ -671,7 +684,8 @@ export class GameScene {
       const lv = this.levels.get(p.id), nx = lv ? lx + 62 : lx + 44;
       if (lv) drawRank(c, lv, lx + 43, ry + 5);
       text(p.name, nx, ry + 17, { size: 12, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - (nx - lx) - 32 });
-      text(p.state === 'trapped' ? '갇힘' : `${p.kills}`, lx + lw - 8, ry + 17, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : '#9cf', align: 'right' });
+      const kd = duel ? `${p.kills}/${p.deaths || 0}` : `${p.kills}`;
+      text(p.state === 'trapped' ? '갇힘' : duel && dead ? `부활 ${Math.max(1, Math.ceil((p.respawnT || 0) / HZ))}` : kd, lx + lw - 8, ry + 17, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : duel && dead ? '#ffb070' : '#9cf', align: 'right' });
     });
     // Chat under the players, down to the screen's bottom (above the stick on a touch screen).
     ui.begin();
@@ -687,23 +701,31 @@ export class GameScene {
     panel(rx + hw + 6, y + 2, hw, 34);
     text('나가기', rx + hw + 6 + hw / 2, y + 24, { size: 13, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
     if (ui.area('exit', rx + hw + 6, y + 2, hw, 34)) this.app.leaveRoom();
-    text(this.map.name, rx + rw / 2, y + 56, { size: 12, bold: true, color: '#cfe8ff', align: 'center', maxW: rw });
+    // 무한 결투: the kill/death board (also the Tab key).
+    const dy = duel ? 40 : 0;
+    if (duel) {
+      panel(rx, y + 42, rw, 32);
+      text('📊 킬/데스 현황', rx + rw / 2, y + 63, { size: 13, bold: true, color: '#ffe95a', align: 'center', shadow: '#03306e' });
+      if (!input.touchMode.on) text('Tab', rx + rw - 8, y + 62, { size: 10, bold: true, color: '#9fd0f5', align: 'right' });
+      if (ui.area('board', rx, y + 42, rw, 32)) this.toggleBoard();
+    }
+    text(this.map.name, rx + rw / 2, y + dy + 56, { size: 12, bold: true, color: '#cfe8ff', align: 'center', maxW: rw });
     const me = this.myPlayer();
     if (!me) return;
     const items = [['Item/Bomb', me.bombs], ['Item/Potion', me.power], ['Item/Skate', me.speed]];
     if (me.kick) items.push(['Item/Shoe', '✓']);
     if (me.punch) items.push(['Item/Punch', '✓']);
     const per = Math.max(1, Math.min(3, Math.floor(rw / 52)));
-    panel(rx, y + 66, rw, Math.ceil(items.length / per) * 36 + 8);
+    panel(rx, y + dy + 66, rw, Math.ceil(items.length / per) * 36 + 8);
     items.forEach(([sp, n], i) => {
-      const ix = rx + 6 + (i % per) * (rw - 12) / per, iy = y + 70 + Math.floor(i / per) * 36;
+      const ix = rx + 6 + (i % per) * (rw - 12) / per, iy = y + dy + 70 + Math.floor(i / per) * 36;
       const [w, h] = A.size(sp);
       if (w) { const sc = Math.min(1, 28 / Math.max(w, h)); A.drawAt(c, sp, 0, ix, iy + (32 - h * sc) / 2, w * sc, h * sc); }
       text(String(n), ix + 46, iy + 26, { size: 14, bold: true, color: '#fff', align: 'right', shadow: '#03306e' });
     });
     // Played with a keyboard: the item slots and their keys (1 needle, 2 shield, 3 dart, 4 free).
     if (!input.touchMode.on) {
-      const sy = y + 66 + Math.ceil(items.length / per) * 36 + 16;
+      const sy = y + dy + 66 + Math.ceil(items.length / per) * 36 + 16;
       text('아이템 (숫자 키)', rx + 4, sy + 10, { size: 11, bold: true, color: '#9fd0f5' });
       const slots = [['Item/Niddle', me.needle, '1'], ['Item/Shield', me.shield, '2'], ['Item/Dart', me.dart || 0, '3'], [null, 0, '4']];
       const sw = Math.min(46, (rw - 6) / 4 - 4);
@@ -739,7 +761,7 @@ export class GameScene {
       const lv = this.levels.get(p.id), nx = lv ? 38 : 21;
       if (lv) drawRank(c, lv, 20, ry + 2);
       text(p.name, nx, ry + 14, { size: 11, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - nx - 26, shadow: '#000' });
-      text(dead ? '-' : p.state === 'trapped' ? '갇힘' : `${p.kills}`, lw, ry + 14, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : '#cfe8ff', align: 'right', shadow: '#000' });
+      text(dead ? (g.rule === 'duel' ? `${Math.max(1, Math.ceil((p.respawnT || 0) / HZ))}초` : '-') : p.state === 'trapped' ? '갇힘' : g.rule === 'duel' ? `${p.kills}/${p.deaths || 0}` : `${p.kills}`, lw, ry + 14, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : '#cfe8ff', align: 'right', shadow: '#000' });
     });
     // Chat under the players, small.
     ui.begin();
@@ -753,7 +775,14 @@ export class GameScene {
     panel(vw - 6 - bw, top, bw, bh, 0.7);
     text('나가기', vw - 6 - bw / 2, top + 19, { size: 12, bold: true, align: 'center', color: '#fff' });
     if (ui.area('exit', vw - 6 - bw, top, bw, bh)) this.app.leaveRoom();
-    this.drawOffscreen(c, 0, 34, vw, vh);
+    if (g.rule === 'duel') {
+      const bx = vw - 6 - bw * 2 - 6, by = top + bh + 6, w2 = bw * 2 + 6;
+      panel(bx, by, w2, bh, 0.7);
+      text('📊 킬/데스 현황', bx + w2 / 2, by + 19, { size: 12, bold: true, align: 'center', color: '#ffe95a' });
+      if (ui.area('board', bx, by, w2, bh)) this.toggleBoard();
+      this.drawDuelScore(c, vw / 2 - 90, top + 34, 180, (px, py, w, h) => panel(px, py, w, h, 0.45));
+    }
+    if (!this.darkNow()) this.drawOffscreen(c, 0, 34, vw, vh);
     // My items, small, at the bottom centre between the controls.
     const me = this.myPlayer();
     if (!me) return;
@@ -786,6 +815,127 @@ export class GameScene {
       c.beginPath(); c.moveTo(10, 0); c.lineTo(-7, -8); c.lineTo(-7, 8); c.closePath(); c.fill(); c.stroke();
       c.restore();
     }
+  }
+
+  // Horror maps (묘지, 공동묘지, 다크캐슬): in the last DARK_SECONDS the lights go out and only a
+  // small circle round me stays lit (those out of the round see everything).
+  darkNow() { return HORROR.test(this.map.id) && this.g.phase === 'play' && this.g.timer <= DARK_SECONDS * HZ; }
+  drawDark(c, now) {
+    if (!this.darkNow()) { this.darkAt = 0; return; }
+    if (!this.darkAt) { this.darkAt = now; sfx('Itm_Devil_Start', 0.6); }
+    const me = this.myPlayer();
+    if (!me || me.state === 'dead') return;
+    const v = this.view(me), fade = Math.min(1, (now - this.darkAt) / 1500);
+    const r = 70 * (1 + 0.04 * Math.sin(now / 110) + 0.02 * Math.sin(now / 37));
+    const gr = c.createRadialGradient(v.x, v.y - 12, r * 0.45, v.x, v.y - 12, r * 1.7);
+    gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.45, `rgba(4,0,14,${0.45 * fade})`); gr.addColorStop(1, `rgba(4,0,14,${0.94 * fade})`);
+    c.fillStyle = gr; c.fillRect(0, 0, WW, WH);
+    if (now - this.darkAt < 2600) text('불이 꺼졌어요… 내 주변만 보여요!', v.x < WW / 2 ? WW * 0.62 : WW * 0.38, 60, { size: 18, bold: true, color: '#d8b8ff', align: 'center', shadow: '#000' });
+  }
+
+  toggleBoard() { sfx('Bt_c_Pop', 0.5); this.board = !this.board; }
+
+  // 무한 결투 points in a small panel: red against blue, or my place among everyone.
+  drawDuelScore(c, x, y, w, panel) {
+    const g = this.g, sc = sideScores(g), me = this.myPlayer();
+    panel(x, y, w, 30);
+    if (g.mode === 'team') {
+      const teams = [...new Set(g.players.map((p) => p.team))];
+      const [a, b] = teams, ca = TEAMS[g.players.find((p) => p.team === a)?.color]?.css || '#f55', cb = TEAMS[g.players.find((p) => p.team === b)?.color]?.css || '#58f';
+      text('⚔', x + w / 2, y + 21, { size: 13, bold: true, color: '#fff', align: 'center' });
+      text(`${sc.get(a) ?? 0}`, x + w / 2 - 14, y + 22, { size: 17, bold: true, color: ca, align: 'right', shadow: '#02163f' });
+      text(`${sc.get(b) ?? 0}`, x + w / 2 + 14, y + 22, { size: 17, bold: true, color: cb, shadow: '#02163f' });
+      text('점', x + w - 8, y + 21, { size: 10, bold: true, color: '#9fd0f5', align: 'right' });
+    } else if (me) {
+      const order = [...g.players].sort((p, q) => scoreOf(q) - scoreOf(p));
+      text(`⚔ ${order.indexOf(me) + 1}위`, x + 10, y + 21, { size: 13, bold: true, color: '#ffe95a' });
+      text(`${scoreOf(me)}점`, x + w - 10, y + 22, { size: 16, bold: true, color: '#fff', align: 'right', shadow: '#02163f' });
+    }
+  }
+
+  // The kill/death board over the map (the map shows through): every player with their rank,
+  // level, kills, deaths and points, by team. X, Tab or moving closes it.
+  drawBoard(c, now) {
+    const g = this.g, { k, x, y, vw, vh } = this.L, team = g.mode === 'team';
+    const mx = Math.max(0, x), mw = Math.min(vw, WW * k), my = Math.max(0, y), mh = Math.min(vh, WH * k);
+    // Nearly the whole map (as on a phone); everything scales with the board's width.
+    const w = mw - 24, u = Math.max(1, Math.min(1.9, w / 520));
+    const rowH = Math.max(28, Math.min(36 * u, (mh - 140 * u) / (g.players.length + (team ? 2 : 1))));
+    const groups = team ? [...new Set(g.players.map((p) => p.team))].map((t) => g.players.filter((p) => p.team === t)) : [[...g.players].sort((p, q) => scoreOf(q) - scoreOf(p))];
+    const h = 64 * u + groups.reduce((n, gr) => n + (team ? 30 : 22) * u + gr.length * rowH, 0) + 34 * u;
+    const bx = mx + (mw - w) / 2, by = my + Math.max(10, (mh - h) / 2);
+    c.fillStyle = 'rgba(2, 14, 46, 0.78)'; roundRect(c, bx, by, w, h, 14); c.fill();
+    c.strokeStyle = 'rgba(127, 212, 255, 0.8)'; c.lineWidth = 2; c.stroke();
+    const over = g.phase === 'end';
+    text(over ? '⚔ 무한 결투 결과' : '⚔ 킬/데스 현황', bx + 18 * u, by + 34 * u, { size: 20 * u, bold: true, color: '#ffe95a', shadow: '#02163f' });
+    if (over && this.result) {
+      const [word, col] = { win: ['승리!', '#7dffb0'], lose: ['패배', '#ff8a8a'], draw: ['무승부', '#cfe8ff'] }[this.result];
+      text(word, bx + 210 * u, by + 35 * u, { size: 24 * u, bold: true, color: col, shadow: '#02163f' });
+    }
+    text(`킬 +${KILL_POINTS}점 · 데스 -${DEATH_POINTS}점`, bx + w - 56 * u, by + 32 * u, { size: 12 * u, bold: true, color: '#9fd0f5', align: 'right' });
+    // X
+    ui.begin();
+    if (!over) {
+      c.fillStyle = 'rgba(255,255,255,0.12)'; c.beginPath(); c.arc(bx + w - 26 * u, by + 26 * u, 14 * u, 0, Math.PI * 2); c.fill();
+      text('✕', bx + w - 26 * u, by + 32 * u, { size: 15 * u, bold: true, color: '#fff', align: 'center' });
+      if (ui.area('board-x', bx + w - 44 * u, by + 8 * u, 36 * u, 36 * u)) this.toggleBoard();
+    }
+    const cols = { lv: bx + w * 0.52, kill: bx + w * 0.68, death: bx + w * 0.8, score: bx + w - 20 * u };
+    let cy = by + 56 * u;
+    const sc = sideScores(g);
+    groups.forEach((gr, gi) => {
+      const col = TEAMS[gr[0].color]?.css || '#fff';
+      if (team) {
+        c.fillStyle = col; c.globalAlpha = 0.28; roundRect(c, bx + 12, cy, w - 24, 26 * u, 7); c.fill(); c.globalAlpha = 1;
+        const name = gr[0].color === 0 ? '빨강팀' : gr[0].color === 5 ? '파랑팀' : `${gi + 1}팀`;
+        const kills = gr.reduce((n, p) => n + p.kills, 0), deaths = gr.reduce((n, p) => n + (p.deaths || 0), 0);
+        text(name, bx + 22 * u, cy + 18 * u, { size: 14 * u, bold: true, color: '#fff', shadow: '#000' });
+        text(String(kills), cols.kill, cy + 18 * u, { size: 13 * u, bold: true, color: '#fff', align: 'center' });
+        text(String(deaths), cols.death, cy + 18 * u, { size: 13 * u, bold: true, color: '#fff', align: 'center' });
+        text(`${sc.get(gr[0].team) ?? 0}점`, cols.score, cy + 18 * u, { size: 14 * u, bold: true, color: '#ffe95a', align: 'right', shadow: '#000' });
+        cy += 30 * u;
+      } else {
+        for (const [label, cx2] of [['레벨', cols.lv], ['킬', cols.kill], ['데스', cols.death]]) text(label, cx2, cy + 14 * u, { size: 11 * u, bold: true, color: '#9fd0f5', align: 'center' });
+        text('점수', cols.score, cy + 14 * u, { size: 11 * u, bold: true, color: '#9fd0f5', align: 'right' });
+        cy += 22 * u;
+      }
+      gr.forEach((p, i) => {
+        const ry = cy + i * rowH, mine = p.id === this.me;
+        if (mine) { c.fillStyle = 'rgba(255, 233, 90, 0.16)'; roundRect(c, bx + 12, ry, w - 24, rowH - 3, 6); c.fill(); }
+        let nx = bx + 20 * u;
+        if (!team) { text(`${i + 1}`, nx + 6 * u, ry + rowH / 2 + 5 * u, { size: 14 * u, bold: true, color: i === 0 ? '#ffe95a' : '#cfe8ff', align: 'center' }); nx += 20 * u; }
+        c.save(); c.beginPath(); c.rect(nx, ry, rowH - 4, rowH - 3); c.clip(); c.translate(nx, ry); c.scale((rowH - 4) / 45, (rowH - 4) / 45);
+        A.drawChar(c, p.char, 'Portrait', 0, 0, 0, p.color); c.restore();
+        nx += rowH;
+        const lv = this.levels.get(p.id);
+        if (lv) { drawRank(c, lv, nx, ry + rowH / 2 - 7 * u, u); nx += 20 * u; }
+        text(p.name, nx, ry + rowH / 2 + 5 * u, { size: 14 * u, bold: mine, color: mine ? '#ffe95a' : '#fff', maxW: cols.lv - nx - 30 * u });
+        text(lv ? `Lv.${lv}` : '-', cols.lv, ry + rowH / 2 + 5 * u, { size: 12 * u, bold: true, color: '#cfe8ff', align: 'center' });
+        text(String(p.kills), cols.kill, ry + rowH / 2 + 5 * u, { size: 15 * u, bold: true, color: '#7dffb0', align: 'center' });
+        text(String(p.deaths || 0), cols.death, ry + rowH / 2 + 5 * u, { size: 15 * u, bold: true, color: '#ff8a8a', align: 'center' });
+        text(String(scoreOf(p)), cols.score, ry + rowH / 2 + 5 * u, { size: 15 * u, bold: true, color: '#fff', align: 'right' });
+      });
+      cy += gr.length * rowH;
+    });
+    if (team) {
+      for (const [label, cx2] of [['레벨', cols.lv], ['킬', cols.kill], ['데스', cols.death]]) text(label, cx2, by + 50 * u, { size: 11 * u, bold: true, color: '#9fd0f5', align: 'center' });
+      text('점수', cols.score, by + 50 * u, { size: 11 * u, bold: true, color: '#9fd0f5', align: 'right' });
+    }
+    const prize = [this.paid ? `+${this.paid.toLocaleString()} 루찌` : '', this.expGained ? `+${this.expGained} 경험치` : ''].filter(Boolean).join(' · ');
+    text(over ? prize : input.touchMode.on ? '✕를 누르거나 움직이면 닫혀요' : 'Tab 키를 다시 누르거나 방향키로 움직이면 닫혀요', bx + w / 2, by + h - 12 * u, { size: 12 * u, bold: true, color: '#9fd0f5', align: 'center' });
+  }
+
+  // 무한 결투: popped, the client's big blue digits count down to coming back.
+  drawRespawn(c, cx, cy) {
+    const me = this.myPlayer();
+    if (!me || this.g.rule !== 'duel' || me.state !== 'dead' || !me.respawnT || this.g.phase !== 'play') return;
+    const n = Math.ceil(me.respawnT / HZ);
+    if (n > 3) return;
+    const frac = (me.respawnT / HZ) % 1 || 1, sc = 0.7 + 0.3 * frac;
+    const [w, h] = A.size('Game/Kill_ImageNo-Revive', n);
+    text('부활까지', cx, cy - 70, { size: 20, bold: true, color: '#fff', align: 'center', shadow: '#02163f' });
+    if (w) { c.save(); c.translate(cx, cy); c.scale(sc, sc); A.drawAt(c, 'Game/Kill_ImageNo-Revive', n, -w / 2, -h / 2); c.restore(); }
+    else text(String(n), cx, cy + 20, { size: 80, bold: true, color: '#7fd4ff', align: 'center', shadow: '#02163f' });
   }
 
   // The chat list, which a touch player out of the round can tap to type.
@@ -823,4 +973,13 @@ function split(c, str, width) {
   }
   if (row) rows.push(row);
   return rows.length ? rows : [''];
+}
+
+// Losses in a row on this device; true for a win that ends three or more of them (once).
+function comeback(result) {
+  let run = 0;
+  try { run = Number(localStorage.getItem('ca-loserun')) || 0; } catch { /* private mode */ }
+  const next = result === 'lose' ? run + 1 : 0;
+  try { localStorage.setItem('ca-loserun', String(next)); } catch { /* ignore */ }
+  return result === 'win' && run >= 3;
 }
