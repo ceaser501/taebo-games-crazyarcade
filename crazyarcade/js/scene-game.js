@@ -12,6 +12,7 @@ import { mapById } from './shared/room.js';
 import * as Wallet from './wallet.js';
 import { viewMode, showSettings, settingsShown } from './settings.js';
 import * as Account from './account.js';
+import { showShop, shopShown } from './shop.js';
 import { drawRank } from './rank.js';
 
 const WW = COLS * TILE, WH = ROWS * TILE; // the map in world pixels (600×520)
@@ -289,9 +290,24 @@ export class GameScene {
     this.drawOverlay(c, now, Math.min(WW, Math.max(0, (vw / 2 - x) / k)), Math.min(WH, Math.max(0, (vh / 2 - y) / k)));
     c.restore();
     if (fill) this.drawHudFill(c, now); else this.drawHud(c, now);
+    this.drawOutButton(c, now);
     if (this.L.mode === 'big') this.drawOffscreen(c, x, Math.max(0, y), x + WW * k, Math.min(vh, y + WH * k));
     ui.end();
     input.draw();
+  }
+
+  // Out of the round while it goes on: a button in the middle of the map opens the shop over it,
+  // to look at the decorations until the round ends.
+  drawOutButton(c, now) {
+    const me = this.myPlayer();
+    if (!me || me.state !== 'dead' || this.g.phase !== 'play' || shopShown() || now - (this.deathAt.get(me.id) || 0) < 1500) return;
+    const { k, x, y, vw, vh } = this.L;
+    const cx = Math.min(vw / 2, x + (WW * k) / 2), cy = Math.min(vh - 40, y + WH * k - 46);
+    const w = 190, h = 42;
+    c.fillStyle = 'rgba(2, 22, 70, 0.85)'; roundRect(c, cx - w / 2, cy - h / 2, w, h, 21); c.fill();
+    c.strokeStyle = '#ffe95a'; c.lineWidth = 2; c.stroke();
+    text('🛍 상점 구경하기', cx, cy + 6, { size: 16, bold: true, align: 'center', color: '#ffe95a' });
+    if (ui.area('outshop', cx - w / 2, cy - h / 2, w, h)) { sfx('Bt_c_Pop', 0.6); showShop(this.app, () => {}, true); }
   }
 
   // Opens the settings over the game (the view switches as soon as it is picked).

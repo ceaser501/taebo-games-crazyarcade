@@ -1,5 +1,5 @@
 html, body {
-  margin: 0; height: 100%; overflow: hidden; background: #061633;
+  margin: 0; height: 100%; overflow: hidden; background: #061633; background-color: #061633; color-scheme: dark;
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   font-family: "Nanum Gothic", Gulim, "Malgun Gothic", sans-serif;
 }
@@ -31,8 +31,10 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
 
 /* ---- intro, sign-up and home (DOM over the canvas, upright or sideways) ---- */
 #intro, #signup, #home, #menu, #lobby, #shop {
-  position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 22px; padding: 16px; box-sizing: border-box; color: #fff; touch-action: manipulation;
+  position: fixed; inset: 0; min-height: 100%; min-height: 100lvh; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; box-sizing: border-box; color: #fff; touch-action: manipulation;
+  /* Clear of the notch and the home bar on phones held sideways. */
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   background: linear-gradient(180deg, rgba(4, 30, 90, 0.55), rgba(2, 12, 40, 0.9)), url(../assets/ca/bg/shop.jpg) center / cover, #0b3f8f;
 }
 #intro { cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -246,7 +248,7 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 #lobby-status { margin: 0; word-break: keep-all; min-height: 1.2em; font-size: 14px; font-weight: 800; color: #ffe58a; text-align: center; }
 #char-pick { z-index: 12; }
 @media (max-height: 460px) and (orientation: landscape) {
-  #menu { gap: 8px; padding: 8px 16px; } #menu .card { gap: 7px; padding: 12px 14px; }
+  #menu { gap: 8px; padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); } #menu .card { gap: 7px; padding: 12px 14px; }
 }
 #join-code::placeholder { letter-spacing: 0; font-size: 16px; }
 
@@ -358,3 +360,4 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 #set-close { align-self: center; padding: 8px 40px; font-size: 18px; }
 @media (max-height: 460px) and (orientation: landscape) { .set-card { width: min(560px, 100%); gap: 7px; padding: 10px 16px 12px; } .set-card h2 { font-size: 20px; } .set-row { padding: 5px 12px; } }
 
+#shop.over { z-index: 9; background: rgba(2, 12, 40, 0.88); }

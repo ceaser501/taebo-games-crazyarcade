@@ -69,6 +69,22 @@ const check = (ok, what) => { if (!ok) { bad++; console.log(`item test failed: $
   for (let i = 0; i < 60; i++) step(g, {});
   check(a.x > 60 + 40, `conveyor (x ${a.x})`);
 }
+// The devil turns the arrows around; the red devil maxes everything.
+{
+  const map = { id: 't', tiles: [['x', 'floor']], floor: new Array(15 * 13).fill(0), objs: new Array(15 * 13).fill(-1), spawns: [[1, 1], [9, 9]], drops: { bomb: 1 } };
+  const g = createGame({ map, players: [{ id: 'a', char: 'C00', team: 0, color: 0 }, { id: 'b', char: 'C00', team: 5, color: 5 }], seed: 3, mode: 'team' });
+  g.phase = 'play';
+  const a = g.players[0];
+  a.x = 220; a.y = 220;
+  g.items[5 * 15 + 6] = { k: 'skull', fresh: 0 }; g.items[5 * 15 + 4] = { k: 'devil', fresh: 0 };
+  for (let i = 0; i < 12; i++) step(g, { a: { dir: 4 } }); // onto the devil at (6,5)
+  const x0 = a.x;
+  for (let i = 0; i < 10; i++) step(g, { a: { dir: 4 } }); // pressing right walks left
+  check(a.curse === 'reverse' && a.x < x0, `devil reverses (${a.curse}, ${x0} -> ${a.x})`);
+  a.curse = null;
+  for (let i = 0; i < 40 && g.items[5 * 15 + 4]; i++) step(g, { a: { dir: 3 } });
+  check(a.bombs === a.max.bombs && a.power === a.max.power && a.speed === a.max.speed, 'red devil maxes everything');
+}
 // A popped player's power-ups go back onto the map.
 {
   const map = { id: 't', tiles: [['x', 'floor']], floor: new Array(15 * 13).fill(0), objs: new Array(15 * 13).fill(-1), spawns: [[1, 1], [5, 1]], drops: { bomb: 1 } };

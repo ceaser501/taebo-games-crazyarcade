@@ -5,10 +5,10 @@
   "lang": "ko",
   "start_url": "/crazyarcade/",
   "scope": "/",
-  "display": "fullscreen",
+  "display": "standalone",
   "display_override": ["fullscreen", "standalone"],
   "orientation": "landscape",
-  "background_color": "#0b3f8f",
+  "background_color": "#061633",
   "theme_color": "#0b3f8f",
   "icons": [
     { "src": "/icon.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },

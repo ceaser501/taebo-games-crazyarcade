@@ -78,10 +78,10 @@ export const ITEMS = {
   potion: { sprite: 'Item/Potion', weight: 2800 },
   skate: { sprite: 'Item/Skate', weight: 2000 },
   maxpower: { sprite: 'Item/MaxPower', weight: 150 },
-  devil: { sprite: 'Item/RedDevil', weight: 0 },
+  devil: { sprite: 'Item/RedDevil', weight: 0 }, // 빨간악마: water balloons, power and speed all to the top (maps that drop it)
   shoe: { sprite: 'Item/Shoe', weight: 150 }, // kick balloons
   punch: { sprite: 'Item/Punch', weight: 300 }, // punch the balloon in front over three cells
-  skull: { sprite: 'Item/Skeleton0', weight: 200 }, // a curse for a while
+  skull: { sprite: 'Item/Skeleton0', weight: 200 }, // 악마: the arrow keys work backwards for a while
   needle: { sprite: 'Item/Niddle', weight: 0, active: true },
   shield: { sprite: 'Item/Shield', weight: 0, active: true },
   dart: { sprite: 'Item/Dart', weight: 0, active: true }, // thrown, pops the first balloon it hits

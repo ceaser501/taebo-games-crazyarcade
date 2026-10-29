@@ -333,13 +333,13 @@ function applyItem(g, p, k) {
     case 'potion': p.power = Math.min(p.max.power, p.power + 1); break;
     case 'maxpower': p.power = p.max.power; break;
     case 'skate': p.speed = Math.min(p.max.speed, p.speed + 1); break;
-    case 'devil': p.speed = p.max.speed; break;
+    case 'devil': p.bombs = p.max.bombs; p.power = p.max.power; p.speed = p.max.speed; break; // the red devil: everything to the top
     case 'needle': p.needle++; break;
     case 'shield': p.shield++; break;
     case 'dart': p.dart++; break;
     case 'shoe': p.kick = true; break;
     case 'punch': p.punch = true; break;
-    case 'skull': p.curse = CURSES[Math.floor(rng(g) * CURSES.length)]; p.curseT = CURSE_TIME; break;
+    case 'skull': p.curse = 'reverse'; p.curseT = CURSE_TIME; break; // the devil: the arrow keys turn around for a while
     default:
       if (ITEMS[k]?.ride && !p.ride) p.ride = k;
       if (ITEMS[k]?.lucci) p.lucci += ITEMS[k].lucci;

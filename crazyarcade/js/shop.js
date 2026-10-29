@@ -13,10 +13,13 @@ const KIND_NAME = { char: '캐릭터', hat: '머리장식', bomb: '물풍선', p
 const DIRS = ['Down', 'Left', 'Up', 'Right'];
 let st = null; // { app, back, kind, page, sel, preview, char, cat }
 
-export async function showShop(app, back) {
+// over: opened over a round still going (a player out of it browses); the round's music stays.
+export async function showShop(app, back, over = false) {
   st = { app, back, kind: 'hat', page: 0, sel: null, preview: W.look(), char: W.myChar(), cat: await W.deco() };
   $('shop').hidden = false;
-  playMusic('StageChannel');
+  $('shop').classList.toggle('over', over);
+  if (!over) playMusic('StageChannel');
+  $('shop-close').textContent = over ? '← 게임 보기' : '← 나가기';
   for (const g of ['icons_hat', 'icons_bomb', 'icons_pet', 'game']) A.loadGroup(g);
   W.loadLook(st.preview);
   for (const b of document.querySelectorAll('#shop-tabs button')) b.onclick = () => { sfx('Bt_c_Pop', 0.6); st.kind = b.dataset.kind; st.page = 0; render(); };
@@ -27,6 +30,7 @@ export async function showShop(app, back) {
   animate();
 }
 export function hideShop() { $('shop').hidden = true; st = null; }
+export const shopShown = () => !$('shop').hidden;
 
 const list = () => (st.kind === 'char' ? CHARACTERS.filter((c) => !W.FREE_CHARS.includes(c.id)).map((c) => c.id)
   : { hat: st.cat.hats, bomb: st.cat.bombs, pet: st.cat.pets }[st.kind] || []);
