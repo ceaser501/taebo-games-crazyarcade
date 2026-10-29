@@ -131,6 +131,13 @@ function tintFrame(f, team) {
   c.putImageData(id, 0, 0);
   return cv;
 }
+// A canvas made once and drawn every frame is swapped for an ImageBitmap: browsers keep small
+// canvases (and any read back with getImageData) in main memory, and drawing one onto the
+// screen copies it to the GPU every time, which made the game stutter.
+export function toBitmap(cv, done) {
+  if (typeof createImageBitmap !== 'function') return;
+  createImageBitmap(cv).then(done, () => {});
+}
 export function drawTinted(ctx, name, i, x, y, team, alpha = 1) {
   const fr = sprites.get(name);
   if (!fr) return false;
@@ -139,7 +146,7 @@ export function drawTinted(ctx, name, i, x, y, team, alpha = 1) {
   if (!f.img) return false;
   const key = `${name}#${k}#${team}`;
   let cv = tinted.get(key);
-  if (!cv) { cv = tintFrame(f, team); tinted.set(key, cv); }
+  if (!cv) { cv = tintFrame(f, team); tinted.set(key, cv); toBitmap(cv, (b) => tinted.set(key, b)); }
   if (alpha !== 1) ctx.globalAlpha = alpha;
   ctx.drawImage(cv, Math.round(x + f.dx), Math.round(y + f.dy));
   if (alpha !== 1) ctx.globalAlpha = 1;

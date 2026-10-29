@@ -175,7 +175,7 @@ function takePosition(g, p, inp) {
   const c = cellOf(inp.x), r = cellOf(inp.y);
   if ((c !== cellOf(p.x) || r !== cellOf(p.y)) && blocked(g, c, r, p)) return false;
   p.x = inp.x; p.y = inp.y;
-  if (inp.dir) p.dir = inp.dir;
+  if (inp.dir) p.dir = p.curse === 'reverse' ? [0, 2, 1, 4, 3][inp.dir] : inp.dir; // faces where it walks
   p.moving = !!inp.dir;
   return true;
 }
@@ -219,15 +219,21 @@ function tryKick(g, p, d) {
 
 function emit(g, type, data = {}) { g.events.push({ type, ...data }); }
 
+export function punchTarget(g, p) {
+  if (!p.punch) return null;
+  const c = cellOf(p.x), r = cellOf(p.y);
+  const [dx, dy] = DIRS[p.dir] || [0, 0];
+  if (!dx && !dy) return null;
+  return bombAt(g, c, r) || bombAt(g, c + dx, r + dy) || null;
+}
+
 function placeBomb(g, p) {
   const c = cellOf(p.x), r = cellOf(p.y);
   if (p.curse === 'jam') return;
-  // With the punch, the balloon button sends a balloon right in front of you flying.
-  if (p.punch && !bombAt(g, c, r)) {
-    const [dx, dy] = DIRS[p.dir] || [0, 0];
-    const b = (dx || dy) && bombAt(g, c + dx, r + dy);
-    if (b && !b.fly) { punch(g, b, dx, dy); return; }
-  }
+  // With the glove, the balloon button throws a balloon three cells the way you face: the one
+  // you stand on, or else the one right in front of you.
+  const thrown = punchTarget(g, p);
+  if (thrown) { punch(g, thrown, ...DIRS[p.dir]); return; }
   if (g.bombs.filter((b) => b.owner === p.id).length >= p.bombs) return;
   if (bombAt(g, c, r)) return;
   const o = g.objs[idx(c, r)];

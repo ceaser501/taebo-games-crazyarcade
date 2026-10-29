@@ -55,6 +55,15 @@ const check = (ok, what) => { if (!ok) { bad++; console.log(`item test failed: $
   check(g.bombs[0] && !g.bombs[0].fly && g.bombs[0].c === 5, `punch (balloon at ${g.bombs[0]?.c})`);
 }
 {
+  // The glove also throws the balloon you stand on (just placed), the way you face.
+  const { g, a } = field();
+  a.punch = true; a.dir = 4;
+  step(g, { a: { bomb: true } });
+  step(g, { a: { bomb: true } });
+  for (let i = 0; i < 20; i++) step(g, {});
+  check(g.bombs.length === 1 && !g.bombs[0].fly && g.bombs[0].c === 4, `punch from under you (balloon at ${g.bombs[0]?.c})`);
+}
+{
   const { g, a } = field();
   a.dart = 1; a.dir = 4;
   g.bombs.push({ id: 99, c: 6, r: 1, owner: 'b', power: 1, t: 60, pass: [], off: 0, kick: 0, fly: null });

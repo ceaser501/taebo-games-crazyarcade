@@ -111,10 +111,11 @@ export function pickMap(current, need, onPick) {
   $('map-ok').onclick = () => { sfx('Bt_c_Success', 0.6); close(); onPick(sel); };
   $('map-back').onclick = () => { click(); $('map-detail').hidden = true; };
   $('map-random').onclick = () => {
-    click();
     const ok = MAPS.filter((m) => m.spawns.length >= need);
-    const m = ok[Math.floor(Math.random() * ok.length)] || MAPS[0];
-    theme = themeOf(m.id); list(); detail(m.id);
+    // Any map of any theme that fits everyone, taken at once (a different one from now).
+    const others = ok.filter((m) => m.id !== mapById(current).id);
+    const m = (others.length ? others : ok)[Math.floor(Math.random() * (others.length || ok.length))] || MAPS[0];
+    sfx('Bt_c_Success', 0.6); close(); onPick(m.id);
   };
   $('map-cancel').onclick = () => { click(); close(); };
   $('map-pick').onclick = (e) => { if (e.target === $('map-pick')) close(); };

@@ -7,7 +7,7 @@ import { stage, ui, text, roundRect, W, FONT } from './stage.js';
 import * as input from './input.js';
 import { sfx, playMusic, stopMusic } from './audio.js';
 import { COLS, ROWS, TILE, HZ, TEAMS, ITEMS, RIDES, PUNCH_TICKS, charById } from './shared/const.js';
-import { createGame, walk, carry, cellOf, DIR_NAMES, DIRS, PUSH_SLIDE } from './shared/sim.js';
+import { createGame, walk, carry, cellOf, DIR_NAMES, DIRS, PUSH_SLIDE, punchTarget } from './shared/sim.js';
 import { mapById } from './shared/room.js';
 import * as Wallet from './wallet.js';
 import { viewMode, showSettings, settingsShown } from './settings.js';
@@ -135,6 +135,7 @@ export class GameScene {
       if (t && !this.map.conv?.[r * COLS + col]) A.draw(c, t[0], 0, col * TILE, r * TILE + TILE - 1);
     }
     this.floorCanvas = cv;
+    A.toBitmap(cv, (b) => { if (this.floorCanvas === cv) this.floorCanvas = b; });
   }
 
   myPlayer() { return this.g.players.find((p) => p.id === this.me); }
@@ -271,7 +272,7 @@ export class GameScene {
   }
 
   predictBomb(p) {
-    if (p.state !== 'normal' || this.g.phase !== 'play') return;
+    if (p.state !== 'normal' || this.g.phase !== 'play' || punchTarget(this.g, p)) return; // a throw, not a new balloon
     const c = cellOf(p.x), r = cellOf(p.y);
     const mine = this.g.bombs.filter((b) => b.owner === p.id).length + this.pendingBombs.length;
     if (mine >= p.bombs || this.g.bombs.some((b) => b.c === c && b.r === r)) return;
@@ -801,8 +802,20 @@ export class GameScene {
   }
 }
 
-// Splits a chat line into rows that fit `width` (by characters, so Korean wraps too).
-function wrap(c, str, width) {
+// Splits a chat line into rows that fit `width` (by characters, so Korean wraps too). The
+// rows are kept, since the chat and the bubbles are drawn every frame.
+const wrapped = new Map();
+function wrap(c, str, width, size) {
+  const key = `${size}|${width}|${str}`;
+  let rows = wrapped.get(key);
+  if (!rows) {
+    rows = split(c, str, width);
+    if (wrapped.size > 300) wrapped.clear();
+    wrapped.set(key, rows);
+  }
+  return rows;
+}
+function split(c, str, width) {
   const rows = [];
   let row = '';
   for (const ch of str) {
