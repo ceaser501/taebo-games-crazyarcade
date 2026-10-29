@@ -66,14 +66,17 @@ Durable Objects는 무료 플랜에서도 SQLite 방식 클래스로 쓸 수 있
 | `crazyarcade/js/shared/ai.js` | 컴퓨터 플레이어 (위험 지도 + 너비 우선 탐색) |
 | `crazyarcade/js/shared/maps-data.js` | 원본 맵 파일(FxMap `Map/*`)에서 뽑은 대전 맵 122개: 칸·시작 위치·맵별 아이템 비율 그대로 (`crazyarcade/tools/build-maps.mjs`) |
 | `crazyarcade/js/scene-game.js` | 게임 화면(휴대폰 배치: 맵을 화면 높이에 맞추고 양옆에 타이머·참가자·내 능력치와 조작 버튼), 내 캐릭터 예측·보정, 다른 사람 보간 |
-| `crazyarcade/js/home.js` | 인트로(터치해서 시작) → 처음 한 번 닉네임 → 처음 화면(내 캐릭터·전적·루찌), 웜즈·뿌요뿌요와 같은 흐름 |
+| `crazyarcade/js/home.js` | 인트로(터치해서 시작) → 처음 한 번 닉네임·비밀번호 4자리 → 처음 화면(내 캐릭터·계급·전적·루찌), 웜즈·뿌요뿌요와 같은 흐름 |
+| `crazyarcade/js/shared/level.js` | 계급: 경험치 곡선(145레벨), 판마다 경험치, 원작 `Etc/LevelIcons` 조각으로 계급 아이콘 맞추기 |
+| `crazyarcade/js/shared/accounts.js` | 계정: 닉네임이 아이디, 비밀번호 4자리(해시), 경험치. Cloudflare에서는 Durable Object `Accounts`에 저장 |
+| `crazyarcade/js/rank.js` | 계급 아이콘 그리기, 레벨업 연출(원작 LEVEL UP 그림 + 햇살) |
 | `crazyarcade/js/lobby.js` | 메뉴(컴퓨터와 연습 / 방 만들기·참가)와 대기실(방 번호·초대 링크, 팀전·개인전, 빨강팀 vs 파랑팀, 맵, 시작), 웜즈와 같은 방식 |
 | `crazyarcade/js/input.js` | 키보드 + 크아M식 터치 조작 |
 | `crazyarcade/js/shop.js` | 상점(휴대폰 화면): 캐릭터·머리장식·물풍선·펫을 게임에서 모은 루찌로 사기, 착용 |
 | `crazyarcade/js/wallet.js` | 루찌·보유·착용 (이 브라우저에 저장) |
 | `crazyarcade/tools/ca-formats.mjs` | PatchData `.idx/.idd`, 암호화된 항목(맵·표) 풀기, 스프라이트, RLE 픽셀 해석 |
 | `crazyarcade/tools/convert-assets.mjs` | 원본 → PNG 시트 + JSON, JPEG 배경, MP3/Ogg |
-| `server/worker.js` | Durable Object `Room`(방마다 하나, 초당 30틱) · `Lobby`(방 목록) |
+| `server/worker.js` | Durable Object `Room`(방마다 하나, 초당 30틱, 판이 끝나면 경험치) · `Lobby`(방 목록) · `Accounts`(닉네임·비밀번호·경험치) |
 
 온라인 동기화: 방 서버가 게임을 초당 30번 계산하고 매 틱 상태를 보냅니다. 내 캐릭터는 같은 규칙 코드로 바로 움직이고
 (입력 지연 없음), 서버 위치와의 차이를 왕복 시간만큼 되돌려 비교해 조금씩 맞춥니다. 다른 캐릭터는 3틱(0.1초) 늦게

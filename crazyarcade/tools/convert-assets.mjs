@@ -78,6 +78,13 @@ const GROUPS = [
     ['FxMap', ['Prepare/PRE_*', 'Prepare/Dlg_PRE-*', 'Prepare/S_Selrandom', 'Prepare/UI_WaterDrop', 'Theme/*']],
     ['FxContents', ['CharacterSelect/*']],
   ] },
+  // Ranks: the level icon's parts (emblems, plates, dots), the beginner's icon, and the level-up
+  // popup with the sunburst behind it.
+  { name: 'rank', from: [
+    ['FxDesktop', ['Etc/LevelIcons', 'Level/Novice_LevelIcon']],
+    ['fx', ['Dialog/LayerPopUp_LevelUp']],
+    ['FxContents', ['UXMatching/LevelUp']],
+  ] },
   // Map previews for the map list (zlib-wrapped sprites in FxMap's Etc/).
   { name: 'maps', from: [['FxMap', MAPS.map((m) => `Etc/${m.id}_mm`)]] },
   ...TILESETS.map((t) => ({ name: `tile_${t}`, from: [[t === 'TileConv' ? 'fx' : 'FxTile', [`${t}/*`]]] })),
@@ -127,7 +134,7 @@ const BGM = ['StageLogin', 'StageChannel', 'Prepare', 'Village', 'Desert', 'Ice'
   'Tomb', 'Mine', 'Pirate', 'Kfg', 'Xmas', 'Bula', 'Ntc_Win', 'Ntc_Lose', 'Ntc_Draw', 'Ntc_Hurryup', 'Ntc_GameEnd', 'BreakTime', 'ShowTime',
   'RetroVillage', 'RetroForest', 'RetroFactory', 'RetroCamp', 'RetroPatrit', 'Lovelyroom', 'Aqua', 'Cemetery', 'space'];
 const SFX = ['Wave/BombExplosion0*', 'Wave/Bt_*', 'Wave/Cha_*', 'Wave/Itm_*', 'Wave/Ntc_*', 'Wave/Game_*', 'Wave/Stage_*', 'Wave/Sys_*',
-  'Wave/Lobby_*', 'Wave/Room_*', 'Wave/Pre_*', 'Wave/Effect_*'];
+  'Wave/Lobby_*', 'Wave/Room_*', 'Wave/Pre_*', 'Wave/Effect_*', 'Wave/RPG_LevelUp'];
 
 // A character's team colour is its LayerAdjust layer, tinted per team, with LayerStatic (face,
 // hands) drawn over it. Some frames (다오 walking right, among others) carry the whole picture

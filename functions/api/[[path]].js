@@ -7,5 +7,11 @@ export async function onRequest({ request, env }) {
   if (url.pathname === '/api/rooms') return env.LOBBY.get(env.LOBBY.idFromName('lobby')).fetch('https://lobby/list');
   const m = url.pathname.match(/^\/api\/room\/(\d{4})$/);
   if (m) return env.ROOMS.get(env.ROOMS.idFromName(m[1])).fetch(request);
+  // Accounts: sign up or in, read my rank, count a practice game (the room objects use the rest).
+  const a = url.pathname.match(/^\/api\/account\/(enter|me|practice)$/);
+  if (a && request.method === 'POST') {
+    if (!env.ACCOUNTS) return json({ error: 'accounts not bound' }, 503);
+    return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts')).fetch(`https://accounts/${a[1]}`, { method: 'POST', body: await request.text() });
+  }
   return json({ error: 'not found' }, 404);
 }

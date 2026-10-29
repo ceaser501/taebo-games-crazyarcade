@@ -3,12 +3,14 @@ import * as A from './assets.js';
 import { stage, ui, onResize } from './stage.js';
 import * as input from './input.js';
 import { unlock, preload, stopMusic } from './audio.js';
-import { showIntro, introReady, askName, showHome, hideHome } from './home.js';
+import { showIntro, introReady, askName, showHome, hideHome, isHomeShown, homeRank } from './home.js';
 import { showMenu, hideMenu, showLobby, hideLobby, renderLobby, lobbyShown, lobbyStatus } from './lobby.js';
 import { GameScene } from './scene-game.js';
 import { showShop, hideShop } from './shop.js';
 import * as W from './wallet.js';
 import { Online, Practice, listRooms, randomCode } from './net.js';
+import * as Account from './account.js';
+import { celebrate } from './rank.js';
 
 // `SITE_PASSWORD=... npm run build` puts a simple password screen in front (hash only).
 /* global PASSWORD_HASH */
@@ -58,12 +60,12 @@ const app = {
     this.joinRoom(code);
   },
   joinRoom(code) {
-    this.connect(new Online(code, this.name), false);
+    this.connect(new Online(code, this.name, Account.token()), false);
     this.dom(() => showLobby(this));
     lobbyStatus('방에 연결하는 중…');
   },
   // Practice: a room in this page with computer players, started at once.
-  practice(opts) { this.connect(new Practice(this.name || '나', opts), true); },
+  practice(opts) { this.connect(new Practice(this.name || '나', { ...opts, exp: Account.signedIn() ? Account.exp() : null }), true); },
 
   connect(conn, practice) {
     this.disconnect();
@@ -74,7 +76,14 @@ const app = {
     if (this.conn) this.conn.close();
     this.conn = null; this.room = null; this.me = null;
   },
-  leaveRoom() { stopMusic(); this.toMenu(); },
+  leaveRoom() { stopMusic(); this.toMenu(); this.showLevelUp(); },
+  // A level reached during a round is celebrated once back out of it.
+  showLevelUp() {
+    if (!this.levelUp || this.scene instanceof GameScene) return;
+    const { from, to } = this.levelUp;
+    this.levelUp = null;
+    setTimeout(() => celebrate(from, to), 300);
+  },
   send(m) { if (this.conn) this.conn.send(m); },
 
   onMessage(m) {
@@ -96,6 +105,12 @@ const app = {
       case 'back':
         // After a round: friends go back to the waiting room, practice back to the menu.
         if (this.practiceMode) this.toMenu(); else this.dom(() => showLobby(this));
+        this.showLevelUp();
+        break;
+      case 'exp':
+        // Experience the room server gave for the round.
+        Account.gotExp(m);
+        if (this.scene instanceof GameScene) this.scene.expGained = m.gained;
         break;
       case 's':
         if (this.scene instanceof GameScene) this.scene.onMessage(m);
@@ -178,6 +193,12 @@ async function main() {
   kakaoEscape();
   await gate();
   try { app.name = localStorage.getItem('ca-name') || ''; } catch { /* ignore */ }
+  if (Account.signedIn()) app.name = Account.name();
+  Account.onChange(({ before, after, quiet }) => {
+    if (Account.signedIn()) app.name = Account.name();
+    if (isHomeShown()) homeRank(app);
+    if (!quiet && after > before) { app.levelUp = { from: app.levelUp ? app.levelUp.from : before, to: after }; app.showLevelUp(); }
+  });
   const canvas = $('game');
   stage.init(canvas);
   input.attach(canvas);
@@ -205,7 +226,16 @@ async function main() {
     landscape();
     first();
     const go = () => { document.body.classList.add('sideways'); return code ? app.joinRoom(code) : app.toHome(); };
-    if (app.name) go(); else askName((name) => { app.setName(name); go(); });
+    // Signed in: straight on (the account is read again in the background). Otherwise the
+    // nickname and PIN, filled in with the name used on this phone before accounts.
+    const signUp = () => askName(app.name, (offline) => {
+      if (offline) { const n = $('signup-name').value.trim().slice(0, 10) || app.name || '플레이어'; app.setName(n); } else app.setName(Account.name());
+      go();
+    });
+    if (Account.signedIn()) {
+      go();
+      Account.refresh().then((r) => { if (r === 'gone') { Account.signOut(); signUp(); } });
+    } else signUp();
   });
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 }

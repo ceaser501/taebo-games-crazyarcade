@@ -4,6 +4,7 @@
 // and is driven by join/leave/message and tick().
 import { HZ, MAX_PLAYERS, CHARACTERS, TEAMS, COLS, ROWS } from './const.js';
 import { createGame, step, snapshot, isOver } from './sim.js';
+import { levelOf } from './level.js';
 import { Bot } from './ai.js';
 import { MAPS } from './maps.js';
 
@@ -21,8 +22,10 @@ function cleanLook(l) {
 }
 
 export class RoomCore {
-  constructor({ code, title, send, broadcast, onChange = () => {} }) {
-    Object.assign(this, { code, send, broadcast, onChange });
+  // onResult(list) runs once when a round is decided, with [{ id, acct, result, kills }] for
+  // the players signed in to an account (the server gives them experience for it).
+  constructor({ code, title, send, broadcast, onChange = () => {}, onResult = () => {} }) {
+    Object.assign(this, { code, send, broadcast, onChange, onResult });
     this.title = title || '즐거운 크레이지아케이드';
     this.mode = 'team'; // 'team' or 'solo'
     this.mapId = DEFAULT_MAP;
@@ -44,7 +47,7 @@ export class RoomCore {
     return {
       code: this.code, title: this.title, mode: this.mode, map: this.mapId, host: this.host, phase: this.phase,
       slots: this.slots.map((s) => ({ open: s.open, id: s.id })),
-      members: [...this.members.values()].map(({ id, name, char, color, ready, bot, slot, look }) => ({ id, name, char, color, ready, bot, slot, look })),
+      members: [...this.members.values()].map(({ id, name, char, color, ready, bot, slot, look, exp }) => ({ id, name, char, color, ready, bot, slot, look, lv: exp == null ? null : levelOf(exp) })),
     };
   }
 
@@ -61,13 +64,15 @@ export class RoomCore {
 
   freeSlot() { return this.slots.findIndex((s) => s.open && s.id === null); }
 
-  join(id, name) {
+  // acct: { key, exp } for a player signed in to an account (their rank shows; games count).
+  join(id, name, acct = null) {
     if (this.phase !== 'room') return { error: 'playing' };
     const slot = this.freeSlot();
     if (slot < 0) return { error: 'full' };
     // A colour nobody uses yet, so a fresh room starts as a free-for-all of distinct teams.
     const color = this.newColor();
-    const m = { id, name: String(name || '플레이어').slice(0, 10), char: CHARACTERS[slot % 4].id, color, ready: false, bot: false, slot };
+    const m = { id, name: String(name || '플레이어').slice(0, 10), char: CHARACTERS[slot % 4].id, color, ready: false, bot: false, slot,
+      acct: acct ? acct.key : null, exp: acct ? acct.exp : null };
     this.members.set(id, m);
     this.slots[slot].id = id;
     if (!this.host) this.host = id;
@@ -225,9 +230,9 @@ export class RoomCore {
     const map = MAPS.find((x) => x.id === this.mapId) || MAPS[0];
     const seed = (Math.random() * 2 ** 31) | 0;
     const list = this.players().map((m) => ({ id: m.id, name: m.name, char: m.char, color: m.color,
-      team: this.mode === 'team' ? m.color : m.slot, bot: m.bot, look: m.look || null }));
+      team: this.mode === 'team' ? m.color : m.slot, bot: m.bot, look: m.look || null, lv: m.exp == null ? null : levelOf(m.exp) }));
     this.game = createGame({ map, players: list, seed, mode: this.mode });
-    this.phase = 'game';
+    this.phase = 'game'; this.decided = false;
     this.inputs.clear(); this.bots.clear();
     for (const m of this.members.values()) if (m.bot) this.bots.set(m.id, new Bot(m.id));
     this.lastObjs = null;
@@ -270,8 +275,21 @@ export class RoomCore {
       const inp = this.inputs.get(m.id);
       this.send(m.id, { t: 's', ...snap, a: inp ? inp.ct : 0 });
     }
+    if (g.result && !this.decided) {
+      this.decided = true;
+      const list = [];
+      for (const p of g.players) {
+        const m = this.members.get(p.id);
+        if (!m || m.bot || !m.acct) continue;
+        list.push({ id: p.id, acct: m.acct, kills: p.kills, result: g.result.draw ? 'draw' : p.team === g.result.team ? 'win' : 'lose' });
+      }
+      if (list.length) this.onResult(list);
+    }
     if (isOver(g)) this.endGame();
   }
+
+  // A player's experience after the server gave it (their rank shows to everyone).
+  setExp(id, exp) { const m = this.members.get(id); if (m) { m.exp = exp; if (this.phase === 'room') this.changed(); } }
 }
 
 export const mapById = (id) => MAPS.find((m) => m.id === id) || MAPS[0];

@@ -13,3 +13,8 @@ script_name = "taebo-crazyarcade-server"
 name = "LOBBY"
 class_name = "Lobby"
 script_name = "taebo-crazyarcade-server"
+
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "Accounts"
+script_name = "taebo-crazyarcade-server"

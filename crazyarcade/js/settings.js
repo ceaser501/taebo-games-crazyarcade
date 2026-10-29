@@ -2,6 +2,7 @@
 // how the game screen shows the map (all of it, or bigger with the camera on my character).
 // Kept in this browser; the sound switches live in audio.js.
 import { sfx, musicOn, soundOn, toggleMusic, toggleSound } from './audio.js';
+import * as Account from './account.js';
 
 const $ = (id) => document.getElementById(id);
 const KEY = 'ca-settings';
@@ -32,7 +33,12 @@ export function showSettings(onClose) {
     sw('set-music', musicOn());
     sw('set-sound', soundOn());
     for (const b of document.querySelectorAll('#set-view button')) b.classList.toggle('on', b.dataset.view === viewMode());
+    $('set-account').textContent = Account.signedIn() ? `${Account.name()} · Lv.${Account.rank().level}` : '계정 없이 하는 중 (계급 없음)';
+    $('set-signout').textContent = Account.signedIn() ? '다른 이름으로' : '계정 만들기';
+    $('set-signout').hidden = document.body.classList.contains('canvas-mode'); // not in the middle of a game
   };
+  // Signs out and starts over at the nickname screen (any phone gets back in with name and PIN).
+  $('set-signout').onclick = () => { Account.signOut(); location.reload(); };
   $('set-music').onclick = () => { toggleMusic(); sfx('Bt_c_Pop', 0.6); render(); };
   $('set-sound').onclick = () => { toggleSound(); sfx('Bt_c_Pop', 0.6); render(); };
   for (const b of document.querySelectorAll('#set-view button')) b.onclick = () => { setViewMode(b.dataset.view); sfx('Bt_c_Pop', 0.6); render(); };

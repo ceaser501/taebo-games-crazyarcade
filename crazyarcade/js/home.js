@@ -7,6 +7,8 @@ import { playMusic, sfx } from './audio.js';
 import { showSettings } from './settings.js';
 import { CHARACTERS, charById } from './shared/const.js';
 import * as W from './wallet.js';
+import * as Account from './account.js';
+import { drawRank } from './rank.js';
 
 const $ = (id) => document.getElementById(id);
 const INTRO_CHARS = ['C00', 'C06', 'C01', 'C04', 'C05'];
@@ -63,18 +65,37 @@ export function introReady(onTap) {
   window.addEventListener('keydown', (e) => { if (!$('intro').hidden && (e.key === 'Enter' || e.key === ' ')) go(); });
 }
 
-// ---- first visit: a nickname
-export function askName(onDone) {
+// ---- sign up or in: the nickname is the ID, with a 4-digit PIN. A name already taken asks for
+// its PIN (the same person on another phone); onDone(true) when playing on without the server.
+export function askName(prefill, onDone) {
   $('signup').hidden = false;
-  const input = $('signup-name');
-  setTimeout(() => input.focus(), 50);
-  $('signup-form').onsubmit = (e) => {
+  const input = $('signup-name'), pin = $('signup-pin'), msg = $('signup-msg');
+  if (prefill && !input.value) input.value = prefill;
+  setTimeout(() => (input.value ? pin : input).focus(), 50);
+  $('signup-offline').onclick = () => { $('signup').hidden = true; onDone(true); };
+  $('signup-form').onsubmit = async (e) => {
     e.preventDefault();
     const name = input.value.trim().slice(0, 10);
     if (!name) { input.focus(); return; }
-    $('signup').hidden = true;
-    sfx('Bt_c_Success', 0.7);
-    onDone(name);
+    if (!/^\d{4}$/.test(pin.value)) { msg.textContent = '비밀번호는 숫자 4자리예요.'; pin.focus(); return; }
+    $('signup-go').disabled = true; msg.textContent = '확인하는 중…';
+    const r = await Account.enter(name, pin.value);
+    $('signup-go').disabled = false;
+    if (r.ok) {
+      $('signup').hidden = true;
+      sfx('Bt_c_Success', 0.7);
+      onDone(false, r.created);
+      return;
+    }
+    pin.value = '';
+    msg.textContent = {
+      taken: '이미 있는 닉네임이에요. 내 닉네임이라면 비밀번호를 다시 확인해 주세요.',
+      locked: '비밀번호가 여러 번 틀렸어요. 5분 뒤에 다시 해 주세요.',
+      name: '닉네임을 확인해 주세요.',
+      pin: '비밀번호는 숫자 4자리예요.',
+      offline: '서버에 연결할 수 없어요. 잠시 뒤에 다시 하거나, 계급 없이 할 수 있어요.',
+    }[r.error] || '다시 해 주세요.';
+    $('signup-offline').hidden = r.error !== 'offline';
   };
 }
 
@@ -83,7 +104,7 @@ export function showHome(app) {
   $('home').hidden = false;
   playMusic('StageLogin');
   const ch = W.myChar();
-  $('home-name').value = app.name;
+  homeRank(app);
   $('home-charname').textContent = charById(ch).name;
   const st = W.stats();
   $('home-lucci').textContent = `${W.lucci().toLocaleString()}`;
@@ -101,15 +122,26 @@ export function showHome(app) {
     };
     requestAnimationFrame(loop);
   });
-  $('home-name').onchange = () => {
-    const name = $('home-name').value.trim().slice(0, 10);
-    if (name) app.setName(name); else $('home-name').value = app.name;
-  };
   $('home-play').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toMenu(); };
   $('home-shop').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toShop('home'); };
   $('home-chars').onclick = $('home-figure').onclick = () => pickChar(app, () => showHome(app));
   $('home-settings').onclick = () => { sfx('Bt_c_Pop', 0.6); showSettings(); };
 }
+// My name, rank, level and experience towards the next one.
+export function homeRank(app) {
+  $('home-name').textContent = app.name;
+  const r = Account.rank();
+  $('home-rank').hidden = !Account.signedIn();
+  $('home-lv').textContent = `Lv.${r.level}`;
+  $('home-exp-bar').style.width = r.need ? `${Math.round((r.into / r.need) * 100)}%` : '100%';
+  $('home-exp').textContent = r.need ? `${r.into} / ${r.need}` : 'MAX';
+  A.loadGroup('rank').then(() => {
+    const c = $('home-rank-icon').getContext('2d');
+    c.clearRect(0, 0, 48, 42);
+    drawRank(c, r.level, 0, 0, 3);
+  });
+}
+
 export function hideHome() { $('home').hidden = true; $('char-pick').hidden = true; }
 export const isHomeShown = () => !$('home').hidden;
 

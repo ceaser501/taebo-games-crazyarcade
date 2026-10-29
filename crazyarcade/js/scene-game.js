@@ -11,6 +11,8 @@ import { createGame, walk, carry, cellOf, DIR_NAMES, DIRS, PUSH_SLIDE } from './
 import { mapById } from './shared/room.js';
 import * as Wallet from './wallet.js';
 import { viewMode, showSettings, settingsShown } from './settings.js';
+import * as Account from './account.js';
+import { drawRank } from './rank.js';
 
 const WW = COLS * TILE, WH = ROWS * TILE; // the map in world pixels (600×520)
 const INTERP = 4; // ticks others are drawn behind the server clock (smooths uneven arrival)
@@ -40,6 +42,7 @@ export class GameScene {
     this.floorCanvas = null;
     // Shop decorations each player wears: { hat, bomb, pet } by player id; pets trail behind.
     this.looks = new Map(start.players.map((p) => [p.id, p.look || {}]));
+    this.levels = new Map(start.players.map((p) => [p.id, p.lv || 0])); // ranks of signed-in players
     this.trails = new Map();
     this.ready = this.load();
     input.enable(true);
@@ -49,7 +52,7 @@ export class GameScene {
   async load() {
     const chars = [...new Set(this.g.players.map((p) => p.char))];
     Wallet.loadLook({}).then(() => Promise.all([...this.looks.values()].map((l) => Wallet.loadLook(l))));
-    await Promise.all([...this.map.sets.map((t) => A.loadGroup(`tile_${t}`)), A.loadGroup('game'), A.loadBg('game'), ...chars.map((c) => A.loadGroup(`char_${c}`))]);
+    await Promise.all([...this.map.sets.map((t) => A.loadGroup(`tile_${t}`)), A.loadGroup('game'), A.loadGroup('rank'), A.loadBg('game'), ...chars.map((c) => A.loadGroup(`char_${c}`))]);
     this.buildFloor();
     playMusic(this.map.bgm);
     sfx('Ntc_GameStart');
@@ -150,6 +153,11 @@ export class GameScene {
         this.endAt = performance.now();
         // Lucci: the coins picked up this round plus a bonus by the result.
         if (mine && !this.paid) { this.paid = (mine.lucci || 0) + Wallet.ROUND_BONUS[this.result]; Wallet.earn(this.paid); Wallet.record(this.result, mine.kills); }
+        // Experience: online the room server sends it ('exp'); against the computer we report it.
+        if (mine && this.app.practiceMode && !this.expAsked) {
+          this.expAsked = true;
+          Account.practiceDone(this.result, mine.kills).then((r) => { if (r) this.expGained = r.gained; });
+        }
         stopMusic();
         playMusic(this.result === 'win' ? 'Ntc_Win' : this.result === 'lose' ? 'Ntc_Lose' : 'Ntc_Draw');
         break;
@@ -511,6 +519,7 @@ export class GameScene {
     if (g.phase === 'end' && this.result) {
       const s = this.result === 'win' ? 'Game/Win' : this.result === 'lose' ? 'Game/Lose' : 'Game/Draw';
       if (this.paid && now - this.endAt > 900) text(`+${this.paid.toLocaleString()} 루찌`, cx, cy + 70, { size: 20, bold: true, align: 'center', color: '#ffe23a', shadow: '#5a2a00' });
+      if (this.expGained && now - this.endAt > 1200) text(`+${this.expGained} 경험치`, cx, cy + 96, { size: 18, bold: true, align: 'center', color: '#8ff0ff', shadow: '#02306b' });
       if (!word(s, this.endAt)) text(this.result === 'win' ? 'WIN!' : this.result === 'lose' ? 'LOSE' : 'DRAW', cx, cy, { size: 48, bold: true, align: 'center', color: '#ffe23a', shadow: '#5a2a00' });
     }
   }
@@ -538,7 +547,9 @@ export class GameScene {
       A.drawChar(c, p.char, dead ? 'PortraitDie' : 'Portrait', dead ? Math.floor(now / 200) % 4 : 0, 0, 0, p.color, dead ? 0.5 : 1);
       c.restore();
       c.fillStyle = TEAMS[p.color]?.css || '#888'; c.fillRect(lx + 33, ry + 8, 6, 10);
-      text(p.name, lx + 44, ry + 17, { size: 12, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - 76 });
+      const lv = this.levels.get(p.id), nx = lv ? lx + 62 : lx + 44;
+      if (lv) drawRank(c, lv, lx + 43, ry + 5);
+      text(p.name, nx, ry + 17, { size: 12, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - (nx - lx) - 32 });
       text(p.state === 'trapped' ? '갇힘' : `${p.kills}`, lx + lw - 8, ry + 17, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : '#9cf', align: 'right' });
     });
     // Exit, map name, my items.
@@ -583,7 +594,9 @@ export class GameScene {
     g.players.forEach((p, i) => {
       const ry = top + 3 + i * rowH, dead = p.state === 'dead';
       c.fillStyle = TEAMS[p.color]?.css || '#888'; c.fillRect(11, ry + 4, 5, 10);
-      text(p.name, 21, ry + 14, { size: 11, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - 50, shadow: '#000' });
+      const lv = this.levels.get(p.id), nx = lv ? 38 : 21;
+      if (lv) drawRank(c, lv, 20, ry + 2);
+      text(p.name, nx, ry + 14, { size: 11, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - nx - 26, shadow: '#000' });
       text(dead ? '-' : p.state === 'trapped' ? '갇힘' : `${p.kills}`, lw, ry + 14, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : '#cfe8ff', align: 'right', shadow: '#000' });
     });
     // Settings and exit.

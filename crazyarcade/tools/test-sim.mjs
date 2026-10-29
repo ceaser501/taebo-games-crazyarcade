@@ -5,6 +5,8 @@ import { createGame, step, isOver } from '../js/shared/sim.js';
 import { Bot } from '../js/shared/ai.js';
 import { RoomCore } from '../js/shared/room.js';
 import { HZ } from '../js/shared/const.js';
+import { AccountsCore } from '../js/shared/accounts.js';
+import { levelOf, expFor, rankParts, MAX_LEVEL } from '../js/shared/level.js';
 
 let bad = 0;
 for (const map of MAPS) {
@@ -111,5 +113,37 @@ room.message('h', { t: 'start' });
 if (room.phase !== 'game') { bad++; console.log('room did not start'); }
 for (let i = 0; i < HZ * 200 && room.phase === 'game'; i++) room.tick();
 if (room.phase !== 'room') { bad++; console.log('round did not end'); }
+
+// Accounts: a name is taken by its first PIN; the same name and PIN work from another phone.
+{
+  const data = new Map();
+  const acc = new AccountsCore({ get: async (k) => data.get(k), put: async (k, v) => { data.set(k, v); } });
+  const a = await acc.enter(' 태수 ', '1234');
+  check(a.token && a.created && a.name === '태수' && a.level === 1, `sign up ${JSON.stringify(a)}`);
+  check((await acc.enter('태수', '9999')).error === 'taken', 'someone else cannot take the name');
+  const b = await acc.enter('태수', '1234');
+  check(b.token && !b.created && b.token !== a.token, 'same name and PIN from another phone');
+  check((await acc.enter('', '1234')).error === 'name' && (await acc.enter('x', '12a4')).error === 'pin', 'bad name or PIN');
+  const u = await acc.user(b.token);
+  const w = await acc.award(u.key, 50);
+  check(w.exp === 50 && (await acc.me(a.token)).exp === 50, 'experience is kept for the name');
+  const p1 = await acc.practice(a.token, 'win', 2), p2 = await acc.practice(a.token, 'win', 2);
+  check(p1.gained === 19 && p2.gained === 0, `practice paced (${p1.gained}, ${p2.gained})`);
+  for (let i = 0; i < 5; i++) await acc.enter('태수', '0000');
+  check((await acc.enter('태수', '1234')).error === 'locked', 'wrong PINs lock the name for a while');
+  check((await acc.guestName('태수')) === '태수(손님)' && (await acc.guestName('나그네')) === '나그네', 'guests cannot show a registered name');
+  check(levelOf(0) === 1 && levelOf(expFor(10)) === 10 && levelOf(expFor(10) - 1) === 9 && levelOf(1e9) === MAX_LEVEL, 'levels');
+  check(rankParts(1) === null && rankParts(2).length === 3 && rankParts(MAX_LEVEL)[0] === 79, 'rank icon parts');
+}
+// A round decided in a room reports each signed-in player's result.
+{
+  let got = null;
+  const r = new RoomCore({ code: '1', send: () => {}, broadcast: () => {}, onResult: (l) => { got = l; } });
+  r.join('h', 'H', { key: 'u:h', exp: 0 });
+  r.message('h', { t: 'bot' });
+  r.message('h', { t: 'start' });
+  for (let i = 0; i < HZ * 300 && r.phase === 'game'; i++) r.tick();
+  check(got && got.length === 1 && got[0].acct === 'u:h' && ['win', 'lose', 'draw'].includes(got[0].result), `room result ${JSON.stringify(got)}`);
+}
 console.log(`${MAPS.length} maps, ${bad ? bad + ' problems' : 'all fine'}`);
 process.exit(bad ? 1 : 0);

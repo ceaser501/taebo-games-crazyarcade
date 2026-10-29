@@ -58,11 +58,15 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
 }
 .card h2 { margin: 0 0 6px; font-size: 22px; color: #ffe95a; text-shadow: 0 2px 0 #021a50; }
 .card p { margin: 0 0 14px; color: #d6efff; font-size: 14px; }
-#signup-name, #home-name {
+#signup-name, #signup-pin {
   font: 800 18px "Nanum Gothic", sans-serif; padding: 10px 12px; border-radius: 10px; border: 2px solid #9fe0ff;
   width: 100%; box-sizing: border-box; color: #0b2a5a; background: #fff; user-select: text; -webkit-user-select: text;
 }
-#signup-name { margin-bottom: 14px; text-align: center; }
+#signup-name, #signup-pin { margin-bottom: 10px; text-align: center; }
+#signup-pin { letter-spacing: 6px; }
+#signup-pin:placeholder-shown { letter-spacing: 0; }
+#signup-msg { min-height: 1.2em; margin: 0 0 10px; color: #ffe58a; font-weight: 800; word-break: keep-all; }
+#signup-offline { margin-top: 10px; }
 .big-btn {
   font: 800 20px "Nanum Gothic", sans-serif; color: #fff; padding: 14px 34px; border-radius: 14px; cursor: pointer;
   border: 3px solid #fff3a0; background: linear-gradient(180deg, #ffcf3a, #ff8a00); text-shadow: 0 2px 0 #9a4a00;
@@ -86,7 +90,17 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
 #home-charname { position: absolute; left: 6px; top: 5px; font-size: 13px; font-weight: 800; color: #4a2a00; background: #ffd23a; border-radius: 999px; padding: 2px 9px; }
 .home-name { display: flex; align-items: center; gap: 8px; font-weight: 800; color: #bfe6ff; }
 .home-name span { white-space: nowrap; }
-#home-name { font-size: 16px; padding: 7px 10px; }
+#home-name { font-size: 18px; color: #fff; }
+#home-rank { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 8px; background: rgba(0, 20, 70, 0.45); border-radius: 8px; padding: 4px 9px; }
+#home-rank canvas { width: 32px; height: 28px; image-rendering: pixelated; }
+#home-lv { font-size: 16px; color: #ffe95a; }
+#home-rank .exp { height: 10px; border-radius: 5px; background: rgba(0, 0, 0, 0.45); overflow: hidden; border: 1px solid rgba(159, 224, 255, 0.5); }
+#home-rank .exp i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #5fe0ff, #ffe95a); }
+#home-rank small { font-size: 11px; color: #9fd0f5; white-space: nowrap; }
+canvas.rank { image-rendering: pixelated; flex: none; }
+#levelup { position: fixed; inset: 0; z-index: 14; background: rgba(0, 8, 30, 0.82); display: flex; flex-direction: column; align-items: center; }
+#levelup canvas { flex: 1; width: 100%; min-height: 0; }
+#levelup p { margin: 0 0 14px; color: #cfe8ff; font-weight: 800; font-size: 14px; }
 #home-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 0; }
 #home-stats div { background: rgba(0, 20, 70, 0.45); border-radius: 8px; padding: 5px 9px; }
 #home-stats dt { font-size: 11px; color: #9fd0f5; }
@@ -302,3 +316,5 @@ input.over { background: rgba(255, 255, 255, 0.92); color: #123; border-radius: 
 #set-view button.on small { color: #6a4a10; }
 #set-close { align-self: center; padding: 8px 40px; font-size: 18px; }
 @media (max-height: 460px) and (orientation: landscape) { .set-card { width: min(560px, 100%); gap: 7px; padding: 10px 16px 12px; } .set-card h2 { font-size: 20px; } .set-row { padding: 5px 12px; } }
+
+.seat .who b canvas.rank { width: 16px; height: 14px; margin-right: 4px; vertical-align: -2px; }

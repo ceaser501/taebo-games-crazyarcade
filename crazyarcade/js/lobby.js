@@ -10,6 +10,7 @@ import { RED, BLUE } from './shared/room.js';
 import * as W from './wallet.js';
 import { pickChar } from './home.js';
 import { mapButton, pickMap, mapById } from './map-pick.js';
+import { rankCanvas } from './rank.js';
 
 const $ = (id) => document.getElementById(id);
 const click = () => sfx('Bt_c_Pop', 0.6);
@@ -85,7 +86,9 @@ export function renderLobby(app) {
       portrait(cv, m);
       const who = document.createElement('div');
       who.className = 'who';
-      who.append(Object.assign(document.createElement('b'), { textContent: m.name }), Object.assign(document.createElement('small'), { textContent: charById(m.char).name }));
+      const nameRow = Object.assign(document.createElement('b'), { textContent: m.name });
+      if (m.lv) nameRow.prepend(rankCanvas(m.lv, 1));
+      who.append(nameRow, Object.assign(document.createElement('small'), { textContent: m.lv ? `Lv.${m.lv} · ${charById(m.char).name}` : charById(m.char).name }));
       el.append(cv, who);
       const tag = m.id === room.host ? '방장' : m.id === app.me ? '나' : m.bot ? '컴퓨터' : '';
       if (tag) el.append(Object.assign(document.createElement('em'), { textContent: tag }));

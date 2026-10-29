@@ -28,12 +28,12 @@ function playerId() {
 }
 
 export class Online {
-  constructor(code, name) {
-    this.code = code; this.name = name; this.handlers = []; this.rtt = 120; this.closed = false; this.tries = 0;
+  constructor(code, name, token = null) {
+    this.code = code; this.name = name; this.token = token; this.handlers = []; this.rtt = 120; this.closed = false; this.tries = 0;
     this.open();
   }
   open() {
-    const ws = new WebSocket(`${wsBase()}/api/room/${this.code}?name=${encodeURIComponent(this.name)}&pid=${playerId()}`);
+    const ws = new WebSocket(`${wsBase()}/api/room/${this.code}?name=${encodeURIComponent(this.name)}&pid=${playerId()}${this.token ? `&token=${this.token}` : ''}`);
     this.ws = ws;
     ws.onopen = () => { this.tries = 0; this.emit({ t: 'open' }); };
     ws.onmessage = (e) => {
@@ -57,7 +57,7 @@ export class Online {
 }
 
 export class Practice {
-  // opts: { mode: 'team'|'solo', bots: number of computer players, map }.
+  // opts: { mode: 'team'|'solo', bots: number of computer players, map, exp: my experience (shows my rank) }.
   constructor(name, opts = {}) {
     this.handlers = []; this.rtt = 0; this.me = 'me';
     this.room = new RoomCore({
@@ -68,7 +68,7 @@ export class Practice {
     this.timer = setInterval(() => this.room.tick(), 1000 / HZ);
     queueMicrotask(() => {
       this.emit({ t: 'open' });
-      this.room.join(this.me, name);
+      this.room.join(this.me, name, opts.exp != null ? { key: null, exp: opts.exp } : null);
       this.room.message(this.me, { t: 'settings', mode: opts.mode || 'team', map: opts.map });
       for (let i = 0; i < (opts.bots ?? 1); i++) this.room.message(this.me, { t: 'bot' });
       // Start once the page has answered the welcome with our character and decorations.

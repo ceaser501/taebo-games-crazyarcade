@@ -36,10 +36,13 @@
   <!-- First visit: a nickname is all the sign-up there is; it is remembered on this phone. -->
   <div id="signup" hidden>
     <form id="signup-form" class="card">
-      <h2>닉네임을 정해 주세요</h2>
-      <p>처음 한 번만 정하면 다음부터는 바로 들어가요.</p>
-      <input id="signup-name" type="text" maxlength="10" placeholder="닉네임 (10자까지)" autocomplete="nickname">
-      <button type="submit" class="big-btn">시작하기</button>
+      <h2>닉네임과 비밀번호</h2>
+      <p>닉네임이 곧 아이디예요. 다른 폰에서도 같은 닉네임과 비밀번호로 계급을 이어서 할 수 있어요.</p>
+      <input id="signup-name" type="text" maxlength="10" placeholder="닉네임 (10자까지)" autocomplete="username">
+      <input id="signup-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="비밀번호 숫자 4자리" autocomplete="current-password">
+      <p id="signup-msg" class="msg"></p>
+      <button type="submit" class="big-btn" id="signup-go">시작하기</button>
+      <button type="button" class="chip" id="signup-offline" hidden>그냥 하기 (계급 없이)</button>
     </form>
   </div>
 
@@ -49,7 +52,8 @@
     <section id="home-card">
       <button type="button" class="home-figure" id="home-figure" aria-label="캐릭터 바꾸기"><canvas id="home-char" width="180" height="180"></canvas><span id="home-charname"></span></button>
       <div class="home-info">
-        <label class="home-name"><span>내 이름</span><input id="home-name" type="text" maxlength="10" autocomplete="nickname"></label>
+        <div class="home-name"><span>내 이름</span><b id="home-name"></b></div>
+        <div id="home-rank"><canvas id="home-rank-icon" width="48" height="42"></canvas><b id="home-lv"></b><div class="exp"><i id="home-exp-bar"></i></div><small id="home-exp"></small></div>
         <dl id="home-stats">
           <div><dt>루찌</dt><dd id="home-lucci">-</dd></div>
           <div><dt>전적</dt><dd id="home-record">-</dd></div>
@@ -162,9 +166,13 @@
           <button type="button" data-view="fill"><b>꽉 찬 화면</b><small>여백 없이 가득</small></button>
         </div>
       </div>
+      <div class="set-row"><span id="set-account"></span><button type="button" id="set-signout" class="chip">다른 이름으로</button></div>
       <button type="button" id="set-close" class="big-btn">확인</button>
     </div>
   </div>
+
+  <!-- Level up: the client's LEVEL UP badge over a sunburst, then the new rank. -->
+  <div id="levelup" hidden><canvas id="levelup-canvas"></canvas><p>화면을 누르면 닫혀요</p></div>
 
   <!-- Map choice, in the style of the client's 맵 선택하기 dialog. -->
   <div id="map-pick" hidden>
