@@ -264,7 +264,9 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 .chatbox .say input { flex: 1; min-width: 0; font: 700 15px "Nanum Gothic", sans-serif; border: 0; border-radius: 10px; padding: 9px 12px; background: rgba(255, 255, 255, 0.94); color: #102040; }
 .chatbox .say button { font: 900 15px "Nanum Gothic", sans-serif; color: #fff; padding: 0 16px; border-radius: 10px; background: #1a6ee8; border: 2px solid #c8ecff; cursor: pointer; }
 #game-chat { position: fixed; z-index: 4; margin: 0; }
-#game-chat input { width: 100%; box-sizing: border-box; font: 700 13px "Nanum Gothic", sans-serif; border: 2px solid #7fd4ff; border-radius: 8px; padding: 5px 8px; background: rgba(255, 255, 255, 0.95); color: #102040; }
+#game-chat textarea { display: block; width: 100%; box-sizing: border-box; resize: none; overflow-y: auto; font: 700 13px/1.35 "Nanum Gothic", sans-serif; border: 2px solid #7fd4ff; border-radius: 8px;
+  padding: 5px 4.4em 5px 8px; background: rgba(255, 255, 255, 0.95); color: #102040; }
+#game-chat .enter { position: absolute; right: 0.5em; bottom: 0.45em; font: 800 0.8em "Nanum Gothic", sans-serif; color: #fff; background: #1a6ee8; border-radius: 6px; padding: 0.15em 0.5em; pointer-events: none; }
 
 /* ---- waiting room on wide screens (PC): seats in rows of four with whole figures, the map,
    characters and start on the right, the chat under the seats ---- */

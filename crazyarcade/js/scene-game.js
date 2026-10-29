@@ -20,7 +20,7 @@ import { fanfareSound } from './fanfare.js';
 const WW = COLS * TILE, WH = ROWS * TILE; // the map in world pixels (600×520)
 const INTERP = 4; // ticks others are drawn behind the server clock (smooths uneven arrival)
 // Speech bubbles: the game's navy, see-through so the map shows behind.
-const BUBBLE = { bg: 'rgba(2, 22, 70, 0.6)', line: 'rgba(127, 212, 255, 0.9)', ink: '#ffffff' };
+const BUBBLE = { bg: 'rgba(2, 22, 70, 0.4)', line: 'rgba(127, 212, 255, 0.75)', ink: '#ffffff' };
 const HORROR = /^(Tomb|Cemetery|DarkCastle)/i, DARK_SECONDS = 60; // maps that go dark near the end
 
 // Flame/Flame states FireL01..FireL10 (left arm; up, right and down add 1, 2, 3): row n is the
@@ -62,7 +62,9 @@ export class GameScene {
   chatKeys() {
     const form = document.getElementById('game-chat'), box = document.getElementById('game-chat-input');
     this.chatInput = box;
-    const close = () => { form.hidden = true; box.value = ''; box.blur(); };
+    const close = () => { form.hidden = true; box.value = ''; box.blur(); this.chatH = 0; };
+    // Grows with what is typed, up to three lines (then it scrolls).
+    box.oninput = () => this.placeChat();
     this.closeChat = close;
     form.onsubmit = (e) => e.preventDefault();
     box.onkeydown = (e) => {
@@ -91,8 +93,15 @@ export class GameScene {
     if (form.hidden || !this.chatRect) return;
     const r = stage.canvas.getBoundingClientRect(), { x, y, w, h } = this.chatRect;
     const u = this.hudScale || 1;
-    Object.assign(form.style, { left: `${r.left + x + 4 * u}px`, top: `${r.top + y + h - 32 * u}px`, width: `${w - 8 * u}px` });
-    this.chatInput.style.fontSize = `${Math.round(13 * u)}px`;
+    const box = this.chatInput, fs = Math.round(13 * u);
+    form.style.fontSize = `${fs}px`; box.style.fontSize = `${fs}px`;
+    form.style.width = `${w - 8 * u}px`;
+    box.style.height = 'auto';
+    const line = fs * 1.35, pad = box.offsetHeight - box.clientHeight + 10;
+    box.style.height = `${Math.min(box.scrollHeight + (box.offsetHeight - box.clientHeight), line * 3 + pad)}px`;
+    const fh = form.offsetHeight;
+    this.chatH = fh / u; // the chat list keeps clear of it
+    Object.assign(form.style, { left: `${r.left + x + 4 * u}px`, top: `${r.top + y + h - fh - 6 * u}px` });
   }
 
   // The chat list: newest line at the bottom, older ones moving up and out of the panel.
@@ -101,7 +110,7 @@ export class GameScene {
     const typing = !document.getElementById('game-chat').hidden;
     c.fillStyle = `rgba(2, 22, 70, ${alpha})`; roundRect(c, x, y, w, h, 9); c.fill();
     c.strokeStyle = 'rgba(127, 212, 255, 0.5)'; c.lineWidth = 1.2; c.stroke();
-    const lh = Math.round(size * 1.4), bottom = y + h - (typing ? 36 : hint ? 20 : 6);
+    const lh = Math.round(size * 1.4), bottom = y + h - (typing ? (this.chatH || 30) + 16 : hint ? 20 : 6);
     c.save(); c.beginPath(); c.rect(x + 2, y + 2, w - 4, bottom - y); c.clip();
     c.font = `bold ${size}px ${FONT}`;
     let ly = bottom;
@@ -466,10 +475,10 @@ export class GameScene {
 
   // A speech bubble: rounded, with a small tail to the speaker, popping in and fading out.
   drawBubble(c, p, v, l, now) {
-    const style = BUBBLE, size = 13, lh = 16;
+    const style = BUBBLE, size = 11, lh = 14;
     c.font = `800 ${size}px ${FONT}`;
-    const rows = wrap(c, l.text, 140, size).slice(0, 3);
-    const bw = Math.max(...rows.map((r) => c.measureText(r).width)) + 18, bh = rows.length * lh + 10;
+    const rows = wrap(c, l.text, 130, size).slice(0, 3);
+    const bw = Math.max(...rows.map((r) => c.measureText(r).width)) + 16, bh = rows.length * lh + 8;
     // Over the name, or under the feet when the player is at the map's top edge.
     const below = v.y - 70 - bh < 2;
     const bx = Math.max(2, Math.min(WW - bw - 2, v.x - bw / 2)), by = below ? v.y + 12 : v.y - 70 - bh;
@@ -495,7 +504,7 @@ export class GameScene {
       c.arcTo(bx, by + bh, bx, by, r); c.arcTo(bx, by, bx + bw, by, r); c.lineTo(t0, by); c.lineTo(tx, tip);
     }
     c.closePath(); c.stroke();
-    rows.forEach((row, i) => text(row, bx + bw / 2, by + 5 + lh * 0.82 + i * lh, { size, bold: true, color: style.ink, align: 'center' }));
+    rows.forEach((row, i) => text(row, bx + bw / 2, by + 4 + lh * 0.82 + i * lh, { size, bold: true, color: style.ink, align: 'center', shadow: 'rgba(0, 0, 0, 0.55)' }));
     c.restore();
   }
 
