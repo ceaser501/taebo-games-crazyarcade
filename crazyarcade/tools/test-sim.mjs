@@ -205,6 +205,22 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   check(said.length === 5 && said[0].name === 'A' && said[0].text === 'hi 0', `chat lines ${JSON.stringify(said)}`);
   check(lines.some((l) => l.id === null && !l.name), 'chat notices have no sender');
 }
+// Two players start far apart: on every map, over many seeds, never closer than half the
+// farthest any two start points are.
+{
+  let close = 0;
+  for (const map of MAPS) {
+    const sp = map.spawns;
+    let widest = 0;
+    for (const a of sp) for (const b of sp) widest = Math.max(widest, Math.hypot(a[0] - b[0], a[1] - b[1]));
+    for (let seed = 1; seed <= 20; seed++) {
+      const g = createGame({ map, players: [{ id: 'a', char: 'C00', team: 0 }, { id: 'b', char: 'C00', team: 5 }], seed });
+      const [p, q] = g.players;
+      if (Math.hypot(p.x - q.x, p.y - q.y) / 40 < widest / 2) { close++; if (close < 4) console.log(`close start on ${map.id}`); }
+    }
+  }
+  check(close === 0, `${close} close starts`);
+}
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {
   const css = (await import('node:fs')).readFileSync(new URL('../css/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

@@ -400,6 +400,8 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 #map-list button small { font-size: 10px; color: #9fd0f5; }
 #map-list button.sel { border-color: #ffe95a; background: rgba(255, 220, 60, 0.3); }
 #map-list button.full { opacity: 0.45; }
+#map-list button.random { color: #ffe95a; }
+#map-list button.random canvas { object-fit: cover; }
 #map-detail { position: absolute; inset: 52px 12px 10px 132px; border-radius: 14px; background: rgba(2, 22, 70, 0.94); border: 3px solid #ffe95a; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; padding: 12px 16px; align-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); }
 #map-detail[hidden] { display: none; }
 #map-big { width: 220px; height: 190px; border-radius: 8px; image-rendering: pixelated; background: #0a3a8a; }

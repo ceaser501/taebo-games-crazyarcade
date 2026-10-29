@@ -85,7 +85,15 @@ export function pickMap(current, need, onPick) {
   };
   const list = () => {
     for (const b of $('map-themes').children) b.classList.toggle('on', b.dataset.theme === theme);
-    $('map-list').replaceChildren(...MAPS.filter((m) => themeOf(m.id) === theme).map((m) => {
+    // First, the client's own 랜덤 card (the big question mark): any map at all, taken at once.
+    const rnd = document.createElement('button');
+    rnd.type = 'button'; rnd.className = 'random';
+    const rc = document.createElement('canvas');
+    rc.width = 148; rc.height = 128;
+    A.loadGroup('ui').then(() => { const c = rc.getContext('2d'); c.imageSmoothingEnabled = false; A.drawAt(c, 'Theme/Random', 0, 0, 0); });
+    rnd.append(rc, document.createTextNode('랜덤'), Object.assign(document.createElement('small'), { textContent: '아무 맵이나' }));
+    rnd.onclick = random;
+    $('map-list').replaceChildren(rnd, ...MAPS.filter((m) => themeOf(m.id) === theme).map((m) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.dataset.id = m.id;
@@ -110,13 +118,14 @@ export function pickMap(current, need, onPick) {
   const close = () => { $('map-pick').hidden = true; };
   $('map-ok').onclick = () => { sfx('Bt_c_Success', 0.6); close(); onPick(sel); };
   $('map-back').onclick = () => { click(); $('map-detail').hidden = true; };
-  $('map-random').onclick = () => {
+  function random() {
     const ok = MAPS.filter((m) => m.spawns.length >= need);
     // Any map of any theme that fits everyone, taken at once (a different one from now).
     const others = ok.filter((m) => m.id !== mapById(current).id);
     const m = (others.length ? others : ok)[Math.floor(Math.random() * (others.length || ok.length))] || MAPS[0];
     sfx('Bt_c_Success', 0.6); close(); onPick(m.id);
-  };
+  }
+  $('map-random').onclick = random;
   $('map-cancel').onclick = () => { click(); close(); };
   $('map-pick').onclick = (e) => { if (e.target === $('map-pick')) close(); };
   $('map-detail').hidden = true;

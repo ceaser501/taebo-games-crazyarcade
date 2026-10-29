@@ -73,9 +73,7 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
     else if (!o) g.items[r * COLS + c] = { k, fresh: 0 };
   }
   g.conv = map.conv || null;
-  const spawns = map.spawns.slice();
-  // Shuffle spawn points so seats do not always start in the same corner.
-  for (let i = spawns.length - 1; i > 0; i--) { const j = Math.floor(rng(g) * (i + 1)); [spawns[i], spawns[j]] = [spawns[j], spawns[i]]; }
+  const spawns = spreadSpawns(g, map.spawns, players.length);
   players.forEach((pl, i) => {
     const ch = charById(pl.char);
     const [c, r] = spawns[i % spawns.length];
@@ -88,6 +86,33 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
     });
   });
   return g;
+}
+
+// The map's start points for n players, spread out. From each start point in turn, points are
+// added one by one, each the farthest from those already taken; of these sets the most spread
+// (smallest gap between two players largest) are kept and one is picked at random, so two
+// players never start side by side while the other end of the map is empty.
+function spreadSpawns(g, all, n) {
+  const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const m = Math.min(n, all.length);
+  const sets = all.map((first) => {
+    const out = [first], left = all.filter((x) => x !== first);
+    while (out.length < m) {
+      let k = 0, best = -1;
+      left.forEach((x, i) => { const f = Math.min(...out.map((o) => d(x, o))); if (f > best) { best = f; k = i; } });
+      out.push(left.splice(k, 1)[0]);
+    }
+    let gap = Infinity;
+    for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++) gap = Math.min(gap, d(out[i], out[j]));
+    return { out, gap };
+  });
+  const top = Math.max(...sets.map((x) => x.gap));
+  const good = sets.filter((x) => x.gap >= top - 1);
+  const out = good.length ? good[Math.floor(rng(g) * good.length)].out.slice() : [];
+  // Who gets which point is random too.
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(rng(g) * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  while (out.length < n) out.push(all[out.length % all.length]);
+  return out;
 }
 
 const idx = (c, r) => r * COLS + c;
