@@ -131,7 +131,7 @@ function animate() {
     const p = st.preview;
     if (p.pet && A.frames(`Pet/${p.pet}_Walking${dir}`)) A.draw(c, `Pet/${p.pet}_Walking${dir}`, Math.floor(now / 110), ax + 40, ay + 4);
     A.drawChar(c, st.char, action, frame, ax, ay, 0);
-    if (p.hat && A.frames(`CharDeco/CharDeco_${p.hat}${dir}`)) A.draw(c, `CharDeco/CharDeco_${p.hat}${dir}`, (frame - 1) % A.frames(`CharDeco/CharDeco_${p.hat}${dir}`), ax, ay);
+    if (p.hat && A.frames(`CharDeco/CharDeco_${p.hat}${dir}`)) A.draw(c, `CharDeco/CharDeco_${p.hat}${dir}`, A.decoFrame(`CharDeco/CharDeco_${p.hat}${dir}`, now), ax, ay);
     if (p.bomb && A.frames(`BombDeco/${p.bomb}`)) A.draw(c, `BombDeco/${p.bomb}`, Math.floor(now / 140), 2, 104);
     requestAnimationFrame(loop);
   };

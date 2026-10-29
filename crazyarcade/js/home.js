@@ -15,7 +15,7 @@ const INTRO_CHARS = ['C00', 'C06', 'C01', 'C04', 'C05'];
 let anim = 0;
 
 // Draws a character (and the hat it wears) onto a small canvas, anchored bottom-centre.
-function figure(cv, id, action, frame, scale, look = null) {
+function figure(cv, id, action, frame, scale, look = null, now = performance.now()) {
   const c = cv.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.clearRect(0, 0, cv.width, cv.height);
@@ -25,7 +25,8 @@ function figure(cv, id, action, frame, scale, look = null) {
   c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(ax + 20, ay - 2, 15, 4.5, 0, 0, Math.PI * 2); c.fill();
   if (look?.pet && A.frames(`Pet/${look.pet}_WalkingDown`)) A.draw(c, `Pet/${look.pet}_WalkingDown`, frame, ax + 30, ay + 2);
   A.drawChar(c, id, action, frame, ax, ay, 0);
-  if (look?.hat && action.startsWith('Walk') && A.frames(`CharDeco/CharDeco_${look.hat}Down`)) A.draw(c, `CharDeco/CharDeco_${look.hat}Down`, frame, ax, ay);
+  const hat = look?.hat && `CharDeco/CharDeco_${look.hat}Down`;
+  if (hat && A.frames(hat)) A.draw(c, hat, A.decoFrame(hat, now), ax, ay);
 }
 
 // ---- intro

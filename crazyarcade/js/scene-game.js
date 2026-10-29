@@ -462,11 +462,10 @@ export class GameScene {
       // shows inside it, as in the client.
       A.draw(c, 'Bomb/Bubble00', bf, ax, ay - 6, 0.55);
     }
-    // A hat from the shop follows the walking frames (four per direction).
-    if (look.hat && action.startsWith('Walk')) {
-      const hat = `CharDeco/CharDeco_${look.hat}${dirName}`;
-      const n = A.frames(hat);
-      if (n) A.draw(c, hat, v.moving ? Math.max(0, frame - 1) % n : 0, ax, ay, alpha);
+    // A hat from the shop, facing the same way, playing its own animation.
+    if (look.hat && p.state === 'normal') {
+      const hat = `CharDeco/CharDeco_${look.hat}${action.startsWith('Walk') || action.startsWith('Ride') ? dirName : 'Down'}`;
+      if (A.frames(hat)) A.draw(c, hat, A.decoFrame(hat, now), ax, ay, alpha);
     }
     if (p.curse) A.drawAt(c, 'Item/Skeleton0', 0, v.x - 12, v.y - 70 + Math.sin(now / 150) * 2, 24, 24);
     if (p.shieldT > 0) {

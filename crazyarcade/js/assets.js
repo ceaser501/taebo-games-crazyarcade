@@ -142,6 +142,9 @@ export function charLayers(id, action) {
   layerCache.set(key, out);
   return out;
 }
+// A shop decoration's frame now: it plays its own animation all the time (the client's object
+// table gives every frame four ticks), whatever the character is doing.
+export const decoFrame = (name, now) => Math.floor(now / 120) % Math.max(1, frames(name));
 export function drawChar(ctx, id, action, i, x, y, team, alpha = 1) {
   const ls = charLayers(id, action);
   for (const l of ls) {
