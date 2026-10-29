@@ -45,7 +45,7 @@ function room(code) {
     broadcast: (m) => { const s = JSON.stringify(m); for (const ws of r.sockets.values()) deliver(ws, s); },
     onResult: async (list) => {
       for (const x of list) {
-        const a = await accounts.award(x.acct, gainFor(x.result, x.kills));
+        const a = await accounts.award(x.acct, gainFor(x.result, x.kills), x);
         if (!a) continue;
         r.core.setExp(x.id, a.exp);
         const ws = r.sockets.get(x.id); if (ws) deliver(ws, JSON.stringify({ t: 'exp', ...a }));
@@ -59,7 +59,7 @@ function room(code) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  const am = url.pathname.match(/^\/api\/account\/(enter|me|practice)$/);
+  const am = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import)$/);
   if (am && req.method === 'POST') {
     let body = '';
     for await (const c of req) body += c;

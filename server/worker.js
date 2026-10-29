@@ -81,7 +81,7 @@ export class Room {
   async award(list) {
     for (const r of list) {
       try {
-        const a = await ask(this.env, 'award', { key: r.acct, gained: gainFor(r.result, r.kills) });
+        const a = await ask(this.env, 'award', { key: r.acct, gained: gainFor(r.result, r.kills), game: r });
         if (!a || a.exp == null) continue;
         this.core.setExp(r.id, a.exp);
         this.sendTo(r.id, { t: 'exp', ...a });
@@ -136,7 +136,7 @@ export class Accounts {
     try { body = await req.json(); } catch { /* empty */ }
     // From the room objects only (the page cannot reach these paths).
     if (action === 'resolve') { const a = await this.core.user(body.token); return json(a && a.u ? { key: a.key, name: a.u.name, exp: a.u.exp } : {}); }
-    if (action === 'award') return json((await this.core.award(body.key, body.gained)) || {});
+    if (action === 'award') return json((await this.core.award(body.key, body.gained, body.game)) || {});
     if (action === 'guest') return json({ name: await this.core.guestName(body.name) });
     return json(await this.core.handle(action, body));
   }
@@ -155,7 +155,7 @@ export async function route(req, env) {
   }
   const m = url.pathname.match(/^\/api\/room\/(\d{4})$/);
   if (m) return env.ROOMS.get(env.ROOMS.idFromName(m[1])).fetch(req);
-  const a = url.pathname.match(/^\/api\/account\/(enter|me|practice)$/);
+  const a = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import)$/);
   if (a && req.method === 'POST') return accounts(env).fetch(`https://accounts/${a[1]}`, { method: 'POST', body: await req.text() });
   return json({ error: 'not found' }, 404);
 }

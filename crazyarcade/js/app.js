@@ -110,7 +110,7 @@ const app = {
       case 'exp':
         // Experience the room server gave for the round.
         Account.gotExp(m);
-        if (this.scene instanceof GameScene) this.scene.expGained = m.gained;
+        if (this.scene instanceof GameScene) { this.scene.expGained = m.gained; this.scene.paid = m.lucci; }
         break;
       case 's':
         if (this.scene instanceof GameScene) this.scene.onMessage(m);
@@ -228,8 +228,9 @@ async function main() {
     const go = () => { document.body.classList.add('sideways'); return code ? app.joinRoom(code) : app.toHome(); };
     // Signed in: straight on (the account is read again in the background). Otherwise the
     // nickname and PIN, filled in with the name used on this phone before accounts.
-    const signUp = () => askName(app.name, (offline) => {
+    const signUp = () => askName(app.name, (offline, created) => {
       if (offline) { const n = $('signup-name').value.trim().slice(0, 10) || app.name || '플레이어'; app.setName(n); } else app.setName(Account.name());
+      if (!offline && created) W.bringIn(); // a new account keeps what this phone had
       go();
     });
     if (Account.signedIn()) {

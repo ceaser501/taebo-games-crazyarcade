@@ -1,56 +1,51 @@
-// The player's lucci, what they own from the shop and what they wear, kept in this browser
-// (there are no accounts). Lucci come from the coins picked up in games and a bonus per round.
-import { CHARACTERS } from './shared/const.js';
+// The player's lucci, what they own from the shop and wear, the character they play and their
+// record. Signed in, these live in the account on the server (any phone sees them) and every
+// change goes there; this shows it at once from the last copy. Guests keep them in this browser.
+// The rules themselves are shared with the server (shared/shop.js).
 import * as A from './assets.js';
+import * as Account from './account.js';
+import * as Shop from './shared/shop.js';
+
+export { FREE_CHARS, ROUND_BONUS, price } from './shared/shop.js';
 
 const KEY = 'ca-wallet';
-const START_LUCCI = 10000;
-// The eight first characters are everyone's; the rest are bought in the shop.
-export const FREE_CHARS = CHARACTERS.slice(0, 8).map((c) => c.id);
-// Prices (the real ones were in the server's shop catalogue, which is gone).
-export function price(kind, id) {
-  if (kind === 'char') { const n = CHARACTERS.find((c) => c.id === id)?.name || ''; return n.startsWith('슈퍼') ? 30000 : n.startsWith('럭셔리') ? 15000 : 8000; }
-  return { hat: 2000, bomb: 1500, pet: 5000 }[kind] || 1000;
-}
-export const ROUND_BONUS = { win: 300, draw: 150, lose: 100 };
+let local = null;
+try { local = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { /* private mode */ }
+const hadLocal = !!(local && typeof local.lucci === 'number');
+local = Shop.cleanWallet(local);
+const saveLocal = () => { try { localStorage.setItem(KEY, JSON.stringify(local)); } catch { /* ignore */ } };
 
-function blank() {
-  return { lucci: START_LUCCI, owned: { char: [], hat: [], bomb: [], pet: [] }, wear: { hat: null, bomb: null, pet: null },
-    char: CHARACTERS[0].id, stats: { games: 0, wins: 0, draws: 0, kills: 0 } };
-}
-let w = blank();
-try {
-  const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
-  if (saved && typeof saved.lucci === 'number') w = { ...blank(), ...saved, owned: { ...blank().owned, ...saved.owned }, wear: { ...blank().wear, ...saved.wear }, stats: { ...blank().stats, ...saved.stats } };
-} catch { /* private mode: start fresh each time */ }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(w)); } catch { /* ignore */ } }
+const cur = () => (Account.signedIn() ? Account.wallet() : local);
+const changed = () => (Account.signedIn() ? Account.saveLocal() : saveLocal());
 
-export const lucci = () => w.lucci;
-export const owns = (kind, id) => (kind === 'char' && FREE_CHARS.includes(id)) || w.owned[kind]?.includes(id);
-export const wearing = (kind) => w.wear[kind];
-export function buy(kind, id) {
-  if (owns(kind, id)) return 'owned';
-  const p = price(kind, id);
-  if (w.lucci < p) return 'poor';
-  w.lucci -= p; w.owned[kind].push(id);
-  if (kind !== 'char') w.wear[kind] = id;
-  save();
-  return 'ok';
-}
-export function wear(kind, id) { if (id === null || owns(kind, id)) { w.wear[kind] = id; save(); } }
-// The character I play (chosen on the home screen or in a room) and my record.
-export const myChar = () => (owns('char', w.char) ? w.char : FREE_CHARS[0]);
-export function setChar(id) { if (owns('char', id)) { w.char = id; save(); } }
-export const stats = () => ({ ...w.stats });
-export function record(result, kills) {
-  w.stats.games++;
-  if (result === 'win') w.stats.wins++; else if (result === 'draw') w.stats.draws++;
-  w.stats.kills += kills | 0;
-  save();
-}
-export function earn(n) { if (n > 0) { w.lucci += Math.round(n); save(); } }
+export const lucci = () => cur().lucci;
+export const owns = (kind, id) => Shop.owns(cur(), kind, id);
+export const wearing = (kind) => cur().wear[kind];
+export const myChar = () => (owns('char', cur().char) ? cur().char : Shop.FREE_CHARS[0]);
+export const stats = () => ({ ...cur().stats });
 // What others see: sent with the character to the room.
-export const look = () => ({ hat: w.wear.hat, bomb: w.wear.bomb, pet: w.wear.pet });
+export const look = () => ({ ...cur().wear });
+
+export function buy(kind, id) {
+  const r = Shop.buy(cur(), kind, id);
+  if (r === 'ok') { changed(); Account.shop('buy', { kind, id }); }
+  return r;
+}
+export function wear(kind, id) { if (Shop.wear(cur(), kind, id) === 'ok') { changed(); Account.shop('wear', { kind, id }); } }
+export function setChar(id) { if (Shop.setChar(cur(), id) === 'ok') { changed(); Account.shop('char', { id }); } }
+
+// A finished round. Guests count it here; signed in, an online round is counted by the room
+// server and a practice round is reported. Resolves to the lucci it brought (or null when the
+// server will tell, with the 'exp' message).
+export async function roundDone(result, kills, coins, practice) {
+  if (!Account.signedIn()) { const n = Shop.roundDone(local, result, kills, coins); saveLocal(); return n; }
+  if (!practice) return null;
+  const r = await Account.practiceDone(result, kills, coins);
+  return r ? r.lucci : 0;
+}
+
+// A new account starts from what this phone had before accounts (once).
+export function bringIn() { if (hadLocal) Account.shop('import', { wallet: local }); }
 
 // The shop catalogue (assets/ca/deco.json, written by the converter) and the sprite groups
 // that hold one item's pictures.

@@ -131,6 +131,16 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   check(p1.gained === 19 && p2.gained === 0, `practice paced (${p1.gained}, ${p2.gained})`);
   for (let i = 0; i < 5; i++) await acc.enter('태수', '0000');
   check((await acc.enter('태수', '1234')).error === 'locked', 'wrong PINs lock the name for a while');
+  // The wallet: bought and worn on the server, lucci and records from games, old phone data once.
+  const t = b.token;
+  check((await acc.handle('buy', { token: t, kind: 'hat', id: 'A123' })).wallet?.wear.hat === 'A123', 'buy a hat (worn at once)');
+  check((await acc.handle('buy', { token: t, kind: 'char', id: 'C99' })).error === 'bad', 'no such character');
+  check((await acc.handle('char', { token: t, id: 'C20' })).error === 'bad', 'cannot play a character not owned');
+  const g = await acc.award(u.key, 30, { result: 'win', kills: 2, coins: 50 });
+  check(g.lucci === 350 && g.wallet.stats.wins === 2 && g.wallet.stats.games === 2 && g.wallet.stats.kills === 4, `round lucci and record ${JSON.stringify(g.wallet?.stats)}`);
+  const im = await acc.handle('import', { token: t, wallet: { lucci: 77777, owned: { pet: ['Pet001'] } } });
+  check(im.wallet?.lucci === 77777 && im.wallet.owned.pet[0] === 'Pet001' && (await acc.handle('import', { token: t, wallet: { lucci: 1 } })).error === 'done', 'old phone data brought in once');
+  check((await acc.me(t)).wallet.lucci === 77777, 'wallet read back');
   check((await acc.guestName('태수')) === '태수(손님)' && (await acc.guestName('나그네')) === '나그네', 'guests cannot show a registered name');
   check(levelOf(0) === 1 && levelOf(expFor(10)) === 10 && levelOf(expFor(10) - 1) === 9 && levelOf(1e9) === MAX_LEVEL, 'levels');
   check(rankParts(1) === null && rankParts(2).length === 3 && rankParts(MAX_LEVEL)[0] === 79, 'rank icon parts');

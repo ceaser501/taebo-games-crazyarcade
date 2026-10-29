@@ -152,11 +152,15 @@ export class GameScene {
         this.result = e.team === null ? 'draw' : won ? 'win' : mine ? 'lose' : 'win';
         this.endAt = performance.now();
         // Lucci: the coins picked up this round plus a bonus by the result.
-        if (mine && !this.paid) { this.paid = (mine.lucci || 0) + Wallet.ROUND_BONUS[this.result]; Wallet.earn(this.paid); Wallet.record(this.result, mine.kills); }
-        // Experience: online the room server sends it ('exp'); against the computer we report it.
-        if (mine && this.app.practiceMode && !this.expAsked) {
-          this.expAsked = true;
-          Account.practiceDone(this.result, mine.kills).then((r) => { if (r) this.expGained = r.gained; });
+        // Lucci, record and experience: online the room server counts them and says so ('exp'),
+        // a practice round is reported to the account, a guest's is counted here.
+        if (mine && !this.counted) {
+          this.counted = true;
+          const exp = Account.exp();
+          Wallet.roundDone(this.result, mine.kills, mine.lucci, this.app.practiceMode).then((n) => {
+            if (n != null) this.paid = n;
+            if (Account.exp() > exp) this.expGained = Account.exp() - exp;
+          });
         }
         stopMusic();
         playMusic(this.result === 'win' ? 'Ntc_Win' : this.result === 'lose' ? 'Ntc_Lose' : 'Ntc_Draw');

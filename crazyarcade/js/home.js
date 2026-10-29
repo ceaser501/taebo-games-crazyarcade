@@ -106,11 +106,6 @@ export function showHome(app) {
   const ch = W.myChar();
   homeRank(app);
   $('home-charname').textContent = charById(ch).name;
-  const st = W.stats();
-  $('home-lucci').textContent = `${W.lucci().toLocaleString()}`;
-  $('home-record').textContent = st.games ? `${st.wins}승 ${st.games - st.wins - st.draws}패${st.draws ? ` ${st.draws}무` : ''}` : '아직 없음';
-  $('home-rate').textContent = st.games ? `${Math.round((st.wins / st.games) * 100)}%` : '-';
-  $('home-kills').textContent = `${st.kills}`;
   const look = W.look();
   Promise.all([A.loadGroup(`char_${ch}`), W.loadLook(look)]).then(() => {
     const cv = $('home-char');
@@ -127,9 +122,14 @@ export function showHome(app) {
   $('home-chars').onclick = $('home-figure').onclick = () => pickChar(app, () => showHome(app));
   $('home-settings').onclick = () => { sfx('Bt_c_Pop', 0.6); showSettings(); };
 }
-// My name, rank, level and experience towards the next one.
+// My name, lucci, record, rank, level and experience towards the next one.
 export function homeRank(app) {
   $('home-name').textContent = app.name;
+  const st = W.stats();
+  $('home-lucci').textContent = `${W.lucci().toLocaleString()}`;
+  $('home-record').textContent = st.games ? `${st.wins}승 ${st.games - st.wins - st.draws}패${st.draws ? ` ${st.draws}무` : ''}` : '아직 없음';
+  $('home-rate').textContent = st.games ? `${Math.round((st.wins / st.games) * 100)}%` : '-';
+  $('home-kills').textContent = `${st.kills}`;
   const r = Account.rank();
   $('home-rank').hidden = !Account.signedIn();
   $('home-lv').textContent = `Lv.${r.level}`;

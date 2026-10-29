@@ -22,7 +22,7 @@ function cleanLook(l) {
 }
 
 export class RoomCore {
-  // onResult(list) runs once when a round is decided, with [{ id, acct, result, kills }] for
+  // onResult(list) runs once when a round is decided, with [{ id, acct, result, kills, coins }] for
   // the players signed in to an account (the server gives them experience for it).
   constructor({ code, title, send, broadcast, onChange = () => {}, onResult = () => {} }) {
     Object.assign(this, { code, send, broadcast, onChange, onResult });
@@ -281,7 +281,7 @@ export class RoomCore {
       for (const p of g.players) {
         const m = this.members.get(p.id);
         if (!m || m.bot || !m.acct) continue;
-        list.push({ id: p.id, acct: m.acct, kills: p.kills, result: g.result.draw ? 'draw' : p.team === g.result.team ? 'win' : 'lose' });
+        list.push({ id: p.id, acct: m.acct, kills: p.kills, coins: p.lucci, result: g.result.draw ? 'draw' : p.team === g.result.team ? 'win' : 'lose' });
       }
       if (list.length) this.onResult(list);
     }
