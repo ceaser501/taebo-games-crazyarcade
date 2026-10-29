@@ -400,8 +400,10 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 #map-list button small { font-size: 10px; color: #9fd0f5; }
 #map-list button.sel { border-color: #ffe95a; background: rgba(255, 220, 60, 0.3); }
 #map-list button.full { opacity: 0.45; }
-#map-list button.random { color: #ffe95a; }
-#map-list button.random canvas { object-fit: cover; }
+#map-themes button.random { display: flex; align-items: center; gap: 6px; padding: 4px 6px; margin-bottom: 4px; color: #fff; background: linear-gradient(180deg, #ff8a3a, #e8451a); border-color: #ffd0a0; text-align: left; text-shadow: 0 1px 0 #7a1a00; }
+#map-themes button.random canvas { width: 34px; height: 34px; flex: none; image-rendering: pixelated; border-radius: 6px; }
+#map-themes button.random span { display: flex; flex-direction: column; line-height: 1.15; }
+#map-themes button.random small { white-space: nowrap; font-size: 10px; font-weight: 800; color: #ffe6c8; }
 #map-detail { position: absolute; inset: 52px 12px 10px 132px; border-radius: 14px; background: rgba(2, 22, 70, 0.94); border: 3px solid #ffe95a; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; padding: 12px 16px; align-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); }
 #map-detail[hidden] { display: none; }
 #map-big { width: 220px; height: 190px; border-radius: 8px; image-rendering: pixelated; background: #0a3a8a; }

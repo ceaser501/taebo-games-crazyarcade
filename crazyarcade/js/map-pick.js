@@ -85,15 +85,7 @@ export function pickMap(current, need, onPick) {
   };
   const list = () => {
     for (const b of $('map-themes').children) b.classList.toggle('on', b.dataset.theme === theme);
-    // First, the client's own 랜덤 card (the big question mark): any map at all, taken at once.
-    const rnd = document.createElement('button');
-    rnd.type = 'button'; rnd.className = 'random';
-    const rc = document.createElement('canvas');
-    rc.width = 148; rc.height = 128;
-    A.loadGroup('ui').then(() => { const c = rc.getContext('2d'); c.imageSmoothingEnabled = false; A.drawAt(c, 'Theme/Random', 0, 0, 0); });
-    rnd.append(rc, document.createTextNode('랜덤'), Object.assign(document.createElement('small'), { textContent: '아무 맵이나' }));
-    rnd.onclick = random;
-    $('map-list').replaceChildren(rnd, ...MAPS.filter((m) => themeOf(m.id) === theme).map((m) => {
+    $('map-list').replaceChildren(...MAPS.filter((m) => themeOf(m.id) === theme).map((m) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.dataset.id = m.id;
@@ -109,7 +101,14 @@ export function pickMap(current, need, onPick) {
     $('map-list').scrollTop = 0;
     $('map-list').querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
   };
-  $('map-themes').replaceChildren(...THEMES.filter(([p]) => MAPS.some((m) => themeOf(m.id) === p)).map(([p, name]) => {
+  // First in the theme column: the client's 랜덤 card (the big question mark), a map from all
+  // themes taken at once.
+  const rnd = Object.assign(document.createElement('button'), { type: 'button', className: 'random' });
+  const rc = Object.assign(document.createElement('canvas'), { width: 65, height: 65 });
+  A.loadGroup('ui').then(() => { const c = rc.getContext('2d'); c.imageSmoothingEnabled = false; A.drawAt(c, 'Theme/Random', 2, 0, 0); });
+  rnd.append(rc, Object.assign(document.createElement('span'), { innerHTML: '<b>전체 랜덤</b><small>모든 테마에서</small>' }));
+  rnd.onclick = () => random();
+  $('map-themes').replaceChildren(rnd, ...THEMES.filter(([p]) => MAPS.some((m) => themeOf(m.id) === p)).map(([p, name]) => {
     const b = Object.assign(document.createElement('button'), { type: 'button', textContent: name });
     b.dataset.theme = p;
     b.onclick = () => { click(); theme = p; $('map-detail').hidden = true; list(); };
