@@ -59,7 +59,7 @@ function room(code) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  const am = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import)$/);
+  const am = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import|missions|claim|spin)$/);
   if (am && req.method === 'POST') {
     let body = '';
     for await (const c of req) body += c;

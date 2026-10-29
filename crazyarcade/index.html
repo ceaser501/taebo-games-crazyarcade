@@ -63,6 +63,7 @@
         <div class="home-actions">
           <button type="button" id="home-chars">캐릭터 바꾸기</button>
           <button type="button" id="home-shop" class="shop">상점 · 꾸미기</button>
+          <button type="button" id="home-missions" class="shop">일일미션<i id="home-missions-n" hidden></i></button>
           <button type="button" id="home-settings">⚙ 설정</button>
         </div>
       </div>
@@ -155,6 +156,17 @@
           <button type="button" id="shop-act" class="big-btn" hidden></button>
         </aside>
       </div>
+    </div>
+  </div>
+
+  <!-- Daily missions: today's missions and challenges give 행운 열쇠, a key spins the 행운룰렛. -->
+  <div id="missions" hidden>
+    <div class="ms-card">
+      <div class="ms-head"><h2>일일미션</h2><span class="ms-keys"><canvas id="ms-key" width="26" height="26"></canvas>행운 열쇠 <b id="ms-nkeys">0</b>개</span><button type="button" id="ms-close" class="ms-x" aria-label="닫기">✕</button></div>
+      <div class="ms-tabs"><button type="button" data-tab="list">미션 · 보상받기<i id="ms-tab-n" hidden></i></button><button type="button" data-tab="roulette">행운룰렛</button></div>
+      <div id="ms-body"></div>
+      <div id="ms-foot"></div>
+      <div id="ms-odds" hidden></div>
     </div>
   </div>
 

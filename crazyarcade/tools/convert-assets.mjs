@@ -62,7 +62,7 @@ const GROUPS = [
     ['fx', ['Item/Bomb', 'Item/Potion', 'Item/MaxPower', 'Item/Skate', 'Item/RedDevil', 'Item/Niddle', 'Item/Shield', 'Item/Dart',
       'Item/Spring', 'Item/Turtle0', 'Item/Turtle1', 'Item/Owl', 'Item/Shoe', 'Item/Kart', 'Item/ShieldOn', 'Item/ShieldFlash',
       'Item/Punch', 'Item/Airship', 'Item/Skeleton0', 'Item/Skeleton1', 'Item/Coin*',
-      'Item/RescuedEffect', 'Item/ThrownDart', 'Item/UFO*', 'Item/Swimming']],
+      'Item/RescuedEffect', 'Item/ThrownDart', 'Item/UFO*', 'Item/Swimming', 'Item/ItemLuckyKey05']],
     // Rides (the animal under the character); FxMonster is optional, the item picture stands in.
     ['FxMonster?', ['Ship/Turtle0-*', 'Ship/Turtle1-*', 'Ship/Owl-*', 'Ship/Airship-*']],
     ['FxStage', ['Game/Start', 'Game/Win', 'Game/Lose', 'Game/Draw', 'Game/HurryUp', 'Game/Timer', 'Game/TeamColor', 'Game/SelfIndicator*',

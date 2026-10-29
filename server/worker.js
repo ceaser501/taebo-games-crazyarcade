@@ -155,7 +155,7 @@ export async function route(req, env) {
   }
   const m = url.pathname.match(/^\/api\/room\/(\d{4})$/);
   if (m) return env.ROOMS.get(env.ROOMS.idFromName(m[1])).fetch(req);
-  const a = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import)$/);
+  const a = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import|missions|claim|spin)$/);
   if (a && req.method === 'POST') return accounts(env).fetch(`https://accounts/${a[1]}`, { method: 'POST', body: await req.text() });
   return json({ error: 'not found' }, 404);
 }

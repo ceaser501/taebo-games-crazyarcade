@@ -87,4 +87,16 @@ export function shop(action, body) {
   return queue;
 }
 
+// The daily missions popup: 'missions', 'claim' ({ id }) or 'spin' ({ pool }). Resolves to the
+// server's answer (the missions, keys and, after a spin, the prize) or null when unreachable.
+export async function missions(action, body = {}) {
+  if (!acct.token) return null;
+  try {
+    const r = await post(action, { token: acct.token, ...body });
+    if (r.error === 'token') return null;
+    if (r.wallet) set({ exp: r.exp ?? acct.exp, wallet: r.wallet });
+    return r;
+  } catch { return null; }
+}
+
 export function signOut() { acct = { token: null, name: '', exp: 0, wallet: null }; save(); }

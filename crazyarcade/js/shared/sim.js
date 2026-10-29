@@ -428,6 +428,7 @@ function scatter(g, p) {
 
 function free(g, p, by) {
   p.state = 'normal'; p.invT = Math.round(HZ / 2);
+  if (by) by.rescues = (by.rescues || 0) + 1;
   emit(g, 'free', { id: p.id, by: by ? by.id : null });
 }
 

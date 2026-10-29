@@ -3,7 +3,7 @@
 // against the computer). It never touches sockets; it calls send(id, msg) and broadcast(msg)
 // and is driven by join/leave/message and tick().
 import { HZ, MAX_PLAYERS, CHARACTERS, TEAMS, COLS, ROWS } from './const.js';
-import { createGame, step, snapshot, isOver } from './sim.js';
+import { createGame, step, snapshot, isOver, scoreOf } from './sim.js';
 import { levelOf } from './level.js';
 import { Bot } from './ai.js';
 import { MAPS } from './maps.js';
@@ -294,10 +294,14 @@ export class RoomCore {
     if (g.result && !this.decided) {
       this.decided = true;
       const list = [];
+      // MVP: the most kills in the round (in 무한 결투 the most points), when someone has any.
+      const duel = g.rule === 'duel', score = (p) => (duel ? scoreOf(p) : p.kills);
+      const top = Math.max(...g.players.map(score)), anyKill = g.players.some((p) => p.kills > 0);
       for (const p of g.players) {
         const m = this.members.get(p.id);
         if (!m || m.bot || !m.acct) continue;
-        list.push({ id: p.id, acct: m.acct, kills: p.kills, coins: p.lucci, result: g.result.draw ? 'draw' : p.team === g.result.team ? 'win' : 'lose' });
+        list.push({ id: p.id, acct: m.acct, kills: p.kills, coins: p.lucci, rescues: p.rescues || 0, duel, mvp: anyKill && score(p) === top,
+          result: g.result.draw ? 'draw' : p.team === g.result.team ? 'win' : 'lose' });
       }
       if (list.length) this.onResult(list);
     }

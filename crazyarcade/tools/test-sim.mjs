@@ -6,6 +6,7 @@ import { Bot } from '../js/shared/ai.js';
 import { RoomCore } from '../js/shared/room.js';
 import { HZ } from '../js/shared/const.js';
 import { AccountsCore } from '../js/shared/accounts.js';
+import * as Rewards from '../js/shared/rewards.js';
 import { levelOf, expFor, rankParts, MAX_LEVEL } from '../js/shared/level.js';
 
 let bad = 0;
@@ -249,6 +250,46 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   const d = createGame({ map, players: [{ id: 'a', char: 'C00', team: 0 }, { id: 'b', char: 'C00', team: 5 }], seed: 4, rule: 'duel' });
   d.phase = 'play'; d.timer = 1; step(d, {});
   check(d.result && d.result.draw, 'duel equal points draw');
+}
+// Rewards: missions, challenges, keys and the roulette.
+{
+  const rw = Rewards.fresh(null, Date.UTC(2026, 0, 1, 3));
+  let bonus = 0;
+  for (let i = 0; i < 5; i++) bonus += Rewards.onGame(rw, { result: 'win', kills: 3, rescues: 1, duel: true, mvp: i === 0 }, 0, 0);
+  const v = Rewards.view(rw, 0);
+  check(v.daily.every((m) => m.done) && rw.pending.multi === 5 && rw.pending.mvp === 1 && rw.pending.streak === 2, `missions ${JSON.stringify(rw)}`);
+  check(bonus === 4 * Rewards.STREAK_BONUS, `streak bonus ${bonus}`);
+  check(Rewards.claim(rw, 'win') === 1 && Rewards.claim(rw, 'win') === 0, 'daily once');
+  check(Rewards.claim(rw, 'all') === 3 + 5 + 1 + 2 && rw.keys === 12, `claim all (${rw.keys})`);
+  Rewards.onGame(rw, { result: 'lose' }, 0, 0);
+  check(rw.streak === 0, 'loss ends the streak');
+  const lv = Rewards.fresh(null); Rewards.levelUp(lv, 0, 100000);
+  check(lv.pending.level >= 1, 'level tens');
+  const next = Rewards.fresh(rw, Date.UTC(2026, 0, 2, 3));
+  check(!next.taken.win && !next.daily.win && next.keys === 12, 'a new day');
+  const w = { lucci: 0, owned: { hat: ['A1'], bomb: [], pet: [] } }, u = { exp: 0 };
+  const r1 = Rewards.spin(rw, u, w, { hat: ['A1', 'A2'] }, 0.7, 0);
+  check(r1.prize === 'hat' && r1.item === 'A2' && w.owned.hat.includes('A2') && rw.keys === 11, `spin hat ${JSON.stringify(r1)}`);
+  const r2 = Rewards.spin(rw, u, w, { hat: ['A1', 'A2'] }, 0.7, 0);
+  check(r2.item === null && r2.lucci === 1000, 'owned deco gives lucci');
+  check(Rewards.pick(0.9999).id === 'jackpot' && Rewards.pick(0).id === 'l300', 'roulette weights');
+  rw.keys = 0; check(Rewards.spin(rw, u, w, {}) === null, 'no key, no spin');
+}
+// An online game counts for the missions; practice does not.
+{
+  const store = new Map();
+  const acc = new AccountsCore({ get: async (k) => store.get(k), put: async (k, v) => { store.set(k, v); } });
+  const e = await acc.enter('미션', '1234');
+  await acc.award('u:미션', 30, { result: 'win', kills: 3, coins: 0, rescues: 2, duel: false, mvp: true });
+  const m = await acc.handle('missions', { token: e.token });
+  check(m.daily.find((x) => x.id === 'win').done && m.daily.find((x) => x.id === 'rescues').done && m.ready === 4, `online game missions ${m.ready}`);
+  await acc.practice(e.token, 'win', 5, 0);
+  const m2 = await acc.handle('missions', { token: e.token });
+  check(m2.ready === 4, 'practice gives no missions');
+  const c = await acc.handle('claim', { token: e.token, id: 'all' });
+  check(c.keys === 4 && c.taken === 4, 'claimed keys');
+  const sp = await acc.handle('spin', { token: e.token, pool: { hat: ['A0015'], bomb: ['Bomb001'], pet: ['Pet001'] } });
+  check(sp.spin && sp.keys === 3, `spin ${JSON.stringify(sp.spin)}`);
 }
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {

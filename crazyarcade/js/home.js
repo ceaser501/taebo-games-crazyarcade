@@ -7,6 +7,7 @@ import { playMusic, sfx } from './audio.js';
 import { showSettings } from './settings.js';
 import { CHARACTERS, charById } from './shared/const.js';
 import * as W from './wallet.js';
+import { showMissions, missionBadge } from './missions.js';
 import * as Account from './account.js';
 import { drawRank } from './rank.js';
 
@@ -122,6 +123,8 @@ export function showHome(app) {
   $('home-shop').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toShop('home'); };
   $('home-chars').onclick = $('home-figure').onclick = () => pickChar(app, () => showHome(app));
   $('home-settings').onclick = () => { sfx('Bt_c_Pop', 0.6); showSettings(); };
+  $('home-missions').onclick = () => showMissions(app);
+  missionBadge();
 }
 // My name, lucci, record, rank, level and experience towards the next one.
 export function homeRank(app) {

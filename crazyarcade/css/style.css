@@ -107,7 +107,8 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 #home-stats div { background: rgba(0, 20, 70, 0.45); border-radius: 8px; padding: 5px 9px; }
 #home-stats dt { font-size: 11px; color: #9fd0f5; }
 #home-stats dd { margin: 0; font-size: 16px; font-weight: 800; }
-.home-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.home-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#home-missions i { font-style: normal; background: #ff4a4a; color: #fff; border-radius: 999px; padding: 0 7px; margin-left: 6px; font-size: 12px; }
 .home-actions button {
   min-height: 44px; padding: 6px 4px; border-radius: 12px; cursor: pointer; touch-action: manipulation; word-break: keep-all;
   font: 800 14px "Nanum Gothic", sans-serif; color: #fff; border: 2px solid #9fe0ff; background: rgba(0, 30, 90, 0.6);
@@ -462,3 +463,74 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   .rnd-card { width: 96px; height: 83px; } .rnd-info h3 { font-size: 18px; } .rnd-info p { font-size: 12px; line-height: 1.35; }
   #map-list .rnd-go { min-width: 200px; padding: 7px 14px; font-size: 15px; }
 }
+
+/* ---- daily missions and the 행운룰렛 ---- */
+#missions { position: fixed; inset: 0; z-index: 11; display: flex; align-items: center; justify-content: center; padding: 10px; background: rgba(0, 10, 40, 0.6); }
+#missions[hidden] { display: none; }
+.ms-card { position: relative; width: min(900px, 100%); max-height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; text-align: left;
+  border-radius: 18px; background: linear-gradient(180deg, rgba(20, 90, 200, 0.97), rgba(6, 40, 120, 0.98)); border: 3px solid #7fd4ff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 30px rgba(0, 0, 0, 0.5); color: #fff; }
+.ms-head { display: flex; align-items: center; gap: 10px; }
+.ms-head h2 { margin: 0; font-size: 22px; color: #ffe95a; text-shadow: 0 2px 0 #021a50; }
+.ms-keys { margin-left: auto; display: flex; align-items: center; gap: 6px; background: rgba(0, 20, 70, 0.55); padding: 4px 12px 4px 6px; border-radius: 999px; font-weight: 900; color: #ffe95a; font-size: 17px; }
+.ms-keys canvas { width: 26px; height: 26px; image-rendering: pixelated; }
+.ms-x { all: unset; cursor: pointer; width: 32px; height: 32px; border-radius: 50%; background: #0b4fae; border: 2px solid #fff; display: grid; place-items: center; font-size: 16px; font-weight: 900; }
+.ms-tabs { display: flex; gap: 6px; }
+.ms-tabs button { flex: 1; font: 800 15px "Nanum Gothic", sans-serif; color: #cfe8ff; padding: 7px 4px; border-radius: 10px; border: 2px solid rgba(159, 224, 255, 0.5); background: rgba(0, 30, 90, 0.6); cursor: pointer; }
+.ms-tabs button.on { color: #4a2a00; background: #ffd23a; border-color: #fff3a0; }
+.ms-tabs i { font-style: normal; background: #ff4a4a; color: #fff; border-radius: 999px; padding: 0 7px; margin-left: 6px; font-size: 12px; }
+#ms-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.ms-sec { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 900; color: #9fd0f5; margin: 2px 4px 0; }
+.ms-sec small { font-weight: 700; color: #cfe8ff; }
+.ms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ms-m { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 12px; background: rgba(0, 20, 70, 0.55); border: 2px solid rgba(159, 224, 255, 0.25); min-height: 46px; }
+.ms-m.done { opacity: 0.8; }
+.ms-m .ic { width: 34px; height: 34px; flex: none; display: grid; place-items: center; font-size: 22px; background: rgba(255, 255, 255, 0.08); border-radius: 9px; }
+.ms-m .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ms-m .t b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-m .t small { font-size: 11px; color: #9fd0f5; font-weight: 700; }
+.ms-gauge { height: 8px; border-radius: 6px; background: rgba(0, 0, 0, 0.4); overflow: hidden; }
+.ms-gauge i { display: block; height: 100%; background: linear-gradient(180deg, #ffe95a, #ff9a00); border-radius: 6px; }
+.ms-m.done .ms-gauge i { background: #7dffb0; }
+.ms-m .act { flex: none; width: 130px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 12px; font-weight: 900; color: #cfe8ff; }
+.ms-plus { font-size: 15px; font-weight: 900; color: #ffe95a; }
+.ms-get { all: unset; cursor: pointer; padding: 5px 10px; border-radius: 9px; font-size: 13px; font-weight: 900; color: #fff; background: linear-gradient(180deg, #ffcf3a, #ff8a00);
+  border: 2px solid #fff3a0; text-shadow: 0 1px 0 #9a4a00; box-shadow: 0 2px 0 #a04a00; }
+.ms-got { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 900; color: #7dffb0; background: rgba(125, 255, 176, 0.14); border: 1.5px solid rgba(125, 255, 176, 0.5); }
+#ms-foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin-top: 10px; }
+#ms-foot .info { justify-self: start; font-size: 13px; font-weight: 800; color: #cfe8ff; }
+#ms-foot .info b { color: #ffe95a; font-size: 16px; }
+#ms-foot .mid { display: flex; gap: 10px; }
+.ms-btn2 { all: unset; cursor: pointer; padding: 11px 22px; border-radius: 12px; font-weight: 900; font-size: 16px; background: rgba(0, 30, 90, 0.8); border: 2px solid #9fe0ff; color: #fff; }
+.ms-btn3 { all: unset; cursor: pointer; padding: 11px 26px; border-radius: 12px; font-weight: 900; font-size: 17px; color: #fff; background: linear-gradient(180deg, #ffcf3a, #ff8a00); border: 3px solid #fff3a0; text-shadow: 0 2px 0 #9a4a00; box-shadow: 0 3px 0 #a04a00; }
+.ms-btn2:disabled, .ms-btn3:disabled, .ms-get:disabled { filter: grayscale(0.6) brightness(0.8); cursor: default; }
+.ms-rl { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.ms-reel { position: relative; width: 100%; display: flex; justify-content: center; gap: 8px; padding: 14px 8px; border-radius: 14px; background: rgba(0, 20, 70, 0.6); overflow: hidden; }
+.ms-reel::before { content: "▼"; position: absolute; top: -2px; left: 50%; transform: translateX(-50%); color: #ffe95a; font-size: 18px; text-shadow: 0 2px 0 #7a4a00; }
+.ms-slot { flex: none; width: 92px; height: 104px; border-radius: 12px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)); border: 2px solid rgba(159, 224, 255, 0.35);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; opacity: 0.55; box-sizing: border-box; }
+.ms-slot canvas { width: 52px; height: 52px; image-rendering: pixelated; }
+.ms-slot b { font-size: 13px; text-align: center; line-height: 1.15; }
+.ms-slot.mid { opacity: 1; transform: scale(1.12); border-color: #9fe0ff; margin: 0 8px; }
+.ms-reel.won .ms-slot.mid { border-color: #ffe95a; box-shadow: 0 0 18px rgba(255, 233, 90, 0.8); background: rgba(255, 220, 60, 0.25); }
+.ms-slot.jack b { color: #ffe95a; }
+.ms-result { font-size: 16px; font-weight: 800; color: #9fd0f5; min-height: 1.3em; text-align: center; }
+.ms-result b { color: #ffe95a; font-size: 22px; }
+#ms-odds { position: absolute; left: 50%; bottom: 66px; transform: translateX(-50%); width: min(560px, 92%); padding: 8px 14px 10px; border-radius: 14px; z-index: 3;
+  background: rgba(2, 14, 46, 0.97); border: 2px solid #7fd4ff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); }
+#ms-odds[hidden] { display: none; }
+#ms-odds .oh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+#ms-odds .oh b { color: #ffe95a; font-size: 16px; }
+#ms-odds .ms-x { width: 24px; height: 24px; font-size: 12px; }
+#ms-odds .og { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
+#ms-odds .og div { display: flex; justify-content: space-between; padding: 3px 4px; font-size: 13px; font-weight: 800; border-bottom: 1px solid rgba(159, 224, 255, 0.15); }
+#ms-odds .og div span:last-child { color: #ffe95a; }
+#ms-odds .og div.j span:first-child { color: #ffd23a; }
+@media (max-height: 500px) {
+  .ms-card { padding: 8px 12px; gap: 6px; } .ms-head h2 { font-size: 19px; } .ms-tabs button { padding: 4px; font-size: 14px; }
+  .ms-m { min-height: 0; padding: 3px 8px; gap: 6px; } .ms-m .ic { width: 24px; height: 24px; font-size: 16px; } #ms-body { gap: 4px; } .ms-sec { font-size: 12px; margin-top: 0; }
+  .ms-m .t { gap: 2px; } .ms-m .t b { font-size: 13px; } .ms-m .t small { font-size: 10px; } .ms-gauge { height: 6px; } .ms-get { padding: 3px 9px; font-size: 12px; } .ms-grid { gap: 5px; }
+  #ms-foot { margin-top: 6px; } .ms-btn2, .ms-btn3 { padding: 8px 17px; font-size: 15px; }
+  .ms-slot { width: 84px; height: 96px; } .ms-slot canvas { width: 44px; height: 44px; } .ms-result { font-size: 14px; } .ms-result b { font-size: 18px; } .ms-rl { gap: 6px; }
+  #ms-odds { bottom: 54px; padding: 6px 12px 8px; } #ms-odds .og div { padding: 1px 4px; font-size: 12px; }
+}
+@media (min-height: 600px) { .ms-m { min-height: 58px; } .ms-m .t b { font-size: 16px; } .ms-slot { width: 112px; height: 126px; } .ms-slot canvas { width: 64px; height: 64px; } }

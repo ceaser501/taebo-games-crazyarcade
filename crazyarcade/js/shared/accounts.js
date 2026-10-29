@@ -5,6 +5,7 @@
 // objects: a Durable Object's storage on Cloudflare, a Map in the local dev server.
 import { gainFor, levelOf } from './level.js';
 import * as Shop from './shop.js';
+import * as Rewards from './rewards.js';
 
 const LOCK_AFTER = 5, LOCK_MS = 5 * 60 * 1000; // wrong PINs in a row, then a pause
 const PRACTICE_GAP = 40 * 1000; // at most one practice game's experience this often
@@ -76,9 +77,18 @@ export class AccountsCore {
     const before = u.exp;
     u.exp = before + Math.max(0, Math.round(gained));
     u.wallet = Shop.cleanWallet(u.wallet);
-    const lucci = game ? Shop.roundDone(u.wallet, game.result, game.kills, game.coins) : 0;
+    let lucci = game ? Shop.roundDone(u.wallet, game.result, game.kills, game.coins) : 0;
+    // An online game counts for the daily missions and challenges (practice does not come here
+    // with a game), and a win on a streak brings a little more lucci.
+    let missions = null;
+    if (game && !game.practice) {
+      u.rw = Rewards.fresh(u.rw);
+      const bonus = Rewards.onGame(u.rw, game, before, u.exp);
+      u.wallet.lucci += bonus; lucci += bonus;
+      missions = Rewards.view(u.rw, u.exp).rows;
+    }
     await this.store.put(key, u);
-    return { before, exp: u.exp, level: levelOf(u.exp), gained: u.exp - before, lucci, wallet: u.wallet };
+    return { before, exp: u.exp, level: levelOf(u.exp), gained: u.exp - before, lucci, wallet: u.wallet, missions };
   }
 
   // Shop and character choices, checked here: { wallet } or { error }.
@@ -100,7 +110,7 @@ export class AccountsCore {
     if (now - (a.u.practiceAt || 0) < PRACTICE_GAP) return { ...pub(a.u), before: a.u.exp, gained: 0, lucci: 0 };
     a.u.practiceAt = now;
     await this.store.put(a.key, a.u);
-    return this.award(a.key, gainFor(result, kills, true), { result, kills, coins: Math.min(1000, coins | 0) });
+    return this.award(a.key, gainFor(result, kills, true), { result, kills, coins: Math.min(1000, coins | 0), practice: true });
   }
 
   // Requests from the page: POST /api/account/<action> with JSON.
@@ -119,7 +129,29 @@ export class AccountsCore {
       u.imported = true;
       return 'ok';
     });
+    if (action === 'missions' || action === 'claim' || action === 'spin') return this.missions(action, body);
     return { error: 'action' };
+  }
+
+  // The daily missions popup: 'missions' reads them, 'claim' takes keys (body.id or 'all'),
+  // 'spin' turns the 행운룰렛 once (body.pool: the shop's decorations, for a random one).
+  async missions(action, body) {
+    const a = await this.user(body.token);
+    if (!a || !a.u) return { error: 'token' };
+    const u = a.u;
+    u.rw = Rewards.fresh(u.rw);
+    u.wallet = Shop.cleanWallet(u.wallet);
+    let out = {};
+    if (action === 'claim') out.taken = Rewards.claim(u.rw, String(body.id || 'all'));
+    if (action === 'spin') {
+      const pool = {};
+      for (const k of ['hat', 'bomb', 'pet']) pool[k] = (Array.isArray(body.pool?.[k]) ? body.pool[k] : []).slice(0, 5000).filter((id) => Shop.validItem(k, id));
+      const r = Rewards.spin(u.rw, u, u.wallet, pool);
+      if (!r) return { error: 'keys', ...Rewards.view(u.rw, u.exp) };
+      out.spin = r;
+    }
+    if (action !== 'missions') await this.store.put(a.key, u);
+    return { ...out, ...Rewards.view(u.rw, u.exp), exp: u.exp, level: levelOf(u.exp), wallet: u.wallet };
   }
 }
 
