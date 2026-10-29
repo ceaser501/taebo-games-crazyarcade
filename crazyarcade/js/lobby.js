@@ -6,7 +6,7 @@ import * as A from './assets.js';
 import { sfx } from './audio.js';
 import { TEAMS, CHARACTERS, charById } from './shared/const.js';
 import { MAPS } from './shared/maps.js';
-import { RED, BLUE } from './shared/room.js';
+import { RED, BLUE, RANDOM_MAP } from './shared/room.js';
 import * as W from './wallet.js';
 import { pickChar } from './home.js';
 import { mapButton, pickMap, mapById } from './map-pick.js';
@@ -33,8 +33,8 @@ export function showMenu(app, status = '') {
   $('practice-start').onclick = () => {
     const [mode, bots] = SIZES[Number(size.value)];
     const map = mapById(practiceMap);
-    if (bots + 1 > map.spawns.length) { app.toast(`${map.name}은(는) ${map.spawns.length}명까지 하는 맵이에요.`); return; }
-    click(); hideMenu(); app.practice({ mode, bots, map: map.id });
+    if (practiceMap !== RANDOM_MAP && bots + 1 > map.spawns.length) { app.toast(`${map.name}은(는) ${map.spawns.length}명까지 하는 맵이에요.`); return; }
+    click(); hideMenu(); app.practice({ mode, bots, map: practiceMap === RANDOM_MAP ? RANDOM_MAP : map.id });
   };
   $('host').onclick = () => { click(); app.hostRoom(); };
   const join = () => {
@@ -167,7 +167,7 @@ export function renderLobby(app) {
     seats.replaceChildren(...Array.from({ length: n }, (_, i) => (members[i] ? player(members[i], wide) : empty(0))));
   }
   // The room's map pictures load while waiting, so the round opens with them ready.
-  for (const t of mapById(room.map).sets) A.loadGroup(`tile_${t}`);
+  if (room.map !== RANDOM_MAP) for (const t of mapById(room.map).sets) A.loadGroup(`tile_${t}`);
   // Map (the host chooses), my character, the shop.
   mapButton($('lobby-map'), room.map, host ? () => pickMap(room.map, room.members.length, (id) => app.send({ t: 'settings', map: id })) : null);
   if (mine) {
@@ -254,7 +254,7 @@ function whyNot(room) {
   const n = room.members.length;
   if (n < 2) return '초대 링크를 보내 친구를 부르거나, 컴퓨터를 넣어 주세요.';
   const map = MAPS.find((m) => m.id === room.map) || MAPS[0];
-  if (n > map.spawns.length) return `${map.name}은(는) ${map.spawns.length}명까지예요. 맵을 바꿔 주세요.`;
+  if (room.map !== RANDOM_MAP && n > map.spawns.length) return `${map.name}은(는) ${map.spawns.length}명까지예요. 맵을 바꿔 주세요.`;
   if (room.mode === 'team') {
     const r = room.members.filter((m) => m.color === RED).length, b = room.members.filter((m) => m.color === BLUE).length;
     if (r !== b) return `팀 인원을 맞춰 주세요. (지금 ${r}:${b})`;

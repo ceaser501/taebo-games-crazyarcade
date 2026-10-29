@@ -9,6 +9,8 @@ import { Bot } from './ai.js';
 import { MAPS } from './maps.js';
 
 export const DEFAULT_MAP = 'Village10';
+// The host may leave the map to chance: any map that fits everyone is picked as the round starts.
+export const RANDOM_MAP = 'random';
 // Team play is red against blue (colours 0 and 5), up to four a side; in solo play everyone
 // has a colour of their own.
 export const RED = 0, BLUE = 5;
@@ -163,7 +165,7 @@ export class RoomCore {
           this.mode = msg.mode;
           this.players().forEach((x, i) => { x.color = this.mode === 'team' ? (i % 2 ? BLUE : RED) : SOLO_COLORS[i % SOLO_COLORS.length]; });
         }
-        if (msg.map && MAPS.some((x) => x.id === msg.map)) this.mapId = msg.map;
+        if (msg.map && (msg.map === RANDOM_MAP || MAPS.some((x) => x.id === msg.map))) this.mapId = msg.map;
         if (Number.isInteger(msg.size) && msg.size >= 1 && msg.size <= 4) this.size = msg.size;
         if (typeof msg.title === 'string' && msg.title.trim()) this.title = msg.title.trim().slice(0, 24);
         for (const x of this.members.values()) if (!x.bot) x.ready = false;
@@ -230,6 +232,7 @@ export class RoomCore {
   cannotStart() {
     const ps = this.players();
     if (ps.length < 2) return '친구가 들어오거나 컴퓨터를 넣으면 시작할 수 있어요.';
+    if (this.mapId === RANDOM_MAP) return MAPS.some((m) => m.spawns.length >= ps.length) ? null : '이 인원이 할 수 있는 맵이 없어요.';
     const map = MAPS.find((x) => x.id === this.mapId) || MAPS[0];
     if (ps.length > map.spawns.length) return `${map.name}은(는) ${map.spawns.length}명까지 하는 맵이에요. 맵을 바꿔 주세요.`;
     if (this.mode === 'team' && this.teamSize(RED) !== this.teamSize(BLUE)) return '팀 인원을 맞춰 주세요. (1:1, 2:2, 3:3, 4:4)';
@@ -237,7 +240,8 @@ export class RoomCore {
   }
 
   startGame() {
-    const map = MAPS.find((x) => x.id === this.mapId) || MAPS[0];
+    const fits = MAPS.filter((m) => m.spawns.length >= this.count);
+    const map = this.mapId === RANDOM_MAP ? fits[Math.floor(Math.random() * fits.length)] || MAPS[0] : MAPS.find((x) => x.id === this.mapId) || MAPS[0];
     const seed = (Math.random() * 2 ** 31) | 0;
     const list = this.players().map((m) => ({ id: m.id, name: m.name, char: m.char, color: m.color,
       team: this.mode === 'team' ? m.color : m.slot, bot: m.bot, look: m.look || null, lv: m.exp == null ? null : levelOf(m.exp) }));

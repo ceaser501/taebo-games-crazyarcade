@@ -400,10 +400,20 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 #map-list button small { font-size: 10px; color: #9fd0f5; }
 #map-list button.sel { border-color: #ffe95a; background: rgba(255, 220, 60, 0.3); }
 #map-list button.full { opacity: 0.45; }
-#map-themes button.random { display: flex; align-items: center; gap: 6px; padding: 4px 6px; margin-bottom: 4px; color: #fff; background: linear-gradient(180deg, #ff8a3a, #e8451a); border-color: #ffd0a0; text-align: left; text-shadow: 0 1px 0 #7a1a00; }
-#map-themes button.random canvas { width: 34px; height: 34px; flex: none; image-rendering: pixelated; border-radius: 6px; }
-#map-themes button.random span { display: flex; flex-direction: column; line-height: 1.15; }
-#map-themes button.random small { white-space: nowrap; font-size: 10px; font-weight: 800; color: #ffe6c8; }
+#map-themes button.random { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+#map-themes button.random canvas { width: 14px; height: 14px; flex: none; image-rendering: pixelated; }
+#map-list.rnd { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 16px; }
+.rnd-top { display: flex; gap: 16px; align-items: center; }
+.rnd-card { width: 148px; height: 128px; flex: none; image-rendering: pixelated; border-radius: 10px; }
+.rnd-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rnd-info h3 { margin: 0; font-size: 22px; color: #ffe95a; text-shadow: 0 2px 0 #02163f; }
+.rnd-info p { margin: 0; font-size: 13px; font-weight: 700; color: #cfe8ff; word-break: keep-all; line-height: 1.5; }
+.rnd-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.rnd-chips span { background: rgba(255, 255, 255, 0.12); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 800; }
+#map-list .rnd-go { align-self: center; min-width: 260px; display: block; padding: 11px 24px; border-radius: 14px; font: 900 18px "Nanum Gothic", sans-serif; color: #fff;
+  background: linear-gradient(180deg, #ffcf3a, #ff8a00); border: 3px solid #fff3a0; text-shadow: 0 2px 0 #9a4a00; box-shadow: 0 4px 0 #a04a00; }
+#map-list .rnd-go:disabled { filter: grayscale(0.4) brightness(0.9); cursor: default; }
+@media (min-height: 501px) { #map-list.rnd { gap: 14px; padding: 18px 20px; } }
 #map-detail { position: absolute; inset: 52px 12px 10px 132px; border-radius: 14px; background: rgba(2, 22, 70, 0.94); border: 3px solid #ffe95a; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; padding: 12px 16px; align-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); }
 #map-detail[hidden] { display: none; }
 #map-big { width: 220px; height: 190px; border-radius: 8px; image-rendering: pixelated; background: #0a3a8a; }
@@ -447,3 +457,8 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 @media (max-height: 460px) and (orientation: landscape) { .set-card { width: min(560px, 100%); gap: 7px; padding: 10px 16px 12px; } .set-card h2 { font-size: 20px; } .set-row { padding: 5px 12px; } }
 
 #shop.over { z-index: 9; background: rgba(2, 12, 40, 0.88); }
+@media (max-height: 500px) {
+  #map-list.rnd { gap: 6px; padding: 8px 10px; }
+  .rnd-card { width: 96px; height: 83px; } .rnd-info h3 { font-size: 18px; } .rnd-info p { font-size: 12px; line-height: 1.35; }
+  #map-list .rnd-go { min-width: 200px; padding: 7px 14px; font-size: 15px; }
+}

@@ -221,6 +221,17 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   }
   check(close === 0, `${close} close starts`);
 }
+// 전체 랜덤: the room keeps 'random' and picks a real map that fits as the round starts.
+{
+  let started = null;
+  const r = new RoomCore({ code: '3', send: () => {}, broadcast: (m) => { if (m.t === 'start') started = m; } });
+  r.join('h', 'H');
+  r.message('h', { t: 'settings', map: 'random' });
+  r.message('h', { t: 'bot' });
+  check(r.state().map === 'random', 'random map kept in the room');
+  r.message('h', { t: 'start' });
+  check(started && started.map !== 'random' && MAPS.some((m) => m.id === started.map && m.spawns.length >= 2), `random map at start ${started?.map}`);
+}
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {
   const css = (await import('node:fs')).readFileSync(new URL('../css/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

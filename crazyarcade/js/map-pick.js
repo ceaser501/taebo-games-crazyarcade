@@ -4,6 +4,7 @@
 import * as A from './assets.js';
 import { sfx } from './audio.js';
 import { MAPS } from './shared/maps.js';
+import { RANDOM_MAP } from './shared/room.js';
 
 const $ = (id) => document.getElementById(id);
 const click = () => sfx('Bt_c_Pop', 0.6);
@@ -17,6 +18,7 @@ const THEMES = [
   ['MagNest', '마그네스트'], ['Hiphopclub', '힙합클럽'],
 ];
 const themeOf = (id) => (THEMES.find(([p]) => id.toLowerCase().startsWith(p.toLowerCase())) || THEMES[0])[0];
+const RANDOM = '*';
 export const mapById = (id) => MAPS.find((m) => m.id === id) || MAPS[0];
 
 function thumb(cv, id) {
@@ -30,6 +32,7 @@ function thumb(cv, id) {
 
 // The button showing the current map; enabled when the player may change it.
 export function mapButton(btn, id, onClick) {
+  if (id === RANDOM_MAP) { randomButton(btn, onClick); return; }
   const m = mapById(id);
   thumb(btn.querySelector('canvas'), m.id);
   const sub = btn.querySelector('.sub');
@@ -37,6 +40,24 @@ export function mapButton(btn, id, onClick) {
   if (sub) sub.textContent = `최대 ${m.spawns.length}명`;
   const chips = btn.querySelector('.chips');
   if (chips) chips.replaceChildren(...mapChips(m).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
+  btn.disabled = !onClick;
+  btn.onclick = onClick ? () => { click(); onClick(); } : null;
+}
+
+// 전체 랜덤 on the map button: the client's question mark card; the map is picked at the start.
+function randomButton(btn, onClick) {
+  const cv = btn.querySelector('canvas');
+  A.loadGroup('ui').then(() => {
+    const c = cv.getContext('2d');
+    c.imageSmoothingEnabled = false; c.clearRect(0, 0, cv.width, cv.height);
+    c.fillStyle = '#0b3f8f'; c.fillRect(0, 0, cv.width, cv.height);
+    A.drawAt(c, 'Theme/Random', 0, 0, 0, cv.width, cv.height);
+  });
+  const sub = btn.querySelector('.sub');
+  btn.querySelector('b').textContent = '전체 랜덤';
+  if (sub) sub.textContent = '시작할 때 정해져요';
+  const chips = btn.querySelector('.chips');
+  if (chips) chips.replaceChildren(...['모든 테마', '시작할 때 정해져요'].map((t) => Object.assign(document.createElement('span'), { textContent: t })));
   btn.disabled = !onClick;
   btn.onclick = onClick ? () => { click(); onClick(); } : null;
 }
@@ -67,7 +88,7 @@ function features(m) {
 // (big picture, players, what is special) to take it. onPick(id); `need` greys out maps too
 // small for the room.
 export function pickMap(current, need, onPick) {
-  let theme = themeOf(mapById(current).id), sel = mapById(current).id;
+  let theme = current === RANDOM_MAP ? RANDOM : themeOf(mapById(current).id), sel = mapById(current).id;
   const detail = (id) => {
     const m = mapById(id);
     sel = id;
@@ -85,6 +106,8 @@ export function pickMap(current, need, onPick) {
   };
   const list = () => {
     for (const b of $('map-themes').children) b.classList.toggle('on', b.dataset.theme === theme);
+    $('map-list').classList.toggle('rnd', theme === RANDOM);
+    if (theme === RANDOM) { randomPanel(); return; }
     $('map-list').replaceChildren(...MAPS.filter((m) => themeOf(m.id) === theme).map((m) => {
       const b = document.createElement('button');
       b.type = 'button';
@@ -101,13 +124,14 @@ export function pickMap(current, need, onPick) {
     $('map-list').scrollTop = 0;
     $('map-list').querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
   };
-  // First in the theme column: the client's 랜덤 card (the big question mark), a map from all
-  // themes taken at once.
+  // First in the theme column: 전체 랜덤, a theme of its own whose page explains it and rolls a
+  // map from every theme (the client's 랜덤 card, the big question mark).
   const rnd = Object.assign(document.createElement('button'), { type: 'button', className: 'random' });
-  const rc = Object.assign(document.createElement('canvas'), { width: 65, height: 65 });
-  A.loadGroup('ui').then(() => { const c = rc.getContext('2d'); c.imageSmoothingEnabled = false; A.drawAt(c, 'Theme/Random', 2, 0, 0); });
-  rnd.append(rc, Object.assign(document.createElement('span'), { innerHTML: '<b>전체 랜덤</b><small>모든 테마에서</small>' }));
-  rnd.onclick = () => random();
+  const ri = Object.assign(document.createElement('canvas'), { width: 12, height: 12 });
+  A.loadGroup('ui').then(() => A.drawAt(ri.getContext('2d'), 'Theme/Random', 1, 0, 0));
+  rnd.append(ri, '전체 랜덤');
+  rnd.dataset.theme = RANDOM;
+  rnd.onclick = () => { click(); theme = RANDOM; $('map-detail').hidden = true; list(); };
   $('map-themes').replaceChildren(rnd, ...THEMES.filter(([p]) => MAPS.some((m) => themeOf(m.id) === p)).map(([p, name]) => {
     const b = Object.assign(document.createElement('button'), { type: 'button', textContent: name });
     b.dataset.theme = p;
@@ -117,14 +141,25 @@ export function pickMap(current, need, onPick) {
   const close = () => { $('map-pick').hidden = true; };
   $('map-ok').onclick = () => { sfx('Bt_c_Success', 0.6); close(); onPick(sel); };
   $('map-back').onclick = () => { click(); $('map-detail').hidden = true; };
-  function random() {
-    const ok = MAPS.filter((m) => m.spawns.length >= need);
-    // Any map of any theme that fits everyone, taken at once (a different one from now).
-    const others = ok.filter((m) => m.id !== mapById(current).id);
-    const m = (others.length ? others : ok)[Math.floor(Math.random() * (others.length || ok.length))] || MAPS[0];
-    sfx('Bt_c_Success', 0.6); close(); onPick(m.id);
+  const fits = () => MAPS.filter((m) => m.spawns.length >= need);
+  // The 전체 랜덤 page: the question mark card and what it does. Taking it leaves the map to
+  // chance; the room picks one as the round starts, so nobody waits for a roll here.
+  function randomPanel() {
+    const ok = fits(), themes = new Set(ok.map((m) => themeOf(m.id))).size;
+    const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
+    const card = el('canvas', 'rnd-card'); card.width = 148; card.height = 128;
+    A.loadGroup('ui').then(() => { const c = card.getContext('2d'); c.imageSmoothingEnabled = false; A.drawAt(c, 'Theme/Random', 0, 0, 0); });
+    const info = el('div', 'rnd-info');
+    const chips = el('div', 'rnd-chips');
+    chips.append(el('span', null, `테마 ${themes}개`), el('span', null, `맵 ${ok.length}개`), el('span', null, `지금 ${need}명`));
+    info.append(el('h3', null, '전체 랜덤'), el('p', null, `빌리지부터 힙합클럽까지, 모든 테마의 맵 중 하나가 게임을 시작할 때 무작위로 정해져요. 어떤 맵이 걸릴지는 들어가 봐야 알아요! 지금 인원(${need}명)이 함께 할 수 있는 맵에서만 나와요.`), chips);
+    const top = el('div', 'rnd-top'); top.append(card, info);
+    const go = el('button', 'big-btn rnd-go', current === RANDOM_MAP ? '전체 랜덤으로 하는 중' : '전체 랜덤으로 하기'); go.type = 'button';
+    go.disabled = current === RANDOM_MAP;
+    go.onclick = () => { sfx('Bt_c_Success', 0.6); close(); onPick(RANDOM_MAP); };
+    $('map-list').replaceChildren(top, go);
   }
-  $('map-random').onclick = random;
+  $('map-random').onclick = () => { click(); theme = RANDOM; $('map-detail').hidden = true; list(); };
   $('map-cancel').onclick = () => { click(); close(); };
   $('map-pick').onclick = (e) => { if (e.target === $('map-pick')) close(); };
   $('map-detail').hidden = true;
