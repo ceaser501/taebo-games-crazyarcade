@@ -291,6 +291,22 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   const sp = await acc.handle('spin', { token: e.token, pool: { hat: ['A0015'], bomb: ['Bomb001'], pet: ['Pet001'] } });
   check(sp.spin && sp.keys === 3, `spin ${JSON.stringify(sp.spin)}`);
 }
+// Messages bunched into one tick: the balloon goes where the player pressed it, not one cell on.
+{
+  const r = new RoomCore({ code: '4', send: () => {}, broadcast: () => {} });
+  r.join('h', 'H'); r.message('h', { t: 'bot' }); r.message('h', { t: 'start' });
+  const g = r.game; g.phase = 'play';
+  const p = g.players.find((q) => q.id === 'h');
+  // Clear a corridor to the right of the player.
+  const c0 = Math.floor(p.x / 40), r0 = Math.floor(p.y / 40);
+  for (let k = 0; k < 3; k++) if (c0 + k < 15) { g.objs[r0 * 15 + c0 + k] = null; }
+  const x0 = p.x, y0 = p.y, x1 = x0 + 22;
+  r.message('h', { t: 'in', d: 4, b: 1, x: x0, y: y0, ct: 1 });
+  r.message('h', { t: 'in', d: 4, x: x1, y: y0, ct: 2 });
+  r.tick();
+  const b = g.bombs.find((q) => q.owner === 'h');
+  check(b && b.c === c0 && b.r === r0, `balloon where pressed (${b && b.c},${b && b.r} vs ${c0},${r0})`);
+}
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {
   const css = (await import('node:fs')).readFileSync(new URL('../css/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

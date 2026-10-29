@@ -88,12 +88,14 @@ export class GameScene {
     const form = document.getElementById('game-chat');
     if (form.hidden || !this.chatRect) return;
     const r = stage.canvas.getBoundingClientRect(), { x, y, w, h } = this.chatRect;
-    Object.assign(form.style, { left: `${r.left + x + 4}px`, top: `${r.top + y + h - 32}px`, width: `${w - 8}px` });
+    const u = this.hudScale || 1;
+    Object.assign(form.style, { left: `${r.left + x + 4 * u}px`, top: `${r.top + y + h - 32 * u}px`, width: `${w - 8 * u}px` });
+    this.chatInput.style.fontSize = `${Math.round(13 * u)}px`;
   }
 
   // The chat list: newest line at the bottom, older ones moving up and out of the panel.
-  drawChat(c, x, y, w, h, { size = 12, alpha = 0.72, hint = true } = {}) {
-    this.chatRect = { x, y, w, h };
+  drawChat(c, x, y, w, h, { size = 12, alpha = 0.72, hint = true, scale = 1 } = {}) {
+    this.chatRect = { x: x * scale, y: y * scale, w: w * scale, h: h * scale };
     const typing = !document.getElementById('game-chat').hidden;
     c.fillStyle = `rgba(2, 22, 70, ${alpha})`; roundRect(c, x, y, w, h, 9); c.fill();
     c.strokeStyle = 'rgba(127, 212, 255, 0.5)'; c.lineWidth = 1.2; c.stroke();
@@ -657,11 +659,23 @@ export class GameScene {
 
   // Timer and players at the left, my items and the exit at the right (over the map's top
   // corners when the screen has no margins).
+  // With a keyboard and room beside the map (a PC), the panels fill the space on each side and
+  // everything in them grows with it: they are drawn at their usual size in a frame scaled by u
+  // (tap areas and the chat box scaled back to the screen).
   drawHud(c, now) {
-    const g = this.g, { k, x, vw } = this.L, y = Math.max(4, this.L.y);
+    const { k, x, vw } = this.L;
     const left = x - 16, right = vw - (x + WW * k) - 20;
-    const lx = left >= 110 ? 8 : x + 6, rx = right >= 110 ? x + WW * k + 12 : x + WW * k - 116;
-    const lw = Math.min(left >= 110 ? left : 150, 190), rw = Math.min(right >= 110 ? right : 110, 190);
+    const wide = !input.touchMode.on && left >= 110 && right >= 110;
+    const u = wide ? Math.max(1, Math.min(2.4, Math.min(left, right) / 200)) : 1;
+    this.hudScale = u;
+    c.save(); c.scale(u, u);
+    try { this.drawHudPanels(c, now, u, left, right); } finally { c.restore(); }
+  }
+  drawHudPanels(c, now, u, left, right) {
+    const g = this.g, { k, x } = this.L, y = Math.max(4, this.L.y) / u, vh = this.L.vh / u;
+    const area = (id, ax, ay, aw, ah) => ui.area(id, ax * u, ay * u, aw * u, ah * u);
+    const lx = (left >= 110 ? 8 : x + 6) / u, rx = (right >= 110 ? x + WW * k + 12 : x + WW * k - 116) / u;
+    const lw = u > 1 ? (left - 4) / u : Math.min(left >= 110 ? left : 150, 190), rw = u > 1 ? (right + 4) / u : Math.min(right >= 110 ? right : 110, 190);
     const panel = (px, py, w, h) => { c.fillStyle = 'rgba(2, 22, 70, 0.72)'; roundRect(c, px, py, w, h, 9); c.fill(); c.strokeStyle = 'rgba(127, 212, 255, 0.6)'; c.lineWidth = 1.5; c.stroke(); };
     // Timer.
     const secs = Math.max(0, Math.ceil(g.timer / HZ));
@@ -690,24 +704,24 @@ export class GameScene {
     // Chat under the players, down to the screen's bottom (above the stick on a touch screen).
     ui.begin();
     const ct = py + g.players.length * rowH + 16, side = left >= 110;
-    const cb = input.touchMode.on ? Math.min(this.L.vh * 0.58, ct + 130) : side ? this.L.vh - 10 : Math.min(this.L.vh - 10, ct + 150);
-    if (cb - ct > 50) this.chatArea(c, lx, ct, lw, cb - ct, { size: input.touchMode.on ? 12 : 13 });
+    const cb = input.touchMode.on ? Math.min(vh * 0.58, ct + 130) : side ? vh - 10 : Math.min(vh - 10, ct + 150);
+    if (cb - ct > 50) this.chatArea(c, lx, ct, lw, cb - ct, { size: input.touchMode.on ? 12 : 13, scale: u });
     else this.chatRect = null;
     // Exit, map name, my items.
     const hw = (rw - 6) / 2;
     panel(rx, y + 2, hw, 34);
     text('⚙ 설정', rx + hw / 2, y + 24, { size: 13, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
-    if (ui.area('settings', rx, y + 2, hw, 34)) this.openSettings();
+    if (area('settings', rx, y + 2, hw, 34)) this.openSettings();
     panel(rx + hw + 6, y + 2, hw, 34);
     text('나가기', rx + hw + 6 + hw / 2, y + 24, { size: 13, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
-    if (ui.area('exit', rx + hw + 6, y + 2, hw, 34)) this.app.leaveRoom();
+    if (area('exit', rx + hw + 6, y + 2, hw, 34)) this.app.leaveRoom();
     // 무한 결투: the kill/death board (also the Tab key).
     const dy = duel ? 40 : 0;
     if (duel) {
       panel(rx, y + 42, rw, 32);
       text('📊 킬/데스 현황', rx + rw / 2, y + 63, { size: 13, bold: true, color: '#ffe95a', align: 'center', shadow: '#03306e' });
       if (!input.touchMode.on) text('Tab', rx + rw - 8, y + 62, { size: 10, bold: true, color: '#9fd0f5', align: 'right' });
-      if (ui.area('board', rx, y + 42, rw, 32)) this.toggleBoard();
+      if (area('board', rx, y + 42, rw, 32)) this.toggleBoard();
     }
     text(this.map.name, rx + rw / 2, y + dy + 56, { size: 12, bold: true, color: '#cfe8ff', align: 'center', maxW: rw });
     const me = this.myPlayer();
@@ -941,8 +955,9 @@ export class GameScene {
   // The chat list, which a touch player out of the round can tap to type.
   chatArea(c, x, y, w, h, opts) {
     const me = this.myPlayer(), touch = input.touchMode.on, canType = !touch || (me && me.state === 'dead');
+    const u = opts.scale || 1;
     this.drawChat(c, x, y, w, h, { ...opts, hint: canType });
-    if (touch && canType && ui.area('chat', x, y, w, h)) this.openChat();
+    if (touch && canType && ui.area('chat', x * u, y * u, w * u, h * u)) this.openChat();
   }
 
   leave() {

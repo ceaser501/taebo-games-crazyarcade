@@ -265,8 +265,13 @@ export function punchTarget(g, p) {
   return bombAt(g, c, r) || bombAt(g, c + dx, r + dy) || null;
 }
 
-function placeBomb(g, p) {
-  const c = cellOf(p.x), r = cellOf(p.y);
+// at: where the phone says its player was when the balloon was pressed (one cell off at most).
+function placeBomb(g, p, at = null) {
+  let c = cellOf(p.x), r = cellOf(p.y);
+  if (at && Number.isFinite(at.bx) && Number.isFinite(at.by)) {
+    const ac = cellOf(at.bx), ar = cellOf(at.by);
+    if (Math.abs(ac - c) + Math.abs(ar - r) <= 1 && inside(ac, ar)) { c = ac; r = ar; }
+  }
   if (p.curse === 'jam') return;
   // With the glove, the balloon button throws a balloon three cells the way you face: the one
   // you stand on, or else the one right in front of you.
@@ -486,7 +491,7 @@ export function step(g, inputs = {}) {
     else { walk(g, p, inp.dir | 0); carry(g, p); }
     if (p.kick && p.state === 'normal' && inp.dir) tryKick(g, p, inp.dir | 0);
     if (p.state === 'normal' && inp.dir) tryPush(g, p, inp.dir | 0); else p.pushT = 0;
-    if ((inp.bomb || p.curse === 'leak') && p.state === 'normal') placeBomb(g, p);
+    if ((inp.bomb || p.curse === 'leak') && p.state === 'normal') placeBomb(g, p, inp.bomb ? inp : null);
     if (p.state === 'normal') {
       const i = idx(cellOf(p.x), cellOf(p.y));
       if (g.items[i] && !(g.items[i].fresh > g.tick)) { applyItem(g, p, g.items[i].k); g.items[i] = null; }

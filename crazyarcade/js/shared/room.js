@@ -212,7 +212,9 @@ export class RoomCore {
         if (this.phase === 'game') {
           const cur = this.inputs.get(id) || { dir: 0, bomb: 0, item: null, ct: 0 };
           cur.dir = msg.d | 0;
-          if (msg.b) cur.bomb = 1;
+          // Where the player was when the balloon was pressed: a later message in the same tick
+          // (they arrive in bunches) must not carry the balloon on to the next cell.
+          if (msg.b) { cur.bomb = 1; if (Number.isFinite(msg.x) && Number.isFinite(msg.y)) { cur.bx = msg.x; cur.by = msg.y; } }
           if (msg.i === 'needle' || msg.i === 'shield' || msg.i === 'dart') cur.item = msg.i;
           cur.ct = msg.ct | 0;
           // The phone's own position for its player (see takePosition in sim.js).
@@ -270,8 +272,8 @@ export class RoomCore {
     if (!g) return;
     const inputs = {};
     for (const [id, inp] of this.inputs) {
-      inputs[id] = { dir: inp.dir, bomb: !!inp.bomb, item: inp.item, x: inp.x, y: inp.y };
-      inp.bomb = 0; inp.item = null; inp.x = inp.y = undefined;
+      inputs[id] = { dir: inp.dir, bomb: !!inp.bomb, item: inp.item, x: inp.x, y: inp.y, bx: inp.bx, by: inp.by };
+      inp.bomb = 0; inp.item = null; inp.x = inp.y = inp.bx = inp.by = undefined;
     }
     for (const [id, bot] of this.bots) inputs[id] = bot.think(g);
     step(g, inputs);
