@@ -10,6 +10,7 @@ import { showShop, hideShop } from './shop.js';
 import * as W from './wallet.js';
 import { Online, Practice, listRooms, randomCode } from './net.js';
 import * as Account from './account.js';
+import { mapById } from './shared/room.js';
 import { celebrate } from './rank.js';
 
 // `SITE_PASSWORD=... npm run build` puts a simple password screen in front (hash only).
@@ -65,7 +66,10 @@ const app = {
     lobbyStatus('방에 연결하는 중…');
   },
   // Practice: a room in this page with computer players, started at once.
-  practice(opts) { this.connect(new Practice(this.name || '나', { ...opts, exp: Account.signedIn() ? Account.exp() : null }), true); },
+  practice(opts) {
+    for (const t of mapById(opts.map).sets) A.loadGroup(`tile_${t}`);
+    this.connect(new Practice(this.name || '나', { ...opts, exp: Account.signedIn() ? Account.exp() : null }), true);
+  },
 
   connect(conn, practice) {
     this.disconnect();

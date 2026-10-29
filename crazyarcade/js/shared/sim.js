@@ -48,6 +48,17 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
     const t = map.objs[i];
     g.objs.push(t >= 0 ? { t, k: g.tiles[t].k, item: null, breakT: 0, push: !!g.tiles[t].push } : null);
   }
+  // A big static object (a truck, a cabin) also fills the cells its picture covers, to the right
+  // and upwards; those parts block like it and are not drawn (part: the cell drawing it).
+  for (let i = 0; i < ROWS * COLS; i++) {
+    const o = g.objs[i];
+    if (!o || o.part != null || o.k !== 'hard') continue;
+    const { w, h } = g.tiles[o.t];
+    for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) {
+      const c = (i % COLS) + dx, r = Math.floor(i / COLS) - dy;
+      if ((dx || dy) && c < COLS && r >= 0 && !g.objs[r * COLS + c] && !map.spawns.some(([sc, sr]) => sc === c && sr === r)) g.objs[r * COLS + c] = { t: o.t, k: 'hard', item: null, breakT: 0, push: false, part: i };
+    }
+  }
   // Hidden items: every breakable block gets a roll.
   // A map with a drop list gets exactly its items (plus the three basic ones if it leaves them out).
   const listed = map.drops && Object.keys(map.drops).length;
@@ -73,7 +84,7 @@ export function createGame({ map, players, seed = 1, mode = 'team' }) {
       x: c * TILE + HALF, y: r * TILE + HALF, dir: 2, moving: false,
       bombs: ch.bombs[0], power: ch.power[0], speed: ch.speed[0], max: { bombs: ch.bombs[1], power: ch.power[1], speed: ch.speed[1] },
       state: 'normal', stateT: 0, needle: 0, shield: 0, shieldT: 0, ride: null, invT: 0, kills: 0, anim: 0,
-      dart: 0, kick: false, punch: false, curse: null, curseT: 0, lucci: 0,
+      dart: 0, kick: false, punch: false, curse: null, curseT: 0, lucci: 0, got: [],
     });
   });
   return g;
@@ -313,7 +324,10 @@ function explode(g, b) {
   setFlame(g, b.c, b.r, 'c', false, Math.max(1, longest));
 }
 
+// Items a player gives back to the map on dying (the power-ups taken in this round).
+const DROPS = new Set(['bomb', 'potion', 'maxpower', 'skate', 'devil', 'shoe', 'punch']);
 function applyItem(g, p, k) {
+  if (DROPS.has(k)) p.got.push(k);
   switch (k) {
     case 'bomb': p.bombs = Math.min(p.max.bombs, p.bombs + 1); break;
     case 'potion': p.power = Math.min(p.max.power, p.power + 1); break;
@@ -344,6 +358,26 @@ function die(g, p, by) {
   p.state = 'dead'; p.stateT = 0;
   if (by && by.team !== p.team) by.kills++;
   emit(g, 'pop', { id: p.id, by: by ? by.id : null });
+  scatter(g, p);
+}
+
+// A popped player's power-ups spring out onto empty cells around the map, as in the client.
+function scatter(g, p) {
+  const got = p.got.splice(0);
+  if (!got.length) return;
+  const free = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const i = idx(c, r);
+    if (g.objs[i] || g.items[i] || g.flames[i] || bombAt(g, c, r)) continue;
+    if (g.players.some((q) => q.state !== 'dead' && cellOf(q.x) === c && cellOf(q.y) === r)) continue;
+    free.push(i);
+  }
+  for (const k of got) {
+    if (!free.length) break;
+    const i = free.splice(Math.floor(rng(g) * free.length), 1)[0];
+    g.items[i] = { k, fresh: g.tick + Math.round(HZ / 2) };
+  }
+  emit(g, 'scatter', { id: p.id, n: got.length });
 }
 
 function free(g, p, by) {

@@ -151,6 +151,8 @@ export function renderLobby(app) {
     const n = Math.min(8, Math.max(2, members.length + 1));
     seats.replaceChildren(...Array.from({ length: n }, (_, i) => (members[i] ? player(members[i], false) : empty(0))));
   }
+  // The room's map pictures load while waiting, so the round opens with them ready.
+  for (const t of mapById(room.map).sets) A.loadGroup(`tile_${t}`);
   // Map (the host chooses), my character, the shop.
   mapButton($('lobby-map'), room.map, host ? () => pickMap(room.map, room.members.length, (id) => app.send({ t: 'settings', map: id })) : null);
   if (mine) {

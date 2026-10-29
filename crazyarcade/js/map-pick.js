@@ -10,7 +10,11 @@ const click = () => sfx('Bt_c_Pop', 0.6);
 const THEMES = [
   ['Village', '빌리지'], ['Patrit', '해적'], ['Camp', '캠프'], ['Factory', '공장'], ['Forest', '숲'], ['Tomb', '묘지'],
   ['Ice', '아이스'], ['Desert', '사막'], ['Cookie', '쿠키'], ['Mine', '광산'], ['Ocean', '바다'], ['Xmas', '크리스마스'],
-  ['Space', '우주'], ['Aqua', '아쿠아'],
+  ['Space', '우주'], ['Aqua', '아쿠아'], ['Cemetery', '공동묘지'], ['Retro', '레트로'], ['PangLand', '팡랜드'], ['Island', '섬'],
+  ['DarkCastle', '다크캐슬'], ['BlackLucy', '블랙루시'], ['Hamster', '햄스터'], ['Rabbit', '토끼'], ['SnowyFields', '설원'],
+  ['LovelyRoom', '러블리룸'], ['NewXmas', '뉴크리스마스'], ['Wriggle', '꿈틀이'], ['Clover', '클로버'], ['Bula', '불라'],
+  ['Balansa', '발란사'], ['Baram', '바람'], ['Zzolman', '쫄맨'], ['Kfg', 'KFG'], ['GoldButterfly', '황금나비'], ['WhiteAngel', '화이트엔젤'],
+  ['MagNest', '마그네스트'], ['Hiphopclub', '힙합클럽'],
 ];
 const themeOf = (id) => (THEMES.find(([p]) => id.toLowerCase().startsWith(p.toLowerCase())) || THEMES[0])[0];
 export const mapById = (id) => MAPS.find((m) => m.id === id) || MAPS[0];
@@ -65,7 +69,7 @@ export function pickMap(current, need, onPick) {
     const name = (THEMES.find(([p]) => p === themeOf(m.id)) || THEMES[0])[1];
     const f = features(m);
     const extra = { '밀 수 있는 상자': '밀 수 있는 상자가 있어요.', '움직이는 바닥': '움직이는 바닥이 있어요.' };
-    $('map-desc').textContent = [THEME_DESC[themeOf(m.id)] || '', ...f.map((x) => extra[x])].join(' ');
+    $('map-desc').textContent = [THEME_DESC[themeOf(m.id)] || `원작의 ${name} 대전 맵이에요.`, ...f.map((x) => extra[x])].join(' ');
     const chips = [`최대 ${m.spawns.length}명`, m.spawns.length >= 4 ? '팀전·개인전' : '1:1 · 개인전', name, ...f].map((t) => Object.assign(document.createElement('span'), { textContent: t }));
     if (m.spawns.length < need) chips.push(Object.assign(document.createElement('span'), { className: 'warn', textContent: `지금 ${need}명이라 못 해요` }));
     $('map-info').replaceChildren(...chips);

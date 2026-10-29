@@ -35,7 +35,7 @@ export class GameScene {
     this.g = createGame({ map: this.map, players: start.players, seed: start.seed, mode: start.mode });
     this.mode = start.mode;
     this.buffers = new Map(this.g.players.map((p) => [p.id, []]));
-    this.deathAt = new Map(); this.trapAt = new Map(); this.effects = [];
+    this.deathAt = new Map(); this.trapAt = new Map(); this.freeAt = new Map(); this.mountAt = new Map(); this.effects = [];
     this.localTick = 0; this.acc = 0; this.last = performance.now();
     this.hist = []; this.lastSent = { d: -1 }; this.pendingBombs = []; this.darts = [];
     this.snapTick = 0; this.snapTime = 0; this.clock = 0; this.clockSet = false; this.result = null; this.endAt = 0;
@@ -54,6 +54,7 @@ export class GameScene {
     Wallet.loadLook({}).then(() => Promise.all([...this.looks.values()].map((l) => Wallet.loadLook(l))));
     await Promise.all([...this.map.sets.map((t) => A.loadGroup(`tile_${t}`)), A.loadGroup('game'), A.loadGroup('rank'), A.loadBg('game'), ...chars.map((c) => A.loadGroup(`char_${c}`))]);
     this.buildFloor();
+    this.loaded = true;
     playMusic(this.map.bgm);
     sfx('Ntc_GameStart');
   }
@@ -99,7 +100,7 @@ export class GameScene {
       fly: fly ? { fc: fly[0], fr: fly[1], dx: fly[2], dy: fly[3], t: fly[4], n: fly[5], at: performance.now() } : null }));
     this.pendingBombs = this.pendingBombs.filter((pb) => !g.bombs.some((b) => b.c === pb.c && b.r === pb.r) && performance.now() - pb.at < 400);
     if (m.m) for (const [i, ot, bt, it, f, sl] of m.m) {
-      g.objs[i] = ot >= 0 ? { t: ot, k: g.tiles[ot].k, breakT: bt, push: !!g.tiles[ot].push, sl: sl ? { d: sl[0], at: sl[1] } : null } : null;
+      if (!(g.objs[i] && g.objs[i].part != null && g.objs[i].t === ot)) g.objs[i] = ot >= 0 ? { t: ot, k: g.tiles[ot].k, breakT: bt, push: !!g.tiles[ot].push, sl: sl ? { d: sl[0], at: sl[1] } : null } : null;
       g.items[i] = it ? { k: it, fresh: 0 } : null;
       g.flames[i] = f ? { kind: f[0], end: !!f[1], born: f[2], d: f[3] } : null;
     }
@@ -126,13 +127,14 @@ export class GameScene {
   event(e) {
     const g = this.g;
     switch (e.type) {
-      case 'go': sfx('Ntc_GameStart', 0.6); break;
+      case 'go': break; // the start jingle already played as the round opened
       case 'place': sfx('Cha_BombIgnite', 0.7); break;
       case 'boom': sfx('Cha_BombExplode', 0.6); break;
       case 'trap': this.trapAt.set(e.id, performance.now()); sfx('Cha_LockedIn'); break;
       case 'pop': this.deathAt.set(e.id, performance.now()); sfx('Cha_Die'); break;
-      case 'free': sfx('Cha_Release'); break;
+      case 'free': this.freeAt.set(e.id, performance.now()); sfx('Cha_Release'); break;
       case 'pick':
+        if (ITEMS[e.item]?.ride) this.mountAt.set(e.id, performance.now());
         if (e.id !== this.me) break;
         if (ITEMS[e.item]?.lucci) sfx('Itm_TakeCoin', 0.7);
         else if (e.item === 'skull') sfx('Itm_Devil_Start', 0.8);
@@ -281,7 +283,9 @@ export class GameScene {
     c.translate(x, y); c.scale(k, k);
     c.beginPath(); c.rect(0, 0, WW, WH); c.clip();
     if (this.floorCanvas) c.drawImage(this.floorCanvas, 0, 0);
-    this.drawWorld(c, now);
+    // Until the map's pictures are in, nothing half-drawn: blocks would look like open ground.
+    if (this.loaded) this.drawWorld(c, now);
+    else { c.fillStyle = '#04163f'; c.fillRect(0, 0, WW, WH); text('맵 불러오는 중…', WW / 2, WH / 2, { size: 22, bold: true, align: 'center', color: '#cfe8ff' }); }
     this.drawOverlay(c, now, Math.min(WW, Math.max(0, (vw / 2 - x) / k)), Math.min(WH, Math.max(0, (vh / 2 - y) / k)));
     c.restore();
     if (fill) this.drawHudFill(c, now); else this.drawHud(c, now);
@@ -321,7 +325,7 @@ export class GameScene {
       for (const b of this.pendingBombs) if (b.r === r) this.drawBomb(c, b, now);
       for (let col = 0; col < COLS; col++) {
         const o = g.objs[r * COLS + col];
-        if (!o) continue;
+        if (!o || o.part != null) continue;
         const tile = this.map.tiles[o.t];
         if (!tile || tile[0] === '$cover') continue;
         let ax = col * TILE, ay = r * TILE + TILE - 1;
@@ -422,25 +426,37 @@ export class GameScene {
     if (this.inBush(v)) alpha = 0.5;
     let action, frame;
     const dirName = DIR_NAMES[v.dir] || 'Down';
+    // Frames and their timing come from the client's own animation table (A.animFrame); the
+    // even timings after ?? are only for a client without it.
+    const anim = (state, ms, end, fallback) => { const f = A.animFrame(ch, state, ms, end); return f ?? fallback; };
+    const freedAt = this.freeAt.get(p.id), mountAt = this.mountAt.get(p.id);
     if (p.state === 'dead') {
-      const t0 = this.deathAt.get(p.id) || 0;
-      const k = Math.floor((now - t0) / 60);
-      if (k >= A.charFrames(ch, 'Die')) return;
-      action = 'Die'; frame = k;
-      A.draw(c, 'Bomb/Bubble00', 3 + Math.min(2, Math.floor((now - t0) / 70)), ax, ay - 6);
+      // Popped: the bubble bursts (ExpKill) while the character jumps out and blinks away.
+      const ms = now - (this.deathAt.get(p.id) || 0);
+      frame = anim('Die', ms, 'stop', Math.floor(ms / 60) < A.charFrames(ch, 'Die') ? Math.floor(ms / 60) : -1);
+      if (frame < 0) return;
+      action = 'Die';
+      const bf = A.animFrame('Bubble', 'ExpKill', ms, 'stop') ?? (ms < 210 ? 3 + Math.floor(ms / 70) : -1);
+      if (bf >= 0) A.draw(c, 'Bomb/Bubble00', bf, ax, ay - 6, 0.55);
     } else if (g.phase === 'start') {
-      // The last Start frame is the white flash the character pops in with; then it spins.
-      const n = A.charFrames(ch, 'Start'), k = Math.floor((now - (this.startShown || (this.startShown = now))) / 110);
-      action = 'Start'; frame = k < 2 ? n - 1 : Math.min(n - 2, k - 2);
+      const ms = now - (this.startShown || (this.startShown = now));
+      action = 'Start'; frame = anim('Start', ms, 'hold', Math.min(A.charFrames(ch, 'Start') - 1, Math.floor(ms / 110)));
     } else if (g.phase === 'end' && g.result && !g.result.draw && p.team === g.result.team) {
-      action = 'Hurrah'; frame = Math.floor(now / 150) % Math.max(1, A.charFrames(ch, 'Hurrah'));
+      action = 'Hurrah'; frame = anim('Hurrah', now - this.endAt, 'loop', Math.floor(now / 150) % Math.max(1, A.charFrames(ch, 'Hurrah')));
     } else if (p.state === 'trapped') {
-      action = 'Faint'; frame = Math.floor(now / 200) % Math.max(1, A.charFrames(ch, 'Faint'));
+      // Locked in: the client holds the first Die frame inside the bubble.
+      action = 'Die'; frame = anim('Locked In', now - (this.trapAt.get(p.id) || now), 'hold', 0);
+    } else if (freedAt && now - freedAt < 540) {
+      // Freed by a teammate: a short cheer while the bubble bursts open (ExpLive).
+      action = 'Hurrah'; frame = anim('Release', now - freedAt, 'hold', 0);
+    } else if (p.ride && mountAt && now - mountAt < 270) {
+      action = 'SlideRide'; frame = anim(`Slide Ride ${dirName}`, now - mountAt, 'hold', 0);
     } else if (p.ride) {
-      action = 'Ride' + dirName; frame = v.moving ? Math.floor(now / 110) % Math.max(1, A.charFrames(ch, action)) : 0;
+      action = 'Ride' + dirName;
+      frame = v.moving ? anim(`Ride ${dirName}`, now, 'loop', Math.floor(now / 110) % Math.max(1, A.charFrames(ch, action))) : 0;
     } else {
       action = 'Walk' + dirName;
-      frame = v.moving ? 1 + (Math.floor(now / 90) % Math.max(1, A.charFrames(ch, action) - 1)) : 0;
+      frame = v.moving ? anim(`Walk ${dirName}`, now, 'loop', 1 + (Math.floor(now / 90) % Math.max(1, A.charFrames(ch, action) - 1))) : 0;
     }
     // Shadow.
     c.fillStyle = 'rgba(0,0,0,0.28)'; c.beginPath(); c.ellipse(v.x, ay - 3, 14, 5, 0, 0, Math.PI * 2); c.fill();
@@ -454,13 +470,13 @@ export class GameScene {
     if (!A.drawChar(c, ch, action, frame, ax, ay, team, alpha)) {
       c.fillStyle = TEAMS[team]?.css || '#f44'; c.beginPath(); c.arc(v.x, v.y - 8, 15, 0, Math.PI * 2); c.fill();
     }
-    if (p.state === 'trapped') {
-      const t0 = this.trapAt.get(p.id) || now;
-      const age = now - t0, left = p.stateT / HZ;
-      const bf = age < 200 ? Math.floor(age / 70) : left < 1 ? 7 + (Math.floor(now / 120) % 2) : 6;
-      // The bubble's pictures carry no alpha of their own; drawn see-through, the character
-      // shows inside it, as in the client.
-      A.draw(c, 'Bomb/Bubble00', bf, ax, ay - 6, 0.55);
+    if (p.state === 'trapped' || (freedAt && now - freedAt < 400)) {
+      // The bubble closes (Lock: 0, 1, 2, then 6 held) and on rescue bursts open (ExpLive). Its
+      // pictures carry no alpha of their own; drawn see-through, the character shows inside it.
+      const bf = p.state === 'trapped'
+        ? A.animFrame('Bubble', 'Lock', now - (this.trapAt.get(p.id) || now), 'hold') ?? 6
+        : A.animFrame('Bubble', 'ExpLive', now - freedAt, 'stop') ?? -1;
+      if (bf >= 0) A.draw(c, 'Bomb/Bubble00', bf, ax, ay - 6, 0.55);
     }
     // A hat from the shop, facing the same way, playing its own animation.
     if (look.hat && p.state === 'normal') {
@@ -578,6 +594,22 @@ export class GameScene {
       if (w) { const sc = Math.min(1, 28 / Math.max(w, h)); A.drawAt(c, sp, 0, ix, iy + (32 - h * sc) / 2, w * sc, h * sc); }
       text(String(n), ix + 46, iy + 26, { size: 14, bold: true, color: '#fff', align: 'right', shadow: '#03306e' });
     });
+    // Played with a keyboard: the item slots and their keys (1 needle, 2 shield, 3 dart, 4 free).
+    if (!input.touchMode.on) {
+      const sy = y + 66 + Math.ceil(items.length / per) * 36 + 16;
+      text('아이템 (숫자 키)', rx + 4, sy + 10, { size: 11, bold: true, color: '#9fd0f5' });
+      const slots = [['Item/Niddle', me.needle, '1'], ['Item/Shield', me.shield, '2'], ['Item/Dart', me.dart || 0, '3'], [null, 0, '4']];
+      const sw = Math.min(46, (rw - 6) / 4 - 4);
+      slots.forEach(([sp, n, key], i) => {
+        const sx = rx + i * (sw + 4) + 2, yy = sy + 16;
+        panel(sx, yy, sw, sw + 4);
+        c.globalAlpha = sp && n ? 1 : 0.35;
+        if (sp) { const [w, h] = A.size(sp); if (w) { const sc = Math.min(1, (sw - 10) / Math.max(w, h)); A.drawAt(c, sp, 0, sx + (sw - w * sc) / 2, yy + (sw - h * sc) / 2, w * sc, h * sc); } }
+        c.globalAlpha = 1;
+        text(key, sx + 5, yy + 13, { size: 11, bold: true, color: '#ffe95a', shadow: '#000' });
+        if (sp) text(String(n), sx + sw - 4, yy + sw, { size: 12, bold: true, color: '#fff', align: 'right', shadow: '#000' });
+      });
+    }
   }
 
   // Fill view, laid out like the mobile game: a small player list at the top left, the timer at

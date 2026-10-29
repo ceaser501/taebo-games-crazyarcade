@@ -5,7 +5,7 @@ import { manifest } from './assets.js';
 const BASE = 'assets/ca/';
 let ctx = null;
 const buffers = new Map();
-let music = null, musicName = null, wanted = null;
+let music = null, musicName = null, wanted = null, blocked = false;
 const prefs = { music: true, sound: true };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem('ca-audio') || '{}')); } catch { /* private mode */ }
 const save = () => { try { localStorage.setItem('ca-audio', JSON.stringify(prefs)); } catch { /* ignore */ } };
@@ -18,7 +18,9 @@ export function unlock() {
     if (AC) ctx = new AC();
   }
   if (ctx && ctx.state === 'suspended') ctx.resume();
-  if (wanted && (!music || music.paused)) playMusic(wanted, true);
+  // Music the browser refused before the first touch starts now (a finished one-shot tune,
+  // like the win jingle, is not played again).
+  if (wanted && blocked) playMusic(wanted, true);
 }
 
 export function playMusic(name, force = false) {
@@ -29,13 +31,14 @@ export function playMusic(name, force = false) {
   const a = new Audio(`${BASE}bgm/${name}.${ext()}`);
   a.loop = !name.startsWith('Ntc_');
   a.volume = 0.55;
-  a.play().catch(() => { /* waits for unlock() */ });
+  blocked = false;
+  a.play().catch(() => { if (music === a) blocked = true; });
   music = a; musicName = name;
 }
 
 export function stopMusic(forget = true) {
   if (music) { music.pause(); music.src = ''; }
-  music = null; musicName = null;
+  music = null; musicName = null; blocked = false;
   if (forget) wanted = null;
 }
 

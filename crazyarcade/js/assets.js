@@ -25,7 +25,24 @@ export async function loadManifest() {
     const r = await fetch(BASE + 'manifest.json', { cache: 'no-cache' });
     if (r.ok) { manifest = { ...manifest, ...(await r.json()) }; ready = true; }
   } catch { /* no converted assets: the game still runs with plain shapes */ }
+  if (ready) try { anims = await (await fetch(BASE + 'anims.json')).json(); } catch { /* fall back to even timing */ }
   return ready;
+}
+
+// The client's animation timing (anims.json, from its object table): for a character id or
+// 'Bubble' and a state ('Walk Down', 'Die', 'Lock'…), the frame to show `ms` after it began.
+// end: 'loop' starts over, 'hold' stays on the last frame, 'stop' gives -1 once it is over.
+// null when the table has no such state.
+let anims = {};
+export const TICK = 1000 / 30;
+export function animFrame(table, state, ms, end = 'loop') {
+  const seq = anims[table]?.[state];
+  if (!seq || !seq.length) return null;
+  let t = Math.max(0, ms) / TICK;
+  const total = seq.reduce((s, [, d]) => s + (d || Infinity), 0);
+  if (end === 'loop' && Number.isFinite(total)) t %= total;
+  for (const [f, d] of seq) { if (!d || t < d) return f; t -= d; }
+  return end === 'stop' ? -1 : seq[seq.length - 1][0];
 }
 
 export function loadGroup(name) {

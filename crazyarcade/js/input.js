@@ -21,6 +21,9 @@ window.addEventListener('keydown', (e) => {
   if ((e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'KeyZ') && !e.repeat) itemQueued = 'auto';
   if (e.code === 'KeyX' && !e.repeat) itemQueued = 'shield';
   if (e.code === 'KeyC' && !e.repeat) itemQueued = 'dart';
+  // Number keys use the item in that slot: 1 needle, 2 shield, 3 dart.
+  const slot = { Digit1: 'needle', Numpad1: 'needle', Digit2: 'shield', Numpad2: 'shield', Digit3: 'dart', Numpad3: 'dart' }[e.code];
+  if (slot && !e.repeat) { itemQueued = slot; e.preventDefault(); }
 });
 window.addEventListener('keyup', (e) => { keys.delete(e.code); if (lastDirKey === e.code) lastDirKey = [...keys].reverse().find((k) => KEYDIR[k]) || null; });
 window.addEventListener('blur', () => keys.clear());

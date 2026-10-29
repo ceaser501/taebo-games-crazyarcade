@@ -127,7 +127,8 @@ const JPEGS = [
 // Background music by screen and theme, and the sound effects the game uses.
 const BGM = ['StageLogin', 'StageChannel', 'Prepare', 'Village', 'Desert', 'Ice', 'Factory', 'Patrit', 'Forest', 'Cookie', 'Ocean', 'Camp',
   'Tomb', 'Mine', 'Pirate', 'Kfg', 'Xmas', 'Bula', 'Ntc_Win', 'Ntc_Lose', 'Ntc_Draw', 'Ntc_Hurryup', 'Ntc_GameEnd', 'BreakTime', 'ShowTime',
-  'RetroVillage', 'RetroForest', 'RetroFactory', 'RetroCamp', 'RetroPatrit', 'Lovelyroom', 'Aqua', 'Cemetery', 'space'];
+  'RetroVillage', 'RetroForest', 'RetroFactory', 'RetroCamp', 'RetroPatrit', 'Lovelyroom', 'Aqua', 'Cemetery', 'space',
+  'Balansa', 'BlackLucy', 'Clover', 'DarkVampire_Outside', 'EventBgm', 'PangLand', 'Rabbit', 'RetroWriggle', 'CAHero_Angel', 'Wriggle', 'Zzolman'];
 const SFX = ['Wave/BombExplosion0*', 'Wave/Bt_*', 'Wave/Cha_*', 'Wave/Itm_*', 'Wave/Ntc_*', 'Wave/Game_*', 'Wave/Stage_*', 'Wave/Sys_*',
   'Wave/Lobby_*', 'Wave/Room_*', 'Wave/Pre_*', 'Wave/Effect_*', 'Wave/RPG_LevelUp'];
 
@@ -226,6 +227,34 @@ if (snd) {
 }
 
 if (DECO) fs.writeFileSync(path.join(OUT, 'deco.json'), JSON.stringify(DECO));
+// Animation timing from fx ObjectTable/ObjectTable: for each character (Character/<id>_A) and the
+// bubble, every state's frames as [frame, ticks] (ticks of 1/60 s; a huge count means hold).
+// anims.json: { C00: { 'Walk Down': [[0, 3], …], 'Die': […], … }, Bubble: { Lock: […], … } }
+{
+  const ot = archive('fx').read('ObjectTable/ObjectTable');
+  const td = new TextDecoder('euc-kr');
+  const str = (b, o) => { const n = b.readUInt32LE(o); return [td.decode(b.subarray(o + 4, o + 4 + n)).replace(/\0+$/, ''), o + 4 + n]; };
+  const table = new Map();
+  for (let o = 4, i = ot.readUInt32LE(0); i > 0; i--) { const [n, p] = str(ot, o); table.set(n, ot.readUInt32LE(p)); o = p + 4; }
+  const states = (at) => {
+    const out = {};
+    let q = at + 4;
+    for (let k = 0, c = ot.readUInt32LE(at); k < c; k++) {
+      let label; [label, q] = str(ot, q); [, q] = str(ot, q);
+      const f = ot.readUInt32LE(q); q += 4;
+      const seq = [];
+      for (let j = 0; j < f; j++) { const d = ot.readUInt32LE(q + 8 * j + 4); seq.push([ot.readUInt32LE(q + 8 * j), d > 100000 ? 0 : d]); }
+      q += 8 * f;
+      out[label.replace(/^\d+(_\d+)?\s+/, '')] = seq;
+    }
+    return out;
+  };
+  const anims = {};
+  for (const c of CHARS) if (table.has(`Character/${c}_A`)) anims[c] = states(table.get(`Character/${c}_A`));
+  if (table.has('Bomb/Bubble')) anims.Bubble = states(table.get('Bomb/Bubble'));
+  fs.writeFileSync(path.join(OUT, 'anims.json'), JSON.stringify(anims));
+  console.log(`anims: ${Object.keys(anims).length} tables`);
+}
 fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ groups, bg: JPEGS.map((j) => j[2]), bgm, sfx, audio, deco: !!DECO || fs.existsSync(path.join(OUT, 'deco.json')) }, null, 1));
 fs.rmSync(TMP, { recursive: true, force: true });
 console.log(`bgm ${bgm.length}, sfx ${sfx.length} -> ${OUT}`);

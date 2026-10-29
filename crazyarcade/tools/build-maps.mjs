@@ -23,9 +23,20 @@ const cp949 = new TextDecoder('euc-kr');
 
 const COLS = 15, ROWS = 13;
 const KO = { Village: '빌리지', Patrit: '해적', Camp: '캠프', Factory: '공장', Forest: '숲', Tomb: '묘지', Ice: '아이스', Desert: '사막',
-  Cookie: '쿠키', Mine: '광산', Ocean: '바다', Pirate: '해적', Xmas: '크리스마스', Space: '우주', KFG: 'KFG', Aqua: '아쿠아' };
+  Cookie: '쿠키', Mine: '광산', Ocean: '바다', Pirate: '해적', Xmas: '크리스마스', Space: '우주', KFG: 'KFG', Aqua: '아쿠아',
+  // More battle maps of the last client, played the same way.
+  Kfg: 'KFG', Balansa: '발란사', Baram: '바람', BlackLucy: '블랙루시', Bula: '불라', Cemetery: '공동묘지', Clover: '클로버',
+  DarkCastle: '다크캐슬', GoldButterfly: '황금나비', Hamster: '햄스터', Hiphopclub: '힙합클럽', Island: '섬', LovelyRoom: '러블리룸',
+  MagNest: '마그네스트', NewXmas: '뉴크리스마스', PangLand: '팡랜드', Pangland: '팡랜드', Rabbit: '토끼', RetroCampN: '레트로캠프',
+  RetroFactoryN: '레트로공장', RetroForestN: '레트로숲', RetroPatritN: '레트로해적', RetroVillageN: '레트로빌리지',
+  RetroWriggleN: '레트로꿈틀이', SnowyFields: '설원', WhiteAngel: '화이트엔젤', Wriggle: '꿈틀이', Zzolman: '쫄맨' };
 const BGM = { Village: 'Village', Patrit: 'Patrit', Camp: 'Camp', Factory: 'Factory', Forest: 'Forest', Tomb: 'Tomb', Ice: 'Ice',
-  Desert: 'Desert', Cookie: 'Cookie', Mine: 'Mine', Ocean: 'Ocean', Pirate: 'Pirate', Xmas: 'Xmas', Space: 'space', KFG: 'Kfg', Aqua: 'Aqua' };
+  Desert: 'Desert', Cookie: 'Cookie', Mine: 'Mine', Ocean: 'Ocean', Pirate: 'Pirate', Xmas: 'Xmas', Space: 'space', KFG: 'Kfg', Aqua: 'Aqua',
+  Kfg: 'Kfg', Balansa: 'Balansa', Baram: 'Village', BlackLucy: 'BlackLucy', Bula: 'Bula', Cemetery: 'Cemetery', Clover: 'Clover',
+  DarkCastle: 'DarkVampire_Outside', GoldButterfly: 'Forest', Hamster: 'Rabbit', Hiphopclub: 'EventBgm', Island: 'Ocean', LovelyRoom: 'Lovelyroom',
+  MagNest: 'Factory', NewXmas: 'Xmas', PangLand: 'PangLand', Pangland: 'PangLand', Rabbit: 'Rabbit', RetroCampN: 'RetroCamp',
+  RetroFactoryN: 'RetroFactory', RetroForestN: 'RetroForest', RetroPatritN: 'RetroPatrit', RetroVillageN: 'RetroVillage',
+  RetroWriggleN: 'RetroWriggle', SnowyFields: 'Ice', WhiteAngel: 'CAHero_Angel', Wriggle: 'Wriggle', Zzolman: 'Zzolman' };
 // Map drop names -> the game's item keys (items the game does not have are left out).
 const DROPS = { 'Item/ItemBomb': 'bomb', 'Item/Itembomb': 'bomb', 'Item/ItemFire': 'potion', 'Item/ItemRoller': 'skate', Skate: 'skate',
   'Item/ItemMaxPower': 'maxpower', 'Item/RedDevil': 'devil', 'Item/ItemRedDevil': 'devil', RedDevil: 'devil', 'Item/ItemNiddle': 'needle',
@@ -43,6 +54,14 @@ const fx = new Archive(SRC, 'fx');
 const tileInfo = new Map([...cp949.decode(fx.read('TileInfo/TileInfoList')).matchAll(/<Tile Name="([^"]+)" Data="([0-9A-Fa-f]+)"/g)]
   .map(([, name, hex]) => [name, Buffer.from(hex, 'hex')]));
 const pushable = (name) => { const d = tileInfo.get(name); return !!d && d.length >= 32 && d.readInt32LE(0) === 2 && d.readInt32LE(28) === 1; };
+// For static objects (word 0 = 1) words 6 and 7 are the cells they cover: the fountain 3×1, a
+// truck 2×3, the cabin 4×2, from their own cell rightwards and upwards.
+const size = (name) => {
+  const d = tileInfo.get(name);
+  if (!d || d.length < 32 || d.readInt32LE(0) !== 1) return [1, 1];
+  const w = d.readInt32LE(24), h = d.readInt32LE(28);
+  return w >= 1 && w <= 6 && h >= 1 && h <= 6 ? [w, h] : [1, 1];
+};
 // FxTile sprite names by lower case (the tables do not always match the case).
 // Conveyor belts live in fx (TileConv/), everything else in FxTile.
 const tiles = new Map([...readIndex(path.join(SRC, 'FxTile.idx')), ...fx.names().filter((n) => n.startsWith('TileConv/')).map((name) => ({ name }))]
@@ -107,7 +126,10 @@ for (const id of previews.sort((a, b) => a.localeCompare(b, 'en', { numeric: tru
     const o = objects[id];
     // Conveyor belts (TileConv/...) have no layer; they are drawn as floor (they do not carry anyone here).
     const [, set, layer] = o?.name.match(/^([^_/]+)_([^_/]+)[^/]*\//) || (o?.name.startsWith('TileConv/') ? [0, 'TileConv', 'ground'] : []);
-    const kind = LAYER[layer?.toLowerCase()];
+    let kind = LAYER[layer?.toLowerCase()];
+    // TileInfoList's own layer wins between solid and walk-through (Aqua's corals are passable).
+    const info = o && tileInfo.get(o.name), il = info && info.length >= 4 ? info.readInt32LE(0) : -1;
+    if ((kind === 'hard' && il === 3) || (kind === 'bush' && il === 1)) kind = il === 3 ? 'bush' : 'hard';
     const st = o && states(o.at), def = st && (st.Default || Object.values(st)[0]);
     const sprite = def && tiles.get(def.sprite.toLowerCase());
     if (!kind || (want === 'floor') !== (kind === 'floor')) { bad = o ? o.name : `#${id}`; return -1; }
@@ -120,7 +142,8 @@ for (const id of previews.sort((a, b) => a.localeCompare(b, 'en', { numeric: tru
       const brk = st.Broken && tiles.get(st.Broken.sprite.toLowerCase());
       // [sprite, kind, w, h, crumbling sprite (the same sheet; frames 1.. are the Broken state)]
       // [sprite, kind, w, h, crumbling sprite, pushable]
-      list.push(kind === 'soft' ? [sprite, kind, 1, 1, brk || sprite, ...(pushable(o.name) ? [1] : [])] : [sprite, kind]);
+      const [w, h] = kind === 'hard' ? size(o.name) : [1, 1];
+      list.push(kind === 'soft' ? [sprite, kind, 1, 1, brk || sprite, ...(pushable(o.name) ? [1] : [])] : w > 1 || h > 1 ? [sprite, kind, w, h] : [sprite, kind]);
     }
     index.set(id, list.length - 1);
     return list.length - 1;
