@@ -3,7 +3,7 @@
 // stick at once, and everyone else is drawn a few ticks in the past, interpolated, so they
 // glide smoothly between updates.
 import * as A from './assets.js';
-import { stage, ui, text, roundRect, W } from './stage.js';
+import { stage, ui, text, roundRect, W, FONT } from './stage.js';
 import * as input from './input.js';
 import { sfx, playMusic, stopMusic } from './audio.js';
 import { COLS, ROWS, TILE, HZ, TEAMS, ITEMS, RIDES, PUNCH_TICKS, charById } from './shared/const.js';
@@ -14,6 +14,7 @@ import { viewMode, showSettings, settingsShown } from './settings.js';
 import * as Account from './account.js';
 import { showShop, shopShown } from './shop.js';
 import { drawRank } from './rank.js';
+import * as Chat from './chat.js';
 
 const WW = COLS * TILE, WH = ROWS * TILE; // the map in world pixels (600×520)
 const INTERP = 4; // ticks others are drawn behind the server clock (smooths uneven arrival)
@@ -48,6 +49,70 @@ export class GameScene {
     this.ready = this.load();
     input.enable(true);
     this.off = conn.on ? null : null;
+    this.chatKeys();
+  }
+
+  // Chat in the round. With a keyboard, Enter opens a line to type under the list of players
+  // and Enter sends it; the arrow keys keep moving the character meanwhile (input.js), and the
+  // other game keys type. On a touch screen the list can be tapped to type once out of the round.
+  chatKeys() {
+    const form = document.getElementById('game-chat'), box = document.getElementById('game-chat-input');
+    this.chatInput = box;
+    const close = () => { form.hidden = true; box.value = ''; box.blur(); };
+    this.closeChat = close;
+    form.onsubmit = (e) => e.preventDefault();
+    box.onkeydown = (e) => {
+      if (e.isComposing || e.keyCode === 229) return; // a Korean syllable still being typed
+      if (e.key === 'Enter') { e.preventDefault(); const t = box.value.trim(); if (t) this.app.send({ t: 'chat', text: t }); close(); }
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+    };
+    box.onblur = () => { if (!box.value.trim()) form.hidden = true; };
+    this.onKey = (e) => {
+      if (e.key !== 'Enter' || e.target.tagName === 'INPUT' || input.touchMode.on || settingsShown() || shopShown()) return;
+      e.preventDefault(); this.openChat();
+    };
+    window.addEventListener('keydown', this.onKey);
+  }
+  openChat() {
+    if (!this.chatRect) return;
+    const form = document.getElementById('game-chat');
+    form.hidden = false;
+    this.placeChat();
+    this.chatInput.focus();
+  }
+  // The typing line sits at the bottom of the chat list (canvas coordinates are CSS pixels).
+  placeChat() {
+    const form = document.getElementById('game-chat');
+    if (form.hidden || !this.chatRect) return;
+    const r = stage.canvas.getBoundingClientRect(), { x, y, w, h } = this.chatRect;
+    Object.assign(form.style, { left: `${r.left + x + 4}px`, top: `${r.top + y + h - 32}px`, width: `${w - 8}px` });
+  }
+
+  // The chat list: newest line at the bottom, older ones moving up and out of the panel.
+  drawChat(c, x, y, w, h, { size = 12, alpha = 0.72, hint = true } = {}) {
+    this.chatRect = { x, y, w, h };
+    const typing = !document.getElementById('game-chat').hidden;
+    c.fillStyle = `rgba(2, 22, 70, ${alpha})`; roundRect(c, x, y, w, h, 9); c.fill();
+    c.strokeStyle = 'rgba(127, 212, 255, 0.5)'; c.lineWidth = 1.2; c.stroke();
+    const lh = Math.round(size * 1.4), bottom = y + h - (typing ? 36 : hint ? 20 : 6);
+    c.save(); c.beginPath(); c.rect(x + 2, y + 2, w - 4, bottom - y); c.clip();
+    c.font = `bold ${size}px ${FONT}`;
+    let ly = bottom;
+    for (let i = Chat.lines.length - 1; i >= 0 && ly > y; i--) {
+      const l = Chat.lines[i];
+      const rows = wrap(c, l.name ? `${l.name}: ${l.text}` : l.text, w - 14, size);
+      for (let j = rows.length - 1; j >= 0 && ly > y; j--, ly -= lh) {
+        const row = rows[j];
+        if (j === 0 && l.name) {
+          text(`${l.name}:`, x + 7, ly, { size, bold: true, color: '#ffe95a', shadow: '#02163f' });
+          c.font = `bold ${size}px ${FONT}`;
+          text(row.slice(l.name.length + 1), x + 7 + c.measureText(`${l.name}:`).width, ly, { size, color: '#fff', shadow: '#02163f' });
+        } else text(row, x + 7, ly, { size, bold: !l.name, color: l.name ? '#fff' : '#9fe0ff', shadow: '#02163f' });
+      }
+    }
+    c.restore();
+    if (!typing && hint) text(input.touchMode.on ? '눌러서 채팅' : 'Enter 키로 채팅', x + w / 2, y + h - 6, { size: 10, bold: true, color: 'rgba(159, 208, 245, 0.75)', align: 'center' });
+    this.placeChat();
   }
 
   async load() {
@@ -377,6 +442,26 @@ export class GameScene {
         c.beginPath(); c.moveTo(v.x - 6, v.y - 62); c.lineTo(v.x + 6, v.y - 62); c.lineTo(v.x, v.y - 54); c.closePath(); c.fill();
       }
     }
+    // What a player just said, in a bubble over their head for a few seconds.
+    for (const { p, v } of views) {
+      if (p.state === 'dead' || this.inBush(v) && p.id !== this.me) continue;
+      const l = Chat.bubbleFor(p.id, now);
+      if (!l) continue;
+      c.font = `bold 12px ${FONT}`;
+      const rows = wrap(c, l.text, 130, 12).slice(0, 3);
+      const bw = Math.max(...rows.map((r) => c.measureText(r).width)) + 14, bh = rows.length * 15 + 8;
+      // Over the head, or under the feet when the player is at the map's top edge.
+      const below = v.y - 72 - bh < 2;
+      const bx = Math.max(2, Math.min(WW - bw - 2, v.x - bw / 2)), by = below ? v.y + 10 : v.y - 72 - bh;
+      const edge = below ? by : by + bh, tip = below ? by - 7 : by + bh + 7;
+      c.globalAlpha = Math.min(1, (Chat.BUBBLE_MS - (now - l.at)) / 300);
+      c.fillStyle = '#fff'; c.strokeStyle = '#1a3a7a'; c.lineWidth = 1.5;
+      roundRect(c, bx, by, bw, bh, 7); c.fill(); c.stroke();
+      c.beginPath(); c.moveTo(v.x - 5, edge); c.lineTo(v.x, tip); c.lineTo(v.x + 5, edge); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(v.x - 5, edge); c.lineTo(v.x, tip); c.lineTo(v.x + 5, edge); c.stroke();
+      rows.forEach((r, i) => text(r, bx + 7, by + 16 + i * 15, { size: 12, bold: true, color: '#102040' }));
+      c.globalAlpha = 1;
+    }
   }
 
   inBush(v) {
@@ -587,8 +672,13 @@ export class GameScene {
       text(p.name, nx, ry + 17, { size: 12, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - (nx - lx) - 32 });
       text(p.state === 'trapped' ? '갇힘' : `${p.kills}`, lx + lw - 8, ry + 17, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : '#9cf', align: 'right' });
     });
-    // Exit, map name, my items.
+    // Chat under the players, down to the screen's bottom (above the stick on a touch screen).
     ui.begin();
+    const ct = py + g.players.length * rowH + 16, side = left >= 110;
+    const cb = input.touchMode.on ? Math.min(this.L.vh * 0.58, ct + 130) : side ? this.L.vh - 10 : Math.min(this.L.vh - 10, ct + 150);
+    if (cb - ct > 50) this.chatArea(c, lx, ct, lw, cb - ct, { size: input.touchMode.on ? 12 : 13 });
+    else this.chatRect = null;
+    // Exit, map name, my items.
     const hw = (rw - 6) / 2;
     panel(rx, y + 2, hw, 34);
     text('⚙ 설정', rx + hw / 2, y + 24, { size: 13, bold: true, color: '#fff', align: 'center', shadow: '#03306e' });
@@ -650,8 +740,11 @@ export class GameScene {
       text(p.name, nx, ry + 14, { size: 11, bold: p.id === this.me, color: dead ? '#7a8aa8' : p.id === this.me ? '#ffe95a' : '#fff', maxW: lw - nx - 26, shadow: '#000' });
       text(dead ? '-' : p.state === 'trapped' ? '갇힘' : `${p.kills}`, lw, ry + 14, { size: 11, bold: true, color: p.state === 'trapped' ? '#7df' : '#cfe8ff', align: 'right', shadow: '#000' });
     });
-    // Settings and exit.
+    // Chat under the players, small.
     ui.begin();
+    const ct = top + g.players.length * rowH + 12;
+    this.chatArea(c, 6, ct, 190, Math.min(input.touchMode.on ? 96 : 130, vh * 0.5 - ct + 40), { size: 11, alpha: 0.45 });
+    // Settings and exit.
     const bw = 58, bh = 28;
     panel(vw - 6 - bw * 2 - 6, top, bw, bh, 0.7);
     text('⚙ 설정', vw - 6 - bw * 1.5 - 6, top + 19, { size: 12, bold: true, align: 'center', color: '#fff' });
@@ -694,5 +787,27 @@ export class GameScene {
     }
   }
 
-  leave() { input.enable(false); }
+  // The chat list, which a touch player out of the round can tap to type.
+  chatArea(c, x, y, w, h, opts) {
+    const me = this.myPlayer(), touch = input.touchMode.on, canType = !touch || (me && me.state === 'dead');
+    this.drawChat(c, x, y, w, h, { ...opts, hint: canType });
+    if (touch && canType && ui.area('chat', x, y, w, h)) this.openChat();
+  }
+
+  leave() {
+    input.enable(false);
+    window.removeEventListener('keydown', this.onKey);
+    if (this.closeChat) this.closeChat();
+  }
+}
+
+// Splits a chat line into rows that fit `width` (by characters, so Korean wraps too).
+function wrap(c, str, width) {
+  const rows = [];
+  let row = '';
+  for (const ch of str) {
+    if (row && c.measureText(row + ch).width > width) { rows.push(row); row = ch.trimStart(); } else row += ch;
+  }
+  if (row) rows.push(row);
+  return rows.length ? rows : [''];
 }

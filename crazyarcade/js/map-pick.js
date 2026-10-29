@@ -35,6 +35,8 @@ export function mapButton(btn, id, onClick) {
   const sub = btn.querySelector('.sub');
   btn.querySelector('b').textContent = sub ? m.name : `${m.name} (최대 ${m.spawns.length}명)`;
   if (sub) sub.textContent = `최대 ${m.spawns.length}명`;
+  const chips = btn.querySelector('.chips');
+  if (chips) chips.replaceChildren(...mapChips(m).map((t) => Object.assign(document.createElement('span'), { textContent: t })));
   btn.disabled = !onClick;
   btn.onclick = onClick ? () => { click(); onClick(); } : null;
 }
@@ -47,6 +49,11 @@ const THEME_DESC = {
   Mine: '광석과 수레가 있는 광산 맵이에요.', Ocean: '물속 바위와 산호 사이의 바다 맵이에요.', Xmas: '눈과 선물 상자가 쌓인 크리스마스 맵이에요.',
   Space: '우주 기지 블록 사이를 누비는 우주 맵이에요.', Aqua: '물방울 기둥이 있는 아쿠아 맵이에요.',
 };
+// The short facts shown as chips: players, modes, theme, what is special.
+function mapChips(m) {
+  const name = (THEMES.find(([p]) => p === themeOf(m.id)) || THEMES[0])[1];
+  return [`최대 ${m.spawns.length}명`, m.spawns.length >= 4 ? '팀전·개인전' : '1:1 · 개인전', name, ...features(m)];
+}
 // What sets a map apart, for its info card.
 function features(m) {
   const out = [];
@@ -70,7 +77,7 @@ export function pickMap(current, need, onPick) {
     const f = features(m);
     const extra = { '밀 수 있는 상자': '밀 수 있는 상자가 있어요.', '움직이는 바닥': '움직이는 바닥이 있어요.' };
     $('map-desc').textContent = [THEME_DESC[themeOf(m.id)] || `원작의 ${name} 대전 맵이에요.`, ...f.map((x) => extra[x])].join(' ');
-    const chips = [`최대 ${m.spawns.length}명`, m.spawns.length >= 4 ? '팀전·개인전' : '1:1 · 개인전', name, ...f].map((t) => Object.assign(document.createElement('span'), { textContent: t }));
+    const chips = mapChips(m).map((t) => Object.assign(document.createElement('span'), { textContent: t }));
     if (m.spawns.length < need) chips.push(Object.assign(document.createElement('span'), { className: 'warn', textContent: `지금 ${need}명이라 못 해요` }));
     $('map-info').replaceChildren(...chips);
     $('map-ok').disabled = m.spawns.length < need;

@@ -186,6 +186,16 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   for (let i = 0; i < HZ * 300 && r.phase === 'game'; i++) r.tick();
   check(got && got.length === 1 && got[0].acct === 'u:h' && ['win', 'lose', 'draw'].includes(got[0].result), `room result ${JSON.stringify(got)}`);
 }
+// Chat: a player's line carries their id (for the bubble over their head); too many in a row are dropped.
+{
+  const lines = [];
+  const r = new RoomCore({ code: '2', send: () => {}, broadcast: (m) => { if (m.t === 'chat') lines.push(m); } });
+  r.join('a', 'A');
+  for (let i = 0; i < 8; i++) r.message('a', { t: 'chat', text: `hi ${i}` });
+  const said = lines.filter((l) => l.id === 'a');
+  check(said.length === 5 && said[0].name === 'A' && said[0].text === 'hi 0', `chat lines ${JSON.stringify(said)}`);
+  check(lines.some((l) => l.id === null && !l.name), 'chat notices have no sender');
+}
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {
   const css = (await import('node:fs')).readFileSync(new URL('../css/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

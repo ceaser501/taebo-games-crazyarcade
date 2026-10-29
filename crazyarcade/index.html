@@ -106,16 +106,24 @@
       <button type="button" id="lobby-leave" class="back" aria-label="나가기">‹</button>
       <div class="code"><small>방 번호</small><b id="lobby-code">----</b></div>
       <button type="button" id="share-link" class="invite">초대 링크 보내기</button>
+      <span id="lobby-title" class="rtitle"></span>
       <div class="grow"></div>
       <div id="lobby-mode" class="modes"><button type="button" data-mode="team">팀전</button><button type="button" data-mode="solo">개인전</button></div>
+      <button type="button" id="chat-open" class="chat-btn" aria-label="채팅">💬<i hidden></i></button>
     </div>
     <div id="seats"></div>
     <p id="lobby-status"></p>
     <div class="bar">
-      <button type="button" id="lobby-map" class="tile map-tile"><canvas width="74" height="64"></canvas><span class="t"><small>맵 · 누르면 바꿔요</small><b></b><small class="sub"></small></span><span class="chev">›</span></button>
+      <button type="button" id="lobby-map" class="tile map-tile"><canvas width="300" height="260"></canvas><span class="t"><small>맵 · 누르면 바꿔요</small><b></b><small class="sub"></small></span><span class="chips"></span><span class="chev">›</span></button>
       <button type="button" id="lobby-char" class="tile"><canvas width="45" height="43"></canvas><span class="t"><small>내 캐릭터</small><b></b><small>누르면 바꿔요</small></span><span class="chev">›</span></button>
+      <div id="lobby-chars" class="chars"><h3>내 캐릭터 <span></span></h3><div class="cgrid"></div></div>
       <button type="button" id="lobby-shop" class="tile"><span class="bag">🛍</span><span class="t"><small>꾸미기 · 펫</small><b>상점</b><small>루찌로 사기</small></span><span class="chev">›</span></button>
       <button type="button" id="lobby-start" class="start">게임 시작</button>
+    </div>
+    <div id="lobby-chat" class="chatbox">
+      <h3>채팅 <button type="button" id="chat-close" class="x" aria-label="닫기">✕</button></h3>
+      <div id="chat-log" class="log"></div>
+      <form id="chat-form" class="say"><input id="chat-input" maxlength="80" autocomplete="off" enterkeyhint="send" placeholder="할 말을 쓰고 Enter"><button>보내기</button></form>
     </div>
   </div>
 
@@ -207,6 +215,8 @@
     </div>
   </div>
 
+  <!-- Chat in the game: placed by the game under its list of players. -->
+  <form id="game-chat" hidden><input id="game-chat-input" maxlength="80" autocomplete="off" enterkeyhint="send" placeholder="채팅 (Enter 보내기, Esc 닫기)"></form>
   <div id="toast" hidden></div>
   <div id="rotate">가로로 돌려 주세요 ↻</div>
   <div id="gate" hidden>

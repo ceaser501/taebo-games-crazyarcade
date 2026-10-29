@@ -12,6 +12,7 @@ import { Online, Practice, listRooms, randomCode } from './net.js';
 import * as Account from './account.js';
 import { mapById } from './shared/room.js';
 import { celebrate } from './rank.js';
+import * as Chat from './chat.js';
 
 // `SITE_PASSWORD=... npm run build` puts a simple password screen in front (hash only).
 /* global PASSWORD_HASH */
@@ -95,6 +96,7 @@ const app = {
     switch (m.t) {
       case 'welcome':
         this.me = m.you; this.room = m.room; this.roomTitle = m.room.title;
+        Chat.clear(); // the room sends its recent lines again after this
         // Our character and decorations.
         this.send({ t: 'set', look: W.look(), char: W.myChar() });
         renderLobby(this);
@@ -121,7 +123,8 @@ const app = {
         if (this.scene instanceof GameScene) this.scene.onMessage(m);
         break;
       case 'chat':
-        // Joins and leaves show briefly in the waiting room.
+        // The waiting room's panel and the game's list both read the chat's lines.
+        Chat.add(m);
         if (!m.name && lobbyShown()) lobbyStatus(m.text);
         break;
       case 'notice': this.toast(m.text); break;

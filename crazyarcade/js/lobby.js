@@ -4,13 +4,14 @@
 // a Durable Object, in the page for practice); this file only draws it and sends choices.
 import * as A from './assets.js';
 import { sfx } from './audio.js';
-import { TEAMS, charById } from './shared/const.js';
+import { TEAMS, CHARACTERS, charById } from './shared/const.js';
 import { MAPS } from './shared/maps.js';
 import { RED, BLUE } from './shared/room.js';
 import * as W from './wallet.js';
 import { pickChar } from './home.js';
 import { mapButton, pickMap, mapById } from './map-pick.js';
 import { rankCanvas } from './rank.js';
+import * as Chat from './chat.js';
 
 const $ = (id) => document.getElementById(id);
 const click = () => sfx('Bt_c_Pop', 0.6);
@@ -49,8 +50,12 @@ export function showMenu(app, status = '') {
 export function hideMenu() { $('menu').hidden = true; }
 
 // ---- waiting room
-export function showLobby(app) { $('lobby').hidden = false; renderLobby(app); }
-export function hideLobby() { $('lobby').hidden = true; }
+// Wide screens (a PC) get the bigger layout: rows of four seats, a side column, the chat panel.
+const WIDE = matchMedia('(min-width: 1100px) and (min-height: 640px)');
+let lobbyApp = null;
+WIDE.addEventListener?.('change', () => { if (lobbyApp) renderLobby(lobbyApp); });
+export function showLobby(app) { lobbyApp = app; $('lobby').hidden = false; setupChat(app); renderLobby(app); }
+export function hideLobby() { $('lobby').hidden = true; $('lobby-chat').classList.remove('open'); }
 export const lobbyShown = () => !$('lobby').hidden;
 export function lobbyStatus(text) { $('lobby-status').textContent = text; }
 
@@ -124,6 +129,16 @@ export function renderLobby(app) {
     if (!s.children.length) s.textContent = '친구를 기다리는 중…';
     return s;
   };
+  const wide = WIDE.matches;
+  $('lobby').classList.toggle('wide', wide);
+  $('lobby-title').textContent = room.title || '';
+  // A seat not open yet (wide layout): the host opens the seats up to it.
+  const closed = (i) => {
+    const b = el('button', 's closed', host ? '+ 자리 열기' : '닫힌 자리'); b.type = 'button';
+    b.disabled = !host;
+    b.onclick = () => { if (host) { click(); app.send({ t: 'settings', size: i + 1 }); } };
+    return b;
+  };
   const seats = $('seats');
   seats.className = room.mode;
   const members = [...room.members].sort((a, b) => a.slot - b.slot);
@@ -135,7 +150,7 @@ export function renderLobby(app) {
       box.style.setProperty('--c', TEAMS[color].css);
       const h = el('h3', null, name); h.append(el('b', null, `${list.length}/${n}`));
       const g = el('div', 'seatsg'); g.style.gridTemplateRows = `repeat(${n}, minmax(0, 1fr))`;
-      for (let i = 0; i < n; i++) g.append(list[i] ? player(list[i], n === 1) : empty(color));
+      for (let i = 0; i < (wide ? 4 : n); i++) g.append(list[i] ? player(list[i], wide || n === 1) : i < n ? empty(color) : closed(i));
       box.append(h, g);
       return box;
     };
@@ -148,8 +163,8 @@ export function renderLobby(app) {
     }
     seats.replaceChildren(team(RED, '빨강팀'), vs, team(BLUE, '파랑팀'));
   } else {
-    const n = Math.min(8, Math.max(2, members.length + 1));
-    seats.replaceChildren(...Array.from({ length: n }, (_, i) => (members[i] ? player(members[i], false) : empty(0))));
+    const n = wide ? 8 : Math.min(8, Math.max(2, members.length + 1));
+    seats.replaceChildren(...Array.from({ length: n }, (_, i) => (members[i] ? player(members[i], wide) : empty(0))));
   }
   // The room's map pictures load while waiting, so the round opens with them ready.
   for (const t of mapById(room.map).sets) A.loadGroup(`tile_${t}`);
@@ -160,6 +175,7 @@ export function renderLobby(app) {
     $('lobby-char').querySelector('b').textContent = charById(mine.char).name;
   }
   $('lobby-char').onclick = () => pickChar(app, (id) => app.send({ t: 'set', char: id }));
+  if (wide) quickChars(app, mine);
   $('lobby-shop').onclick = () => { click(); app.toShop('lobby'); };
   $('lobby-leave').onclick = () => { click(); app.leaveRoom(); };
   $('share-link').onclick = () => share(room.code);
@@ -171,6 +187,66 @@ export function renderLobby(app) {
   start.disabled = !host || !!why;
   start.onclick = () => { if (host && !why) { sfx('Bt_c_GameStart'); app.send({ t: 'start' }); } };
   lobbyStatus(why || (host ? '준비됐어요. 게임 시작을 누르세요!' : '방장이 게임을 시작하길 기다리는 중…'));
+}
+
+// Wide layout: the characters I own to switch with one click, and 전체 for the whole list.
+function quickChars(app, mine) {
+  const cur = mine ? mine.char : W.myChar();
+  $('lobby-chars').querySelector('h3 span').textContent = charById(cur).name;
+  const owned = CHARACTERS.filter((c) => W.owns('char', c.id)).slice(0, 14);
+  const pick = (id) => { if (id === cur) return; click(); W.setChar(id); app.send({ t: 'set', char: id }); };
+  const bs = owned.map((c) => {
+    const b = el('button', c.id === cur ? 'sel' : ''); b.type = 'button'; b.title = c.name;
+    const cv = el('canvas'); cv.width = 45; cv.height = 43; b.append(cv);
+    portrait(cv, { char: c.id, color: mine ? mine.color : 0 });
+    b.onclick = () => pick(c.id);
+    return b;
+  });
+  const all = el('button', 'all', '전체 ›'); all.type = 'button';
+  all.onclick = () => pickChar(app, (id) => app.send({ t: 'set', char: id }));
+  $('lobby-chars').querySelector('.cgrid').replaceChildren(...bs, all);
+}
+
+// Chat: a panel on wide screens (Enter anywhere starts typing), a popup from 💬 on phones with
+// a dot while there are lines not seen.
+let chatReady = false;
+function chatLine(l) {
+  const d = el('div', l.name ? '' : 'sys');
+  if (l.name) d.append(el('b', null, l.name));
+  d.append(document.createTextNode(l.text));
+  return d;
+}
+function setupChat(app) {
+  lobbyApp = app;
+  const log = $('chat-log'), box = $('lobby-chat');
+  const fill = () => { log.replaceChildren(...Chat.lines.map(chatLine)); log.scrollTop = log.scrollHeight; };
+  fill();
+  if (chatReady) return;
+  chatReady = true;
+  Chat.onLine((l) => {
+    if (!l) { fill(); return; }
+    log.append(chatLine(l));
+    while (log.children.length > 60) log.firstChild.remove();
+    log.scrollTop = log.scrollHeight;
+    if (!WIDE.matches && !box.classList.contains('open') && l.name && !$('lobby').hidden) $('chat-open').querySelector('i').hidden = false;
+  });
+  const open = (on) => {
+    box.classList.toggle('open', on);
+    if (on) { $('chat-open').querySelector('i').hidden = true; log.scrollTop = log.scrollHeight; $('chat-input').focus(); }
+  };
+  $('chat-open').onclick = () => { click(); open(!box.classList.contains('open')); };
+  $('chat-close').onclick = () => open(false);
+  $('chat-form').onsubmit = (e) => {
+    e.preventDefault();
+    const text = $('chat-input').value.trim();
+    if (text) lobbyApp.send({ t: 'chat', text });
+    $('chat-input').value = '';
+  };
+  $('chat-input').onkeydown = (e) => { if (e.key === 'Escape') { $('chat-input').blur(); open(false); } };
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || $('lobby').hidden || !WIDE.matches || e.target.tagName === 'INPUT' || !$('char-pick').hidden || !$('map-pick').hidden) return;
+    e.preventDefault(); $('chat-input').focus();
+  });
 }
 
 // The same checks the room makes, to explain before pressing.

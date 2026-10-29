@@ -123,9 +123,17 @@ export class RoomCore {
     this.members.delete(id); this.slots[m.slot].id = null; this.bots.delete(id);
   }
 
+  // A chat line (from: a member's id, or null for the room's own notices); id lets the
+  // game put it over that player's head. A member sends at most 5 lines in 5 seconds.
   chat(from, text) {
     const m = from ? this.members.get(from) : null;
-    const line = { name: m ? m.name : null, text: String(text).slice(0, 80) };
+    if (m) {
+      const now = Date.now();
+      m.said = (m.said || []).filter((t) => now - t < 5000);
+      if (m.said.length >= 5) { this.send(from, { t: 'notice', text: '채팅을 조금 천천히 보내 주세요.' }); return; }
+      m.said.push(now);
+    }
+    const line = { id: m ? m.id : null, name: m ? m.name : null, text: String(text).replace(/[\u0000-\u001f]/g, ' ').slice(0, 80) };
     this.chatLog.push(line); if (this.chatLog.length > 30) this.chatLog.shift();
     this.broadcast({ t: 'chat', ...line });
   }

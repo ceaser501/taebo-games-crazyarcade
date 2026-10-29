@@ -13,8 +13,14 @@ export const touchMode = { on: matchMedia('(pointer: coarse)').matches };
 
 const KEYDIR = { ArrowUp: 1, KeyW: 1, ArrowDown: 2, KeyS: 2, ArrowLeft: 3, KeyA: 3, ArrowRight: 4, KeyD: 4 };
 let lastDirKey = null;
+const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 window.addEventListener('keydown', (e) => {
-  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+    // Typing a chat line in the game: the arrow keys still move the character (and leave the
+    // text alone); every other key types.
+    if (enabled && e.target.id === 'game-chat-input' && ARROWS.has(e.code)) { keys.add(e.code); lastDirKey = e.code; e.preventDefault(); }
+    return;
+  }
   if (!enabled) return;
   if (KEYDIR[e.code]) { keys.add(e.code); lastDirKey = e.code; e.preventDefault(); }
   if (e.code === 'Space' && !e.repeat) { bombQueued = true; e.preventDefault(); }

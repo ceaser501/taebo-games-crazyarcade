@@ -246,6 +246,88 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   .bar { grid-template-columns: 1fr 1fr; } .bar .map-tile, .bar .start { grid-column: 1 / -1; } .bar .start { min-height: 52px; }
 }
 #lobby-status { margin: 0; word-break: keep-all; min-height: 1.2em; font-size: 14px; font-weight: 800; color: #ffe58a; text-align: center; }
+/* chat: a popup from the 💬 button on phones, a panel on wide screens */
+.rtitle, #lobby-chars, .map-tile .chips { display: none; }
+.chat-btn { all: unset; cursor: pointer; position: relative; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; background: rgba(0, 30, 90, 0.7); border: 2px solid #9fe0ff; flex: none; }
+.chat-btn i { position: absolute; top: -3px; right: -3px; width: 11px; height: 11px; border-radius: 50%; background: #ff4a4a; border: 2px solid #fff; }
+.chatbox { display: none; }
+.chatbox.open { display: grid; position: fixed; z-index: 8; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); height: min(64vh, 300px);
+  grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; padding: 10px 12px; border-radius: 16px; background: linear-gradient(180deg, rgba(20, 90, 200, 0.97), rgba(6, 40, 120, 0.98)); border: 3px solid #7fd4ff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.chatbox h3 { margin: 0; font-size: 15px; color: #9fd0f5; display: flex; justify-content: space-between; align-items: center; }
+.chatbox h3 .x { all: unset; cursor: pointer; font-size: 18px; color: #fff; padding: 0 4px; }
+.chatbox .log { overflow-y: auto; font-size: 14px; line-height: 1.55; display: flex; flex-direction: column; word-break: break-all; }
+.chatbox .log > :first-child { margin-top: auto; }
+.chatbox .log .sys { color: #9fe0ff; }
+.chatbox .log b { color: #ffe95a; margin-right: 6px; }
+.chatbox .say { display: flex; gap: 8px; margin: 0; }
+.chatbox .say input { flex: 1; min-width: 0; font: 700 15px "Nanum Gothic", sans-serif; border: 0; border-radius: 10px; padding: 9px 12px; background: rgba(255, 255, 255, 0.94); color: #102040; }
+.chatbox .say button { font: 900 15px "Nanum Gothic", sans-serif; color: #fff; padding: 0 16px; border-radius: 10px; background: #1a6ee8; border: 2px solid #c8ecff; cursor: pointer; }
+#game-chat { position: fixed; z-index: 4; margin: 0; }
+#game-chat input { width: 100%; box-sizing: border-box; font: 700 13px "Nanum Gothic", sans-serif; border: 2px solid #7fd4ff; border-radius: 8px; padding: 5px 8px; background: rgba(255, 255, 255, 0.95); color: #102040; }
+
+/* ---- waiting room on wide screens (PC): seats in rows of four with whole figures, the map,
+   characters and start on the right, the chat under the seats ---- */
+#lobby.wide { grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr) auto 200px; column-gap: 16px; row-gap: 10px;
+  grid-template-areas: "top top" "seats side" "status side" "chat side"; padding: 22px 30px; }
+#lobby.wide .wr-top { grid-area: top; gap: 12px; }
+#lobby.wide .wr-top .back { width: 46px; height: 46px; font-size: 28px; border-radius: 14px; }
+#lobby.wide .wr-top .code { padding: 7px 16px; border-radius: 14px; } #lobby.wide #lobby-code { font-size: 28px; letter-spacing: 6px; }
+#lobby.wide .wr-top .invite { font-size: 16px; padding: 11px 20px; }
+#lobby.wide .rtitle { display: block; font-size: 18px; font-weight: 800; color: #e8f6ff; margin-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#lobby.wide .modes button { padding: 9px 20px; font-size: 16px; }
+#lobby.wide .chat-btn { display: none; }
+#lobby.wide #seats { grid-area: seats; padding: 14px 16px; border-radius: 18px; background: linear-gradient(180deg, rgba(20, 90, 200, 0.92), rgba(6, 40, 120, 0.94)); border: 3px solid #7fd4ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 30px rgba(0, 0, 0, 0.45); }
+#lobby.wide #seats.team { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+#lobby.wide .vs { display: none; }
+#lobby.wide .tm { background: none; border: 0; box-shadow: none; padding: 0; gap: 8px; }
+#lobby.wide .tm h3 { font-size: 18px; align-items: center; }
+#lobby.wide .tm h3 b { font-size: 15px; background: rgba(0, 0, 0, 0.25); padding: 2px 12px; border-radius: 999px; }
+#lobby.wide .seatsg { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr) !important; gap: 12px; }
+#lobby.wide #seats.solo { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); grid-auto-rows: auto; gap: 12px; align-content: stretch; }
+#lobby.wide .s { flex-direction: column; justify-content: flex-end; gap: 2px; padding: 8px 8px 10px; border-radius: 16px; overflow: hidden; }
+#lobby.wide .s.p { background: radial-gradient(ellipse at 50% 78%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05) 70%); border: 3px solid var(--c); }
+#lobby.wide .s.me { box-shadow: 0 0 0 3px #ffe95a, 0 0 18px rgba(255, 233, 90, 0.45); }
+#lobby.wide .s canvas.fig { width: auto; height: min(126px, 100%); aspect-ratio: 60 / 70; min-height: 0; flex: 0 1 auto; }
+#lobby.wide .s .nm { align-items: center; text-align: center; max-width: 100%; }
+#lobby.wide .s .nm b { font-size: 17px; justify-content: center; }
+#lobby.wide .s .nm small { color: #cfe8ff; font-size: 13px; }
+#lobby.wide .s .tag { top: 8px; left: 8px; right: auto; font-size: 12px; padding: 2px 9px; }
+#lobby.wide .s .kick { top: 8px; right: 10px; bottom: auto; font-size: 12px; }
+#lobby.wide .s.e { border-width: 3px; justify-content: center; gap: 10px; }
+#lobby.wide .s.e button { font-size: 14px; padding: 8px 14px; }
+#lobby.wide .s.closed { all: unset; box-sizing: border-box; cursor: pointer; border-radius: 16px; border: 2px solid rgba(159, 224, 255, 0.15); background: rgba(0, 0, 0, 0.18); display: grid; place-items: center; color: rgba(159, 208, 245, 0.7); font-weight: 800; font-size: 14px; }
+#lobby.wide .s.closed:disabled { cursor: default; color: rgba(159, 208, 245, 0.35); }
+#lobby.wide #lobby-status { grid-area: status; font-size: 15px; }
+#lobby.wide .bar { grid-area: side; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+#lobby.wide .tile, #lobby.wide .chars { border-radius: 18px; background: linear-gradient(180deg, rgba(20, 90, 200, 0.92), rgba(6, 40, 120, 0.94)); border: 3px solid #7fd4ff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 30px rgba(0, 0, 0, 0.45); }
+#lobby.wide .map-tile { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px 14px; position: relative; }
+#lobby.wide .map-tile canvas { width: 100%; height: auto; aspect-ratio: 300 / 260; max-height: 30vh; object-fit: contain; border: 2px solid #e6fbff; border-radius: 10px; image-rendering: auto; order: 1; }
+#lobby.wide .map-tile::before { content: "맵"; order: 0; font-size: 15px; font-weight: 800; color: #9fd0f5; }
+#lobby.wide .map-tile .t { order: 2; } #lobby.wide .map-tile .t small { display: none; }
+#lobby.wide .map-tile .t b { font-size: 21px; color: #ffe95a; }
+#lobby.wide .map-tile .chips { display: flex; order: 3; gap: 6px; flex-wrap: wrap; }
+#lobby.wide .map-tile .chips span { background: rgba(255, 255, 255, 0.14); border-radius: 999px; padding: 3px 11px; font-size: 13px; font-weight: 800; }
+#lobby.wide .map-tile .chev { position: absolute; top: 12px; right: 14px; font-size: 14px; color: #ffe95a; }
+#lobby.wide .map-tile .chev::before { content: "바꾸기 "; }
+#lobby.wide .map-tile:disabled .chev { display: none; }
+#lobby.wide #lobby-char { display: none; }
+#lobby.wide .chars { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; flex: 1; min-height: 0; overflow: hidden; }
+#lobby.wide .chars h3 { margin: 0; font-size: 15px; color: #9fd0f5; display: flex; justify-content: space-between; }
+#lobby.wide .chars h3 span { color: #ffe95a; }
+#lobby.wide .cgrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; overflow-y: auto; min-height: 0; }
+#lobby.wide .cgrid button { all: unset; cursor: pointer; border-radius: 10px; background: rgba(0, 20, 70, 0.5); border: 2px solid transparent; display: grid; place-items: center; padding: 3px 0; aspect-ratio: 1.05; }
+#lobby.wide .cgrid button.sel { border-color: #ffe95a; background: rgba(255, 220, 60, 0.3); }
+#lobby.wide .cgrid button canvas { width: 50px; height: 48px; image-rendering: pixelated; }
+#lobby.wide .cgrid button.all { font-size: 12px; font-weight: 800; color: #9fd0f5; }
+#lobby.wide #lobby-shop { padding: 10px 14px; justify-content: center; border-radius: 14px; }
+#lobby.wide #lobby-shop .t small { display: none; } #lobby.wide #lobby-shop .chev { margin-left: 0; }
+#lobby.wide .start { min-height: 86px; font-size: 30px; border-radius: 18px; border-width: 4px; box-shadow: 0 6px 0 #a04a00, 0 10px 24px rgba(0, 0, 0, 0.4); }
+#lobby.wide .start.wait { font-size: 20px; }
+#lobby.wide .chatbox { grid-area: chat; display: grid; position: static; height: auto; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; padding: 12px 16px; border-radius: 18px;
+  background: linear-gradient(180deg, rgba(20, 90, 200, 0.92), rgba(6, 40, 120, 0.94)); border: 3px solid #7fd4ff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 30px rgba(0, 0, 0, 0.45); }
+#lobby.wide .chatbox h3 .x { display: none; }
+#lobby.wide .chatbox .log { font-size: 15px; }
 #char-pick { z-index: 12; }
 @media (max-height: 460px) and (orientation: landscape) {
   #menu { gap: 8px; padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); } #menu .card { gap: 7px; padding: 12px 14px; }
