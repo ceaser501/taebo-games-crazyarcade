@@ -19,6 +19,8 @@ import { fanfareSound } from './fanfare.js';
 
 const WW = COLS * TILE, WH = ROWS * TILE; // the map in world pixels (600×520)
 const INTERP = 4; // ticks others are drawn behind the server clock (smooths uneven arrival)
+// Speech bubbles: the game's navy, see-through so the map shows behind.
+const BUBBLE = { bg: 'rgba(2, 22, 70, 0.6)', line: 'rgba(127, 212, 255, 0.9)', ink: '#ffffff' };
 const HORROR = /^(Tomb|Cemetery|DarkCastle)/i, DARK_SECONDS = 60; // maps that go dark near the end
 
 // Flame/Flame states FireL01..FireL10 (left arm; up, right and down add 1, 2, 3): row n is the
@@ -458,22 +460,43 @@ export class GameScene {
     for (const { p, v } of views) {
       if (p.state === 'dead' || this.inBush(v) && p.id !== this.me) continue;
       const l = Chat.bubbleFor(p.id, now);
-      if (!l) continue;
-      c.font = `bold 12px ${FONT}`;
-      const rows = wrap(c, l.text, 130, 12).slice(0, 3);
-      const bw = Math.max(...rows.map((r) => c.measureText(r).width)) + 14, bh = rows.length * 15 + 8;
-      // Over the head, or under the feet when the player is at the map's top edge.
-      const below = v.y - 72 - bh < 2;
-      const bx = Math.max(2, Math.min(WW - bw - 2, v.x - bw / 2)), by = below ? v.y + 10 : v.y - 72 - bh;
-      const edge = below ? by : by + bh, tip = below ? by - 7 : by + bh + 7;
-      c.globalAlpha = Math.min(1, (Chat.BUBBLE_MS - (now - l.at)) / 300);
-      c.fillStyle = '#fff'; c.strokeStyle = '#1a3a7a'; c.lineWidth = 1.5;
-      roundRect(c, bx, by, bw, bh, 7); c.fill(); c.stroke();
-      c.beginPath(); c.moveTo(v.x - 5, edge); c.lineTo(v.x, tip); c.lineTo(v.x + 5, edge); c.closePath(); c.fill();
-      c.beginPath(); c.moveTo(v.x - 5, edge); c.lineTo(v.x, tip); c.lineTo(v.x + 5, edge); c.stroke();
-      rows.forEach((r, i) => text(r, bx + 7, by + 16 + i * 15, { size: 12, bold: true, color: '#102040' }));
-      c.globalAlpha = 1;
+      if (l) this.drawBubble(c, p, v, l, now);
     }
+  }
+
+  // A speech bubble: rounded, with a small tail to the speaker, popping in and fading out.
+  drawBubble(c, p, v, l, now) {
+    const style = BUBBLE, size = 13, lh = 16;
+    c.font = `800 ${size}px ${FONT}`;
+    const rows = wrap(c, l.text, 140, size).slice(0, 3);
+    const bw = Math.max(...rows.map((r) => c.measureText(r).width)) + 18, bh = rows.length * lh + 10;
+    // Over the name, or under the feet when the player is at the map's top edge.
+    const below = v.y - 70 - bh < 2;
+    const bx = Math.max(2, Math.min(WW - bw - 2, v.x - bw / 2)), by = below ? v.y + 12 : v.y - 70 - bh;
+    const tx = Math.max(bx + 10, Math.min(bx + bw - 10, v.x)), edge = below ? by : by + bh, tip = below ? by - 7 : by + bh + 7;
+    const age = now - l.at, pop = Math.min(1, age / 140), s = 0.85 + 0.15 * pop;
+    c.save();
+    c.globalAlpha = Math.min(1, (Chat.BUBBLE_MS - age) / 300) * Math.min(1, age / 80);
+    c.translate(tx, edge); c.scale(s, s); c.translate(-tx, -edge);
+    c.shadowColor = 'rgba(0, 0, 0, 0.35)'; c.shadowBlur = 4; c.shadowOffsetY = 2;
+    c.fillStyle = style.bg;
+    roundRect(c, bx, by, bw, bh, 9); c.fill();
+    c.beginPath(); c.moveTo(tx - 6, edge); c.lineTo(tx, tip); c.lineTo(tx + 6, edge); c.closePath(); c.fill();
+    c.shadowColor = 'transparent';
+    c.strokeStyle = style.line; c.lineWidth = 2;
+    c.beginPath();
+    // One outline round the box and the tail together.
+    const r = 9, t0 = tx - 6, t1 = tx + 6;
+    if (!below) {
+      c.moveTo(bx + r, by); c.arcTo(bx + bw, by, bx + bw, by + bh, r); c.arcTo(bx + bw, by + bh, bx, by + bh, r);
+      c.lineTo(t1, by + bh); c.lineTo(tx, tip); c.lineTo(t0, by + bh); c.arcTo(bx, by + bh, bx, by, r); c.arcTo(bx, by, bx + bw, by, r);
+    } else {
+      c.moveTo(t1, by); c.arcTo(bx + bw, by, bx + bw, by + bh, r); c.arcTo(bx + bw, by + bh, bx, by + bh, r);
+      c.arcTo(bx, by + bh, bx, by, r); c.arcTo(bx, by, bx + bw, by, r); c.lineTo(t0, by); c.lineTo(tx, tip);
+    }
+    c.closePath(); c.stroke();
+    rows.forEach((row, i) => text(row, bx + bw / 2, by + 5 + lh * 0.82 + i * lh, { size, bold: true, color: style.ink, align: 'center' }));
+    c.restore();
   }
 
   inBush(v) {
@@ -704,7 +727,7 @@ export class GameScene {
     // Chat under the players, down to the screen's bottom (above the stick on a touch screen).
     ui.begin();
     const ct = py + g.players.length * rowH + 16, side = left >= 110;
-    const cb = input.touchMode.on ? Math.min(vh * 0.58, ct + 130) : side ? vh - 10 : Math.min(vh - 10, ct + 150);
+    const cb = input.touchMode.on ? Math.min(vh * 0.58, ct + 130) : side ? Math.min(vh - 10, ct + (7 * TILE * k) / u) : Math.min(vh - 10, ct + 150);
     if (cb - ct > 50) this.chatArea(c, lx, ct, lw, cb - ct, { size: input.touchMode.on ? 12 : 13, scale: u });
     else this.chatRect = null;
     // Exit, map name, my items.
