@@ -858,8 +858,8 @@ export class GameScene {
   drawBoard(c, now) {
     const g = this.g, { k, x, y, vw, vh } = this.L, team = g.mode === 'team';
     const mx = Math.max(0, x), mw = Math.min(vw, WW * k), my = Math.max(0, y), mh = Math.min(vh, WH * k);
-    // Nearly the whole map (as on a phone); everything scales with the board's width.
-    const w = mw - 24, u = Math.max(1, Math.min(1.9, w / 520));
+    // Most of the map (nearly all of it on a phone); everything scales with the board's width.
+    const w = mw > 600 ? Math.round(mw * 0.8) : mw - 24, u = Math.max(1, Math.min(1.55, w / 520));
     const rowH = Math.max(28, Math.min(36 * u, (mh - 140 * u) / (g.players.length + (team ? 2 : 1))));
     const groups = team ? [...new Set(g.players.map((p) => p.team))].map((t) => g.players.filter((p) => p.team === t)) : [[...g.players].sort((p, q) => scoreOf(q) - scoreOf(p))];
     const h = 64 * u + groups.reduce((n, gr) => n + (team ? 30 : 22) * u + gr.length * rowH, 0) + 34 * u;
