@@ -59,7 +59,7 @@ function room(code) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  const am = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import|missions|claim|spin)$/);
+  const am = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import|missions|claim|spin|title)$/);
   if (am && req.method === 'POST') {
     let body = '';
     for await (const c of req) body += c;
@@ -90,7 +90,7 @@ server.on('upgrade', (req, socket, head) => {
     const pid = url.searchParams.get('pid') || `p${Math.random().toString(36).slice(2, 10)}`;
     let name = url.searchParams.get('name') || '플레이어', acct = null;
     const a = await accounts.user(url.searchParams.get('token'));
-    if (a && a.u) { acct = { key: a.key, exp: a.u.exp }; name = a.u.name; } else name = await accounts.guestName(name);
+    if (a && a.u) { acct = { key: a.key, exp: a.u.exp, title: await accounts.titleOf(a.key, a.u) }; name = a.u.name; } else name = await accounts.guestName(name);
     const old = r.sockets.get(pid); if (old) old.close();
     r.sockets.set(pid, ws);
     if (r.gone.has(pid)) { clearTimeout(r.gone.get(pid)); r.gone.delete(pid); }

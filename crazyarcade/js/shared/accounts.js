@@ -88,6 +88,7 @@ export class AccountsCore {
       missions = Rewards.view(u.rw, u.exp).rows;
     }
     await this.store.put(key, u);
+    if (u.exp > before) await this.addWeekly(key, u.name, u.exp - before);
     return { before, exp: u.exp, level: levelOf(u.exp), gained: u.exp - before, lucci, wallet: u.wallet, missions };
   }
 
@@ -129,9 +130,36 @@ export class AccountsCore {
       u.imported = true;
       return 'ok';
     });
-    if (action === 'missions' || action === 'claim' || action === 'spin') return this.missions(action, body);
+    if (['missions', 'claim', 'spin', 'title'].includes(action)) return this.missions(action, body);
     return { error: 'action' };
   }
+
+  // The weekly ranking: experience gained this week (Korean weeks from Monday), by account.
+  async addWeekly(key, name, n) {
+    const wk = `w:${Rewards.weekOf()}`;
+    const board = (await this.store.get(wk)) || {};
+    const e = board[key] || { name, exp: 0 };
+    e.name = name; e.exp += n;
+    board[key] = e;
+    await this.store.put(wk, board);
+  }
+  async ranking(key) {
+    const board = (await this.store.get(`w:${Rewards.weekOf()}`)) || {};
+    const all = Object.entries(board).sort((a, b) => b[1].exp - a[1].exp);
+    const users = await Promise.all(all.slice(0, 10).map(([k]) => this.store.get(k)));
+    const top = all.slice(0, 10).map(([k, e], i) => ({ rank: i + 1, name: e.name, exp: e.exp, level: users[i] ? levelOf(users[i].exp) : 1, me: k === key }));
+    const mine = all.findIndex(([k]) => k === key);
+    return { week: Rewards.weekOf(), top, mine: mine < 0 ? null : { rank: mine + 1, exp: all[mine][1].exp } };
+  }
+  // Whether this account won last week's ranking (the 주간 1위 title for this week).
+  async weeklyWinner(key) {
+    const board = (await this.store.get(`w:${Rewards.lastWeekOf()}`)) || {};
+    let best = null;
+    for (const [k, e] of Object.entries(board)) if (!best || e.exp > best[1].exp) best = [k, e];
+    return !!best && best[0] === key;
+  }
+  // The title an account shows in rooms, or null.
+  async titleOf(key, u) { return Rewards.shownTitle(u.rw, await this.weeklyWinner(key)); }
 
   // The daily missions popup: 'missions' reads them, 'claim' takes keys (body.id or 'all'),
   // 'spin' turns the 행운룰렛 once (body.pool: the shop's decorations, for a random one).
@@ -142,7 +170,9 @@ export class AccountsCore {
     u.rw = Rewards.fresh(u.rw);
     u.wallet = Shop.cleanWallet(u.wallet);
     let out = {};
+    const weekly = await this.weeklyWinner(a.key);
     if (action === 'claim') out.taken = Rewards.claim(u.rw, String(body.id || 'all'));
+    if (action === 'title') { const r = Rewards.setTitle(u.rw, body.id ?? null, weekly); if (r !== 'ok') out.error = r; }
     if (action === 'spin') {
       const pool = {};
       for (const k of ['hat', 'bomb', 'pet']) pool[k] = (Array.isArray(body.pool?.[k]) ? body.pool[k] : []).slice(0, 5000).filter((id) => Shop.validItem(k, id));
@@ -151,7 +181,8 @@ export class AccountsCore {
       out.spin = r;
     }
     if (action !== 'missions') await this.store.put(a.key, u);
-    return { ...out, ...Rewards.view(u.rw, u.exp), exp: u.exp, level: levelOf(u.exp), wallet: u.wallet };
+    return { ...out, ...Rewards.view(u.rw, u.exp), exp: u.exp, level: levelOf(u.exp), wallet: u.wallet,
+      titles: Rewards.titles(u.rw, weekly), title: Rewards.shownTitle(u.rw, weekly), ranking: await this.ranking(a.key) };
   }
 }
 

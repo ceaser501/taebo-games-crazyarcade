@@ -43,8 +43,29 @@ export const dayOf = (now = Date.now()) => new Date(now + 9 * 3600 * 1000).toISO
 export const streakMark = (n) => n === 3 || (n >= 5 && n % 5 === 0);
 export const nextStreakMark = (n) => (n < 3 ? 3 : n < 5 ? 5 : (Math.floor(n / 5) + 1) * 5);
 
+// Titles: earned for good, shown under the name in the waiting room and on the kill/death
+// board (one at a time, the player's pick). 주간 1위 lasts the week after the one it was won in.
+export const TITLES = [
+  { id: 'master', name: '물풍선 장인', desc: '온라인 누적 100킬', need: 100, of: 'kills' },
+  { id: 'rescuer', name: '구조대', desc: '우리 팀 구하기 누적 50번', need: 50, of: 'rescues' },
+  { id: 'immortal', name: '불사신', desc: '무한 결투에서 한 번도 안 죽고 승리', need: 1, of: 'immortal' },
+  { id: 'lucky', name: '럭키가이', desc: '행운룰렛 잭팟 당첨', need: 1, of: 'jackpots' },
+  { id: 'comeback', name: '역전의 용사', desc: '3연패 뒤 승리', need: 1, of: 'comebacks' },
+  { id: 'weekly', name: '주간 1위', desc: '지난주 주간 랭킹 1위 (이번 주 동안)', need: 1, of: 'weekly' },
+];
+export const titleName = (id) => TITLES.find((t) => t.id === id)?.name || null;
+
+// The week in Korea, named by its Monday ("2026-10-26"); the ranking starts again each Monday.
+export function weekOf(now = Date.now()) {
+  const k = new Date(now + 9 * 3600 * 1000);
+  const back = (k.getUTCDay() + 6) % 7;
+  return new Date(Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate() - back)).toISOString().slice(0, 10);
+}
+export const lastWeekOf = (now = Date.now()) => weekOf(now - 7 * 86400000);
+
 export function blank() {
-  return { keys: 0, day: '', daily: {}, taken: {}, pending: { multi: 0, mvp: 0, streak: 0, level: 0 }, streak: 0, jackpots: 0 };
+  return { keys: 0, day: '', daily: {}, taken: {}, pending: { multi: 0, mvp: 0, streak: 0, level: 0 }, streak: 0, jackpots: 0,
+    life: { kills: 0, rescues: 0, immortal: 0, comebacks: 0 }, lossRun: 0, title: null };
 }
 
 // Made whole and moved to today (yesterday's missions are gone).
@@ -53,6 +74,7 @@ export function fresh(rw, now = Date.now()) {
   const out = rw && typeof rw === 'object' ? rw : b;
   for (const k of Object.keys(b)) if (out[k] == null) out[k] = b[k];
   for (const k of Object.keys(b.pending)) out.pending[k] = Math.max(0, out.pending[k] | 0);
+  for (const k of Object.keys(b.life)) out.life[k] = Math.max(0, out.life[k] | 0);
   out.keys = Math.max(0, out.keys | 0);
   const today = dayOf(now);
   if (out.day !== today) { out.day = today; out.daily = {}; out.taken = {}; }
@@ -68,12 +90,17 @@ export function onGame(rw, game, expBefore, expAfter) {
   d.rescues = (d.rescues | 0) + Math.max(0, game.rescues | 0);
   if ((game.kills | 0) >= MULTI_KILLS) rw.pending.multi++;
   if (game.mvp) rw.pending.mvp++;
+  rw.life.kills += Math.max(0, game.kills | 0);
+  rw.life.rescues += Math.max(0, game.rescues | 0);
+  if (game.duel && game.result === 'win' && (game.deaths | 0) === 0) rw.life.immortal++;
   let bonus = 0;
   if (game.result === 'win') {
+    if (rw.lossRun >= 3) rw.life.comebacks++;
+    rw.lossRun = 0;
     rw.streak++;
     if (streakMark(rw.streak)) rw.pending.streak++;
     if (rw.streak >= 2) bonus = STREAK_BONUS;
-  } else if (game.result === 'lose') rw.streak = 0;
+  } else if (game.result === 'lose') { rw.streak = 0; rw.lossRun++; }
   levelUp(rw, expBefore, expAfter);
   return bonus;
 }
@@ -136,4 +163,24 @@ export function spin(rw, u, wallet, pool, r = Math.random(), r2 = Math.random())
     else { out.lucci = DECO_PRICE[kind] / 2; wallet.lucci += out.lucci; }
   }
   return out;
+}
+
+// Titles with their progress; weekly: whether this player won last week's ranking.
+export function titles(rw, weekly) {
+  const have = { ...rw.life, jackpots: rw.jackpots, weekly: weekly ? 1 : 0 };
+  return TITLES.map((t) => ({ ...t, have: Math.min(t.need, have[t.of] | 0), earned: (have[t.of] | 0) >= t.need }));
+}
+// The title shown: the pick, while it is still held.
+export function shownTitle(rw, weekly) {
+  if (!rw || !rw.title) return null;
+  const t = titles(rw, weekly).find((x) => x.id === rw.title);
+  return t && t.earned ? t.id : null;
+}
+// Picks the title to show (null for none); 'ok' or 'bad'.
+export function setTitle(rw, id, weekly) {
+  if (id === null) { rw.title = null; return 'ok'; }
+  const t = titles(rw, weekly).find((x) => x.id === id);
+  if (!t || !t.earned) return 'bad';
+  rw.title = id;
+  return 'ok';
 }

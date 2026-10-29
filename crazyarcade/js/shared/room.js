@@ -4,6 +4,7 @@
 // and is driven by join/leave/message and tick().
 import { HZ, MAX_PLAYERS, CHARACTERS, TEAMS, COLS, ROWS } from './const.js';
 import { createGame, step, snapshot, isOver, scoreOf } from './sim.js';
+import { titleName } from './rewards.js';
 import { levelOf } from './level.js';
 import { Bot } from './ai.js';
 import { MAPS } from './maps.js';
@@ -51,7 +52,7 @@ export class RoomCore {
     return {
       code: this.code, title: this.title, mode: this.mode, rule: this.rule, size: this.size, map: this.mapId, host: this.host, phase: this.phase,
       slots: this.slots.map((s) => ({ open: s.open, id: s.id })),
-      members: [...this.members.values()].map(({ id, name, char, color, ready, bot, slot, look, exp }) => ({ id, name, char, color, ready, bot, slot, look, lv: exp == null ? null : levelOf(exp) })),
+      members: [...this.members.values()].map(({ id, name, char, color, ready, bot, slot, look, exp, title }) => ({ id, name, char, color, ready, bot, slot, look, title, lv: exp == null ? null : levelOf(exp) })),
     };
   }
 
@@ -76,7 +77,7 @@ export class RoomCore {
     // A colour nobody uses yet, so a fresh room starts as a free-for-all of distinct teams.
     const color = this.newColor();
     const m = { id, name: String(name || '플레이어').slice(0, 10), char: CHARACTERS[slot % 4].id, color, ready: false, bot: false, slot,
-      acct: acct ? acct.key : null, exp: acct ? acct.exp : null };
+      acct: acct ? acct.key : null, exp: acct ? acct.exp : null, title: acct ? titleName(acct.title) : null };
     this.members.set(id, m);
     this.slots[slot].id = id;
     if (!this.host) this.host = id;
@@ -248,7 +249,7 @@ export class RoomCore {
     const map = this.mapId === RANDOM_MAP ? fits[Math.floor(Math.random() * fits.length)] || MAPS[0] : MAPS.find((x) => x.id === this.mapId) || MAPS[0];
     const seed = (Math.random() * 2 ** 31) | 0;
     const list = this.players().map((m) => ({ id: m.id, name: m.name, char: m.char, color: m.color,
-      team: this.mode === 'team' ? m.color : m.slot, bot: m.bot, look: m.look || null, lv: m.exp == null ? null : levelOf(m.exp) }));
+      team: this.mode === 'team' ? m.color : m.slot, bot: m.bot, look: m.look || null, title: m.title || null, lv: m.exp == null ? null : levelOf(m.exp) }));
     this.game = createGame({ map, players: list, seed, mode: this.mode, rule: this.rule });
     this.phase = 'game'; this.decided = false;
     this.inputs.clear(); this.bots.clear();
@@ -302,7 +303,7 @@ export class RoomCore {
       for (const p of g.players) {
         const m = this.members.get(p.id);
         if (!m || m.bot || !m.acct) continue;
-        list.push({ id: p.id, acct: m.acct, kills: p.kills, coins: p.lucci, rescues: p.rescues || 0, duel, mvp: anyKill && score(p) === top,
+        list.push({ id: p.id, acct: m.acct, kills: p.kills, coins: p.lucci, rescues: p.rescues || 0, deaths: p.deaths || 0, duel, mvp: anyKill && score(p) === top,
           result: g.result.draw ? 'draw' : p.team === g.result.team ? 'win' : 'lose' });
       }
       if (list.length) this.onResult(list);

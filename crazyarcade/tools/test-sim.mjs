@@ -307,6 +307,31 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   const b = g.bombs.find((q) => q.owner === 'h');
   check(b && b.c === c0 && b.r === r0, `balloon where pressed (${b && b.c},${b && b.r} vs ${c0},${r0})`);
 }
+// Titles and the weekly ranking.
+{
+  const rw = Rewards.fresh(null);
+  for (let i = 0; i < 3; i++) Rewards.onGame(rw, { result: 'lose' }, 0, 0);
+  Rewards.onGame(rw, { result: 'win', kills: 2, duel: true, deaths: 0 }, 0, 0);
+  const t = Rewards.titles(rw, false);
+  check(t.find((x) => x.id === 'comeback').earned && t.find((x) => x.id === 'immortal').earned && !t.find((x) => x.id === 'master').earned, 'titles earned');
+  check(Rewards.setTitle(rw, 'master', false) === 'bad' && Rewards.setTitle(rw, 'comeback', false) === 'ok' && Rewards.shownTitle(rw, false) === 'comeback', 'title pick');
+  check(Rewards.setTitle(rw, 'weekly', false) === 'bad' && Rewards.setTitle(rw, 'weekly', true) === 'ok' && Rewards.shownTitle(rw, false) === null, 'weekly title only while held');
+  check(Rewards.weekOf(Date.UTC(2026, 9, 29, 3)) === '2026-10-26' && Rewards.weekOf(Date.UTC(2026, 10, 1, 16)) === '2026-11-02', `week ${Rewards.weekOf(Date.UTC(2026, 10, 1, 16))}`);
+  const store = new Map();
+  const acc = new AccountsCore({ get: async (k) => store.get(k), put: async (k, v) => { store.set(k, v); } });
+  const a = await acc.enter('랭커', '1111'), b = await acc.enter('둘째', '2222');
+  await acc.award('u:랭커', 80, { result: 'win', kills: 1 }); await acc.award('u:둘째', 30, { result: 'win', kills: 0 });
+  const m = await acc.handle('missions', { token: b.token });
+  check(m.ranking.top.length === 2 && m.ranking.top[0].name === '랭커' && m.ranking.mine.rank === 2, `ranking ${JSON.stringify(m.ranking)}`);
+  // Last week's winner holds 주간 1위.
+  store.set(`w:${Rewards.lastWeekOf()}`, { 'u:랭커': { name: '랭커', exp: 500 }, 'u:둘째': { name: '둘째', exp: 100 } });
+  check(await acc.weeklyWinner('u:랭커') && !(await acc.weeklyWinner('u:둘째')), 'weekly winner');
+  const s1 = await acc.handle('title', { token: a.token, id: 'weekly' });
+  check(s1.title === 'weekly' && (await acc.titleOf('u:랭커', store.get('u:랭커'))) === 'weekly', 'weekly title set');
+  const r = new RoomCore({ code: '5', send: () => {}, broadcast: () => {} });
+  r.join('x', '랭커', { key: 'u:랭커', exp: 0, title: 'weekly' });
+  check(r.state().members[0].title === '주간 1위', 'title in the room');
+}
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {
   const css = (await import('node:fs')).readFileSync(new URL('../css/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

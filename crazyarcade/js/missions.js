@@ -7,6 +7,7 @@ import * as Account from './account.js';
 import * as W from './wallet.js';
 import { PRIZES } from './shared/rewards.js';
 import { fanfareSound } from './fanfare.js';
+import { drawRank } from './rank.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, html) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, html != null ? { innerHTML: html } : {});
@@ -46,7 +47,7 @@ function render() {
   $('ms-tab-n').textContent = st.rows; $('ms-tab-n').hidden = !st.rows;
   for (const b of document.querySelectorAll('.ms-tabs button')) b.classList.toggle('on', b.dataset.tab === tab);
   $('ms-odds').hidden = true;
-  if (tab === 'list') renderList(); else renderRoulette();
+  if (tab === 'list') renderList(); else if (tab === 'roulette') renderRoulette(); else if (tab === 'titles') renderTitles(); else renderRanking();
 }
 
 const gauge = (have, need) => `<span class="ms-gauge"><i style="width:${Math.round(Math.min(1, have / need) * 100)}%"></i></span>`;
@@ -190,4 +191,53 @@ async function spin(reel, res, go) {
   const p = PRIZES.find((x) => x.id === r.spin.prize);
   if (p.jackpot) fanfareSound(); else sfx('Bt_c_Success', 0.7);
   render();
+}
+
+// ---- titles: each with how far along it is; one earned title can be shown under the name.
+function renderTitles() {
+  const grid = el('div', 'ms-grid');
+  for (const t of st.titles || []) {
+    const shown = st.title === t.id;
+    let right;
+    if (shown) {
+      const b = el('button', 'ms-got ms-wearing', '✓ 다는 중'); b.type = 'button'; b.title = '누르면 떼요';
+      b.onclick = () => pickTitle(null, b);
+      right = [b];
+    } else if (t.earned) {
+      const b = el('button', 'ms-get', '달기'); b.type = 'button'; b.onclick = () => pickTitle(t.id, b);
+      right = [b];
+    } else right = t.need > 1 ? `<span>${t.have}/${t.need}</span>` : '<span>🔒</span>';
+    const g = t.need > 1 && !t.earned ? gauge(t.have, t.need) : '';
+    grid.append(row(t.earned ? '🏅' : '🔒', t.name, t.desc, g, right, false));
+  }
+  $('ms-body').replaceChildren(el('div', 'ms-sec', '칭호 <small>얻은 칭호 하나를 골라 대기실과 킬/데스 현황판에서 이름 아래에 달아요</small>'), grid);
+  const got = (st.titles || []).filter((t) => t.earned).length;
+  $('ms-foot').innerHTML = `<span class="info">얻은 칭호 <b>${got}개</b> / ${(st.titles || []).length}개</span><span class="mid"></span><span></span>`;
+}
+async function pickTitle(id, b) {
+  b.disabled = true;
+  const r = await Account.missions('title', { id });
+  if (!r || r.error) { app.toast('잠시 뒤에 다시 해 주세요.'); b.disabled = false; return; }
+  sfx('Bt_c_Success', 0.6);
+  app.toast(id ? '칭호를 달았어요. 다음에 들어가는 방부터 보여요.' : '칭호를 뗐어요.');
+  st = r; render();
+}
+
+// ---- the weekly ranking: experience gained this week, the top ten and my place.
+function renderRanking() {
+  const rk = st.ranking || { top: [], mine: null, week: '' };
+  const list = el('div', 'ms-rank');
+  if (!rk.top.length) list.append(el('div', 'ms-empty', '이번 주에는 아직 아무도 경험치를 얻지 않았어요. 첫 번째가 되어 보세요!'));
+  for (const e of rk.top) {
+    const r = el('div', `ms-rrow${e.me ? ' me' : ''}${e.rank <= 3 ? ` top${e.rank}` : ''}`);
+    const cv = el('canvas', 'rk'); cv.width = 16; cv.height = 14;
+    A.loadGroup('rank').then(() => drawRank(cv.getContext('2d'), e.level, 0, 0));
+    r.append(el('span', 'no', e.rank <= 3 ? ['🥇', '🥈', '🥉'][e.rank - 1] : String(e.rank)), cv, el('b', null, ''), el('span', 'lv', `Lv.${e.level}`), el('span', 'xp', `${e.exp.toLocaleString()} 경험치`));
+    r.querySelector('b').textContent = e.name;
+    list.append(r);
+  }
+  const end = new Date(Date.parse(rk.week) + 7 * 86400000);
+  $('ms-body').replaceChildren(el('div', 'ms-sec', `주간 랭킹 TOP 10 <small>이번 주(${rk.week.slice(5).replace('-', '/')}~) 얻은 경험치 · 매주 월요일 0시에 새로 시작</small>`), list,
+    el('div', 'ms-note', `🏅 이번 주 1위는 다음 주 일주일 동안 <b>주간 1위</b> 칭호를 달 수 있어요 (${end.getUTCMonth() + 1}/${end.getUTCDate()} 0시에 결정)`));
+  $('ms-foot').innerHTML = `<span class="info">${rk.mine ? `내 순위 <b>${rk.mine.rank}위</b> · ${rk.mine.exp.toLocaleString()} 경험치` : '이번 주 내 기록이 아직 없어요'}</span><span class="mid"></span><span></span>`;
 }

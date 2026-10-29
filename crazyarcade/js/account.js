@@ -16,6 +16,7 @@ export const name = () => acct.name;
 export const exp = () => acct.exp | 0;
 export const rank = () => progress(exp());
 export const signedIn = () => !!acct.token;
+export const title = () => (acct.token ? acct.title || null : null); // the title shown (an id from shared/rewards.js)
 export const onChange = (f) => listeners.push(f);
 // Lucci, shop items, character and records of the account (the server's, as last heard).
 export const wallet = () => (acct.wallet ||= cleanWallet(null));
@@ -94,7 +95,7 @@ export async function missions(action, body = {}) {
   try {
     const r = await post(action, { token: acct.token, ...body });
     if (r.error === 'token') return null;
-    if (r.wallet) set({ exp: r.exp ?? acct.exp, wallet: r.wallet });
+    if (r.wallet) set({ exp: r.exp ?? acct.exp, wallet: r.wallet, ...('title' in r ? { title: r.title } : {}) });
     return r;
   } catch { return null; }
 }

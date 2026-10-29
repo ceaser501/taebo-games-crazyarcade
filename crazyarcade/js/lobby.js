@@ -107,7 +107,9 @@ export function renderLobby(app) {
     if (big) { cv.width = 60; cv.height = 70; figure(cv, m); } else { cv.width = 45; cv.height = 43; portrait(cv, m); }
     const nm = el('div', 'nm'), b = el('b', null, m.name);
     if (m.lv) b.prepend(rankCanvas(m.lv, 1));
-    nm.append(b, el('small', null, m.lv ? `Lv.${m.lv} · ${charById(m.char).name}` : charById(m.char).name));
+    nm.append(b);
+    if (m.title) nm.append(el('span', 'ttl', `«${m.title}»`));
+    nm.append(el('small', null, m.lv ? `Lv.${m.lv} · ${charById(m.char).name}` : charById(m.char).name));
     s.append(cv, nm);
     const tag = m.id === room.host ? '방장' : m.bot ? '컴퓨터' : m.id === app.me ? '나' : '';
     if (tag) s.append(el('span', 'tag', tag));

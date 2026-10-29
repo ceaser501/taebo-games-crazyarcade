@@ -69,7 +69,7 @@ const app = {
   // Practice: a room in this page with computer players, started at once.
   practice(opts) {
     if (opts.map !== 'random') for (const t of mapById(opts.map).sets) A.loadGroup(`tile_${t}`);
-    this.connect(new Practice(this.name || '나', { ...opts, exp: Account.signedIn() ? Account.exp() : null }), true);
+    this.connect(new Practice(this.name || '나', { ...opts, exp: Account.signedIn() ? Account.exp() : null, title: Account.title() }), true);
   },
 
   connect(conn, practice) {

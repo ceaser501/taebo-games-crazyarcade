@@ -49,6 +49,7 @@ export class GameScene {
     // Shop decorations each player wears: { hat, bomb, pet } by player id; pets trail behind.
     this.looks = new Map(start.players.map((p) => [p.id, p.look || {}]));
     this.levels = new Map(start.players.map((p) => [p.id, p.lv || 0])); // ranks of signed-in players
+    this.titles = new Map(start.players.map((p) => [p.id, p.title || null])); // titles shown under names
     this.trails = new Map();
     this.ready = this.load();
     input.enable(true);
@@ -955,7 +956,11 @@ export class GameScene {
         nx += rowH;
         const lv = this.levels.get(p.id);
         if (lv) { drawRank(c, lv, nx, ry + rowH / 2 - 7 * u, u); nx += 20 * u; }
-        text(p.name, nx, ry + rowH / 2 + 5 * u, { size: 14 * u, bold: mine, color: mine ? '#ffe95a' : '#fff', maxW: cols.lv - nx - 30 * u });
+        const ttl = this.titles.get(p.id);
+        if (ttl) {
+          text(p.name, nx, ry + rowH / 2 - 1 * u, { size: 13 * u, bold: mine, color: mine ? '#ffe95a' : '#fff', maxW: cols.lv - nx - 30 * u });
+          text(`«${ttl}»`, nx, ry + rowH / 2 + 11 * u, { size: 10 * u, bold: true, color: '#ffd23a', maxW: cols.lv - nx - 30 * u });
+        } else text(p.name, nx, ry + rowH / 2 + 5 * u, { size: 14 * u, bold: mine, color: mine ? '#ffe95a' : '#fff', maxW: cols.lv - nx - 30 * u });
         text(lv ? `Lv.${lv}` : '-', cols.lv, ry + rowH / 2 + 5 * u, { size: 12 * u, bold: true, color: '#cfe8ff', align: 'center' });
         text(String(p.kills), cols.kill, ry + rowH / 2 + 5 * u, { size: 15 * u, bold: true, color: '#7dffb0', align: 'center' });
         text(String(p.deaths || 0), cols.death, ry + rowH / 2 + 5 * u, { size: 15 * u, bold: true, color: '#ff8a8a', align: 'center' });
