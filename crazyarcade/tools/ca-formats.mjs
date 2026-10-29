@@ -127,16 +127,23 @@ export function parseSprite(b) {
   return { frames, atlases };
 }
 
-function runs(data, n, size, put, full) {
+function runs(data, n, size, put, full, skip) {
   let p = 0, i = 0;
   while (i < data.length && p < n) {
     const op = data[i++], kind = op >> 6, cnt = op & 63;
-    if (kind === 2) p += cnt;
+    if (kind === 2) { if (skip) for (let k = 0; k < cnt; k++) skip(p + k); p += cnt; }
     else if (kind === 1) { const at = i; i += size; for (let k = 0; k < cnt; k++) put(p++, data, at); }
     else if (kind === 0) for (let k = 0; k < cnt; k++) { put(p++, data, i); i += size; }
     else if (full) for (let k = 0; k < cnt; k++) full(p++);
     else throw new Error(`pixel op ${op.toString(16)}`);
   }
+}
+
+// How many pixels a run stream covers (size: bytes per pixel value).
+function cover(data, size) {
+  let p = 0, i = 0;
+  while (i < data.length) { const op = data[i++], kind = op >> 6, cnt = op & 63; p += cnt; if (kind === 1) i += size; else if (kind === 0) i += size * cnt; }
+  return p;
 }
 
 // Atlas pixels -> RGBA buffer.
@@ -146,9 +153,14 @@ export function decodePixels({ w, h, data }) {
   const col = (p, d, at) => { if (p < n) { out[p * 4] = d[at + 2]; out[p * 4 + 1] = d[at + 1]; out[p * 4 + 2] = d[at]; out[p * 4 + 3] = 255; } };
   if (data[0] === 0xc0) runs(data.subarray(1), n, 3, col);
   else if (data[0] === 0xc1) {
-    const len = data.readUInt32LE(1);
+    // The length before the colour stream counts the 5 header bytes in some sprites and not in
+    // others: the alpha stream starts where its runs cover the image exactly.
+    let len = data.readUInt32LE(1);
+    if (cover(data.subarray(5 + len), 1) !== n && cover(data.subarray(len), 1) === n) len -= 5;
     runs(data.subarray(5, 5 + len), n, 3, col);
-    runs(data.subarray(5 + len), n, 1, (p, d, at) => { if (p < n) out[p * 4 + 3] = d[at]; }, (p) => { if (p < n) out[p * 4 + 3] = 255; });
+    // In the alpha stream a skipped run is see-through, even where the colour stream drew (the
+    // black around glowing planets and the like).
+    runs(data.subarray(5 + len), n, 1, (p, d, at) => { if (p < n) out[p * 4 + 3] = d[at]; }, (p) => { if (p < n) out[p * 4 + 3] = 255; }, (p) => { if (p < n) out[p * 4 + 3] = 0; });
   } else {
     // 16-bit RGB565 from the first byte, no alpha stream; F81F (magenta) is transparent and any
     // op with the top bit set is a transparent run.

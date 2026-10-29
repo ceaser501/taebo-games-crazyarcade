@@ -699,7 +699,7 @@ export class GameScene {
     const { k, x, vw } = this.L;
     const left = x - 16, right = vw - (x + WW * k) - 20;
     const wide = !input.touchMode.on && left >= 110 && right >= 110;
-    const u = wide ? Math.max(1, Math.min(2.4, Math.min(left, right) / 200)) : 1;
+    const u = wide ? Math.max(1, Math.min(1.5, Math.min(left, right) / 250)) : 1;
     this.hudScale = u;
     c.save(); c.scale(u, u);
     try { this.drawHudPanels(c, now, u, left, right); } finally { c.restore(); }
