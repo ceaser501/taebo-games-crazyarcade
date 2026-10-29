@@ -108,7 +108,7 @@ export class AccountsCore {
     if (action === 'enter') return this.enter(body.name, body.pin);
     if (action === 'me') { const me = await this.me(body.token); return me || { error: 'token' }; }
     if (action === 'practice') return this.practice(body.token, body.result, body.kills, body.coins);
-    if (action === 'buy') return this.change(body.token, (w) => Shop.buy(w, body.kind, body.id));
+    if (action === 'buy') return this.change(body.token, (w, u) => Shop.buy(w, body.kind, body.id, levelOf(u.exp)));
     if (action === 'wear') return this.change(body.token, (w) => Shop.wear(w, body.kind, body.id ?? null));
     if (action === 'char') return this.change(body.token, (w) => Shop.setChar(w, body.id));
     // What this phone had before accounts, brought in once (a new account starts from it).

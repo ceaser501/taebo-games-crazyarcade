@@ -12,6 +12,10 @@ const ID = { char: /^C\d{2}$/, hat: /^[A-Z]\d{1,5}$/, bomb: /^Bomb\d{1,4}$/, pet
 export const validItem = (kind, id) => KINDS.includes(kind) && typeof id === 'string' && ID[kind].test(id)
   && (kind !== 'char' || CHARACTERS.some((c) => c.id === id));
 
+// Super characters can be bought from this level on (signed-in players; guests have no level).
+export const SUPER_LEVEL = 20;
+export const needLevel = (kind, id) => (kind === 'char' && (CHARACTERS.find((c) => c.id === id)?.name || '').startsWith('슈퍼') ? SUPER_LEVEL : 0);
+
 // Prices (the real ones were in the server's shop catalogue, which is gone).
 export function price(kind, id) {
   if (kind === 'char') { const n = CHARACTERS.find((c) => c.id === id)?.name || ''; return n.startsWith('슈퍼') ? 30000 : n.startsWith('럭셔리') ? 15000 : 8000; }
@@ -38,10 +42,11 @@ export function cleanWallet(w) {
 
 export const owns = (w, kind, id) => (kind === 'char' && FREE_CHARS.includes(id)) || !!w.owned[kind]?.includes(id);
 
-// Changes a wallet in place; each returns 'ok' or why not.
-export function buy(w, kind, id) {
+// Changes a wallet in place; each returns 'ok' or why not. level: the buyer's rank.
+export function buy(w, kind, id, level = 0) {
   if (!validItem(kind, id)) return 'bad';
   if (owns(w, kind, id)) return 'owned';
+  if (level < needLevel(kind, id)) return 'level';
   const p = price(kind, id);
   if (w.lucci < p) return 'poor';
   w.lucci -= p; w.owned[kind].push(id);

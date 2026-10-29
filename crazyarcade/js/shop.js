@@ -5,6 +5,7 @@ import * as A from './assets.js';
 import { sfx, playMusic } from './audio.js';
 import { CHARACTERS, charById } from './shared/const.js';
 import * as W from './wallet.js';
+import * as Account from './account.js';
 
 const $ = (id) => document.getElementById(id);
 const PER = 40;
@@ -85,10 +86,11 @@ function side() {
   $('shop-name').textContent = nameOf(kind, id);
   act.hidden = false;
   if (!W.owns(kind, id)) {
-    const p = W.price(kind, id);
-    $('shop-price').textContent = `${p.toLocaleString()} 루찌`;
-    act.textContent = W.lucci() >= p ? '구매' : '루찌 부족';
-    act.disabled = W.lucci() < p;
+    const p = W.price(kind, id), lv = W.needLevel(kind, id), mine = Account.signedIn() ? Account.rank().level : 0;
+    $('shop-price').textContent = `${p.toLocaleString()} 루찌${lv ? ` · Lv.${lv}부터` : ''}`;
+    const short = lv && mine < lv;
+    act.textContent = short ? (Account.signedIn() ? `Lv.${lv}부터 살 수 있어요` : '계정이 있어야 살 수 있어요') : W.lucci() >= p ? '구매' : '루찌 부족';
+    act.disabled = short || W.lucci() < p;
     act.onclick = () => {
       if (W.buy(kind, id) !== 'ok') return;
       sfx('Bt_c_Buy');

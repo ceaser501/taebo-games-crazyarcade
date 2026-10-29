@@ -6,7 +6,7 @@ import * as A from './assets.js';
 import * as Account from './account.js';
 import * as Shop from './shared/shop.js';
 
-export { FREE_CHARS, ROUND_BONUS, price } from './shared/shop.js';
+export { FREE_CHARS, ROUND_BONUS, price, needLevel } from './shared/shop.js';
 
 const KEY = 'ca-wallet';
 let local = null;
@@ -27,7 +27,7 @@ export const stats = () => ({ ...cur().stats });
 export const look = () => ({ ...cur().wear });
 
 export function buy(kind, id) {
-  const r = Shop.buy(cur(), kind, id);
+  const r = Shop.buy(cur(), kind, id, Account.signedIn() ? Account.rank().level : 0);
   if (r === 'ok') { changed(); Account.shop('buy', { kind, id }); }
   return r;
 }

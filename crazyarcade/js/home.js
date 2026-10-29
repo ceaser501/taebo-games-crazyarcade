@@ -163,7 +163,7 @@ export function pickChar(app, done) {
       A.drawChar(c, ch.id, 'Portrait', 0, 5, 5, 0);
     });
     b.onclick = () => {
-      if (!owned) { app.toast(`${ch.name}은(는) 상점에서 살 수 있어요.`); return; }
+      if (!owned) { const lv = W.needLevel('char', ch.id); app.toast(`${ch.name}은(는) 상점에서 살 수 있어요.${lv ? ` (Lv.${lv}부터)` : ''}`); return; }
       sfx('Bt_c_Pop', 0.6);
       W.setChar(ch.id);
       $('char-pick').hidden = true;

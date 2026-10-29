@@ -135,6 +135,8 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   const t = b.token;
   check((await acc.handle('buy', { token: t, kind: 'hat', id: 'A123' })).wallet?.wear.hat === 'A123', 'buy a hat (worn at once)');
   check((await acc.handle('buy', { token: t, kind: 'char', id: 'C99' })).error === 'bad', 'no such character');
+  const sup = (await import('../js/shared/const.js')).CHARACTERS.find((c) => c.name.startsWith('슈퍼')).id;
+  check((await acc.handle('buy', { token: t, kind: 'char', id: sup })).error === 'level', 'super characters wait for Lv.20');
   check((await acc.handle('char', { token: t, id: 'C20' })).error === 'bad', 'cannot play a character not owned');
   const g = await acc.award(u.key, 30, { result: 'win', kills: 2, coins: 50 });
   check(g.lucci === 350 && g.wallet.stats.wins === 2 && g.wallet.stats.games === 2 && g.wallet.stats.kills === 4, `round lucci and record ${JSON.stringify(g.wallet?.stats)}`);
