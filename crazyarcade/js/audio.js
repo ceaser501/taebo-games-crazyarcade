@@ -5,7 +5,15 @@ import { manifest } from './assets.js';
 const BASE = 'assets/ca/';
 let ctx = null;
 const buffers = new Map();
-let music = null, musicName = null, wanted = null, blocked = false;
+// One <audio> element for every track: phones (iPhones above all) only let an element play after
+// a touch, and once it has played it may change tracks freely. A new element per track would be
+// silenced whenever a track starts on its own (a round's music, after loading) and could leave
+// an old one playing beside the new.
+let player = null, musicName = null, wanted = null, unlocked = false;
+const el = () => {
+  if (!player) { player = new Audio(); player.preload = 'auto'; player.volume = 0.55; }
+  return player;
+};
 const prefs = { music: true, sound: true };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem('ca-audio') || '{}')); } catch { /* private mode */ }
 const save = () => { try { localStorage.setItem('ca-audio', JSON.stringify(prefs)); } catch { /* ignore */ } };
@@ -17,30 +25,46 @@ export function unlock() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (AC) ctx = new AC();
   }
-  if (ctx && ctx.state === 'suspended') ctx.resume();
-  // Music the browser refused before the first touch starts now (a finished one-shot tune,
-  // like the win jingle, is not played again).
-  if (wanted && blocked) playMusic(wanted, true);
+  if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+  // The first touch unlocks the music element (silently when nothing is wanted yet), and any
+  // track the browser held back starts now.
+  const a = el();
+  if (!unlocked) {
+    unlocked = true;
+    if (!musicName) { a.muted = true; a.play().then(() => { a.pause(); a.muted = false; }).catch(() => { a.muted = false; unlocked = false; }); }
+  }
+  if (musicName && a.paused && !document.hidden && prefs.music) a.play().catch(() => {});
 }
 
+// The result tunes (Ntc_Win, Ntc_Lose, Ntc_Draw) are short: they go as sound effects, which play
+// whenever sound is unlocked, and the music stops for them.
+const JINGLES = new Set(['Ntc_Win', 'Ntc_Lose', 'Ntc_Draw', 'Ntc_GameEnd']);
+
 export function playMusic(name, force = false) {
+  if (JINGLES.has(name)) { stopMusic(); sfx(name, 0.75); return; }
   wanted = name;
   if (!prefs.music || !manifest.bgm.includes(name)) { stopMusic(false); return; }
-  if (!force && musicName === name && music && !music.paused) return;
-  stopMusic(false);
-  const a = new Audio(`${BASE}bgm/${name}.${ext()}`);
-  a.loop = !name.startsWith('Ntc_');
-  a.volume = 0.55;
-  blocked = false;
-  a.play().catch(() => { if (music === a) blocked = true; });
-  music = a; musicName = name;
+  const a = el();
+  if (!force && musicName === name && !a.paused) return;
+  musicName = name;
+  a.loop = true;
+  a.src = `${BASE}bgm/${name}.${ext()}`;
+  a.currentTime = 0;
+  if (!document.hidden) a.play().catch(() => { /* waits for the next touch (unlock) */ });
 }
 
 export function stopMusic(forget = true) {
-  if (music) { music.pause(); music.src = ''; }
-  music = null; musicName = null; blocked = false;
+  if (player) player.pause();
+  musicName = null;
   if (forget) wanted = null;
 }
+
+// The app in the background (another app, the phone locked): quiet, and back where it was.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (player) player.pause(); if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {}); return; }
+  if (ctx) ctx.resume().catch(() => {});
+  if (musicName && player && prefs.music) player.play().catch(() => {});
+});
 
 async function buffer(name) {
   if (!buffers.has(name)) {

@@ -218,10 +218,11 @@ async function main() {
   onResize(() => app.scene && app.scene.layout && app.scene.layout());
   const first = () => {
     unlock();
-    preload(['Cha_BombIgnite', 'Cha_BombExplode', 'Cha_LockedIn', 'Cha_Die', 'Cha_Release', 'Itm_ItemEaten', 'Bt_c_Pop']);
+    preload(['Cha_BombIgnite', 'Cha_BombExplode', 'Cha_LockedIn', 'Cha_Die', 'Cha_Release', 'Itm_ItemEaten', 'Bt_c_Pop',
+      'Ntc_Win', 'Ntc_Lose', 'Ntc_Draw', 'Ntc_GameStart', 'Ntc_HurryUp']);
   };
-  window.addEventListener('pointerdown', first);
-  window.addEventListener('keydown', first);
+  // iPhones count a touch as permission to play sound only when the finger lifts (touchend, click).
+  for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(ev, first, { passive: true });
   app.setScene(new Backdrop());
   requestAnimationFrame(frame);
   showIntro();
