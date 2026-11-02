@@ -680,3 +680,14 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 .pw-msg { margin: 0; font-size: 14px; font-weight: 800; color: #d6efff; }
 .pw-msg.bad { color: #ffb0b0; }
 #lobby-lock { font-size: 16px; }
+
+.room-edit { all: unset; cursor: pointer; padding: 8px 13px; border-radius: 999px; background: rgba(0, 30, 90, 0.75); border: 2px solid #9fe0ff; color: #fff; font-weight: 900; font-size: 14px; white-space: nowrap; }
+#lobby.wide .room-edit { font-size: 16px; padding: 10px 16px; }
+.wr-top .modes button { white-space: nowrap; }
+@media (max-height: 520px) and (orientation: landscape) {
+  #lobby:not(.wide) .wr-top { gap: 6px; }
+  #lobby:not(.wide) .wr-top .code small { display: none; }
+  #lobby:not(.wide) .wr-top .invite { padding: 7px 11px; font-size: 13px; }
+  #lobby:not(.wide) .room-edit { padding: 7px 10px; } #lobby:not(.wide) .room-edit span { display: none; }
+  #lobby:not(.wide) .wr-top .modes button { padding: 6px 9px; font-size: 13px; }
+}

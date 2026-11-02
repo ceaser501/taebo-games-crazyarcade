@@ -62,7 +62,9 @@ export class RoomCore {
     };
   }
 
-  changed() { this.broadcast({ t: 'room', room: this.state() }); this.onChange(); }
+  // Everyone gets the room; the host alone also gets its password (to show and change it).
+  changed() { this.broadcast({ t: 'room', room: this.state() }); this.tellHost(); this.onChange(); }
+  tellHost() { if (this.host) this.send(this.host, { t: 'roompw', password: this.password }); }
 
   // The colour for someone arriving: the smaller team, or a colour nobody has.
   newColor() {
@@ -91,6 +93,7 @@ export class RoomCore {
     this.slots[slot].id = id;
     if (!this.host) this.host = id;
     this.send(id, { t: 'welcome', you: id, room: this.state() });
+    if (id === this.host) this.tellHost();
     this.chat(null, `${m.name}님이 들어왔습니다.`);
     this.changed();
     return { ok: true };
@@ -119,6 +122,7 @@ export class RoomCore {
     const m = this.members.get(id);
     if (!m) return false;
     this.send(id, { t: 'welcome', you: id, room: this.state() });
+    if (id === this.host) this.tellHost();
     for (const line of this.chatLog.slice(-10)) this.send(id, { t: 'chat', ...line });
     if (this.phase === 'game' && this.game) {
       const g = this.game;

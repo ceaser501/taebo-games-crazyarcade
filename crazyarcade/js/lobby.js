@@ -47,7 +47,7 @@ const WIDE = matchMedia('(min-width: 1100px) and (min-height: 640px)');
 let lobbyApp = null;
 WIDE.addEventListener?.('change', () => { if (lobbyApp) renderLobby(lobbyApp); });
 export function showLobby(app) { lobbyApp = app; $('lobby').hidden = false; setupChat(app); renderLobby(app); }
-export function hideLobby() { $('lobby').hidden = true; $('lobby-chat').classList.remove('open'); }
+export function hideLobby() { $('lobby').hidden = true; $('lobby-chat').classList.remove('open'); $('room-edit').hidden = true; }
 export const lobbyShown = () => !$('lobby').hidden;
 export function lobbyStatus(text) { $('lobby-status').textContent = text; }
 
@@ -83,6 +83,24 @@ export function renderLobby(app) {
   const mine = room.members.find((x) => x.id === app.me);
   $('lobby-code').textContent = room.code;
   $('lobby-lock').hidden = !room.locked;
+  // 방 설정: the host changes the title and the password.
+  $('room-edit-btn').hidden = !host;
+  $('room-edit-btn').onclick = () => {
+    click();
+    $('edit-title').value = room.title || '';
+    $('edit-pw').value = app.roomPw || '';
+    $('room-edit').hidden = false;
+  };
+  $('edit-close').onclick = () => { $('room-edit').hidden = true; };
+  $('room-edit').onclick = (e) => { if (e.target === $('room-edit')) $('room-edit').hidden = true; };
+  $('edit-form').onsubmit = (e) => {
+    e.preventDefault();
+    $('room-edit').hidden = true;
+    sfx('Bt_c_Success', 0.6);
+    const pw = $('edit-pw').value.trim();
+    app.send({ t: 'settings', title: $('edit-title').value.trim() || room.title, password: pw });
+    app.toast(pw ? '방 설정을 바꿨어요. 🔒 비밀번호 방이에요.' : '방 설정을 바꿨어요. 누구나 들어올 수 있어요.');
+  };
   for (const b of document.querySelectorAll('#lobby-rule button')) {
     b.classList.toggle('on', b.dataset.rule === (room.rule || 'normal'));
     b.disabled = !host;

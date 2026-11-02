@@ -127,6 +127,7 @@ const app = {
         Chat.add(m);
         if (!m.name && lobbyShown()) lobbyStatus(m.text);
         break;
+      case 'roompw': this.roomPw = m.password || ''; break;
       case 'notice': this.toast(m.text); break;
       case 'error':
         // A locked room: back to the 대기실 and ask for its password.

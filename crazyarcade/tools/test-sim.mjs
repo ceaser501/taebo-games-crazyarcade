@@ -361,6 +361,18 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   check(r.join('z', '친구', null, '1234').ok, 'right password lets in');
   check(r.summary().locked && !('password' in r.summary()) && r.state().locked && !JSON.stringify(r.state()).includes('1234'), 'password stays secret');
 }
+// The host changes the title and password; only the host is told the password.
+{
+  const told = [];
+  const r = new RoomCore({ code: '9999', send: (id, m) => { if (m.t === 'roompw') told.push([id, m.password]); }, broadcast: () => {} });
+  r.join('h', '방장'); r.join('g', '손님');
+  r.message('g', { t: 'settings', title: '해킹', password: '1' });
+  check(r.title !== '해킹' && !r.password, 'only the host changes the room');
+  r.message('h', { t: 'settings', title: '새 제목', password: '4242' });
+  check(r.state().title === '새 제목' && r.summary().locked && told.every(([id]) => id === 'h') && told.some(([, pw]) => pw === '4242'), `host settings ${JSON.stringify(told)}`);
+  r.message('h', { t: 'settings', password: '' });
+  check(!r.summary().locked, 'password removed');
+}
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {
   const css = (await import('node:fs')).readFileSync(new URL('../css/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

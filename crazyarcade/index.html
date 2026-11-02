@@ -104,6 +104,17 @@
     </section>
   </div>
 
+  <!-- 방 설정 (the host): the room's title and password. -->
+  <div id="room-edit" class="popup" hidden>
+    <form class="card" id="edit-form">
+      <h2>방 설정 <button type="button" id="edit-close" class="ch-x" aria-label="닫기">✕</button></h2>
+      <label class="opt"><span>방 제목</span><input id="edit-title" type="text" maxlength="24" autocomplete="off"></label>
+      <label class="opt"><span>비밀번호</span><input id="edit-pw" type="text" maxlength="8" autocomplete="off" placeholder="비워 두면 누구나 들어와요"></label>
+      <p class="pw-msg">비밀번호를 바꿔도 지금 방에 있는 사람은 그대로 있어요.</p>
+      <button type="submit" class="big-btn">저장</button>
+    </form>
+  </div>
+
   <!-- A room with a password: asked before going in. -->
   <div id="room-pw" class="popup" hidden>
     <form class="card" id="pw-form">
@@ -132,6 +143,7 @@
       <button type="button" id="lobby-leave" class="back" aria-label="나가기">‹</button>
       <div class="code"><small>방 번호</small><b id="lobby-code">----</b><span id="lobby-lock" hidden>🔒</span></div>
       <button type="button" id="share-link" class="invite">초대 링크 보내기</button>
+      <button type="button" id="room-edit-btn" class="room-edit" hidden aria-label="방 설정">✏<span> 방 설정</span></button>
       <span id="lobby-title" class="rtitle"></span>
       <div class="grow"></div>
       <div id="lobby-mode" class="modes"><button type="button" data-mode="team">팀전</button><button type="button" data-mode="solo">개인전</button></div>
