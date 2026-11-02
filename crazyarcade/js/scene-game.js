@@ -959,7 +959,11 @@ export class GameScene {
         const ttl = this.titles.get(p.id);
         if (ttl) {
           text(p.name, nx, ry + rowH / 2 - 1 * u, { size: 13 * u, bold: mine, color: mine ? '#ffe95a' : '#fff', maxW: cols.lv - nx - 30 * u });
-          text(`«${ttl}»`, nx, ry + rowH / 2 + 11 * u, { size: 10 * u, bold: true, color: '#ffd23a', maxW: cols.lv - nx - 30 * u });
+          // The title as a small gold badge, as in the 대기실.
+          c.font = `bold ${10 * u}px ${FONT}`;
+          const tw = c.measureText(ttl).width + 10 * u;
+          c.fillStyle = '#ffc61a'; roundRect(c, nx, ry + rowH / 2 + 2 * u, tw, 13 * u, 4 * u); c.fill();
+          text(ttl, nx + 5 * u, ry + rowH / 2 + 12 * u, { size: 10 * u, bold: true, color: '#4a2a00' });
         } else text(p.name, nx, ry + rowH / 2 + 5 * u, { size: 14 * u, bold: mine, color: mine ? '#ffe95a' : '#fff', maxW: cols.lv - nx - 30 * u });
         text(lv ? `Lv.${lv}` : '-', cols.lv, ry + rowH / 2 + 5 * u, { size: 12 * u, bold: true, color: '#cfe8ff', align: 'center' });
         text(String(p.kills), cols.kill, ry + rowH / 2 + 5 * u, { size: 15 * u, bold: true, color: '#7dffb0', align: 'center' });

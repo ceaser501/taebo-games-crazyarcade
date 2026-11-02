@@ -551,3 +551,125 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 .ms-note b { color: #ffe95a; }
 @media (max-height: 500px) { .ms-rrow { padding: 2px 10px; font-size: 13px; } .ms-tabs button { font-size: 13px; } }
 .s .nm .ttl { color: #ffd23a; font-size: 11px; font-weight: 900; }
+
+/* ---- 대기실 (channel): me and who is on at the left, the room cards in the middle, the chat below ---- */
+#home { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) 190px; gap: 14px;
+  grid-template-areas: "left top" "left rooms" "left chat"; align-items: stretch; justify-content: stretch; overflow: hidden;
+  padding: max(16px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left)); }
+#home[hidden] { display: none; }
+.ch-panel { background: linear-gradient(180deg, rgba(20, 90, 200, 0.92), rgba(6, 40, 120, 0.94)); border: 3px solid #7fd4ff; border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 30px rgba(0, 0, 0, 0.45); box-sizing: border-box; min-height: 0; color: #fff; }
+.ch-left { grid-area: left; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.ch-me { padding: 14px; display: flex; flex-direction: column; gap: 9px; }
+.ch-me .home-figure { all: unset; cursor: pointer; position: relative; height: 170px; border-radius: 14px; display: grid; place-items: end center; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 85%, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.04) 65%), rgba(0, 20, 70, 0.4); }
+.ch-me #home-char { width: 160px; height: 160px; image-rendering: pixelated; }
+.ch-name { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.ch-name canvas { width: 26px; height: 23px; image-rendering: pixelated; flex: none; }
+.ch-name b { font-size: 20px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ttl-badge { flex: none; font-size: 11px; font-weight: 900; color: #4a2a00; background: linear-gradient(180deg, #ffe95a, #ffb800); border-radius: 6px; padding: 2px 7px; white-space: nowrap; box-shadow: 0 1px 0 #a06a00; }
+.ch-me #home-rank { grid-template-columns: auto minmax(0, 1fr) auto; padding: 4px 8px; }
+.ch-me #home-stats { gap: 6px; } .ch-me #home-stats div { padding: 4px 9px; }
+.ch-me .home-actions { gap: 7px; } .ch-me .home-actions button { min-height: 36px; padding: 6px 4px; font-size: 14px; }
+.ch-users { flex: 1; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.ch-users h3, .ch-chat h3 { margin: 0; font-size: 14px; color: #9fd0f5; display: flex; justify-content: space-between; align-items: center; } .ch-users h3 b { color: #fff; }
+#ch-users { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0; }
+#ch-users .u { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 800; padding: 3px 7px; border-radius: 8px; background: rgba(0, 20, 70, 0.35); }
+#ch-users .u canvas { width: 18px; height: 16px; image-rendering: pixelated; flex: none; }
+#ch-users .u b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#ch-users .u small { margin-left: auto; color: #9fd0f5; font-size: 12px; white-space: nowrap; } #ch-users .u small.g { color: #ff9a7a; } #ch-users .u small.r { color: #7dffb0; }
+.ch-top { grid-area: top; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ch-top .grow { flex: 1; }
+.imgbtn { all: unset; cursor: pointer; display: block; flex: none; line-height: 0; }
+.imgbtn canvas { display: block; height: 52px; width: auto; }
+#ch-practice canvas { height: 42px; }
+.imgbtn:hover { filter: brightness(1.1); } .imgbtn:active { transform: translateY(1px); }
+.ch-pager { display: flex; align-items: center; justify-content: center; gap: 12px; font-weight: 900; font-size: 16px; }
+.ch-pager button { all: unset; cursor: pointer; padding: 5px 14px; border-radius: 10px; background: rgba(0, 30, 90, 0.7); border: 2px solid #9fe0ff; color: #fff; font-size: 13px; }
+.ch-pager button:disabled { opacity: 0.35; cursor: default; }
+.ch-pager.top { display: none; }
+.ch-code { display: flex; align-items: center; background: rgba(0, 20, 70, 0.6); border-radius: 12px; border: 2px solid rgba(159, 224, 255, 0.35); padding: 3px 3px 3px 12px; gap: 8px; font-weight: 800; color: #9fd0f5; font-size: 13px; white-space: nowrap; }
+.ch-code input { width: 70px; border: 0; border-radius: 8px; padding: 6px 9px; font: 800 14px "Nanum Gothic", sans-serif; letter-spacing: 2px; }
+.ch-code button { all: unset; cursor: pointer; background: #1a6ee8; padding: 6px 12px; border-radius: 8px; color: #fff; font-weight: 900; }
+.ch-rooms { grid-area: rooms; padding: 14px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; }
+.ch-rh { display: flex; justify-content: space-between; align-items: baseline; font-weight: 900; color: #9fd0f5; } .ch-rh b { color: #fff; font-size: 17px; }
+#ch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px; min-height: 0; }
+.ch-empty { grid-column: 1 / -1; grid-row: 1 / -1; align-self: center; text-align: center; color: #cfe8ff; font-weight: 800; font-size: 16px; }
+.ch-card { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: center; gap: 10px; padding: 10px;
+  border-radius: 14px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04)); border: 2px solid rgba(159, 224, 255, 0.45); min-height: 0; overflow: hidden; color: #fff; }
+.ch-card:hover { border-color: #ffe95a; } .ch-card.play, .ch-card.full { opacity: 0.62; }
+.ch-card .mm { width: 100%; height: auto; aspect-ratio: 300 / 260; max-height: 100%; object-fit: contain; border-radius: 9px; border: 2px solid #e6fbff; image-rendering: pixelated; box-sizing: border-box; }
+.ch-card .info { display: flex; flex-direction: column; min-width: 0; }
+.ch-card .no { font-size: 14px; font-weight: 900; color: #ffe95a; }
+.ch-card .tt { font-size: 18px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 1px 0 5px; }
+.ch-card .chips { display: flex; gap: 4px; flex-wrap: wrap; } .ch-card .chips span { font-size: 12px; font-weight: 800; background: rgba(255, 255, 255, 0.14); border-radius: 999px; padding: 2px 9px; } .ch-card .chips span.d { background: rgba(255, 90, 120, 0.35); }
+.ch-card .who { display: flex; align-items: center; gap: 2px; margin-top: 9px; min-width: 0; }
+.ch-card .who canvas { width: 28px; height: 27px; image-rendering: pixelated; flex: 0 1 auto; min-width: 0; }
+.ch-card .who b { margin-left: auto; flex: none; padding-left: 4px; font-size: 18px; }
+.ch-card .st { position: absolute; top: 8px; right: 8px; font-size: 11px; font-weight: 900; border-radius: 999px; padding: 2px 9px; }
+.ch-card .st.wait { background: #4ad27a; color: #03301a; } .ch-card .st.play { background: #ff6a4a; } .ch-card .st.full { background: #888; }
+.ch-chat { grid-area: chat; padding: 10px 14px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; }
+.ch-x { all: unset; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 900; color: #fff; background: #0b4fae; border: 2px solid #fff; }
+.ch-chat .ch-x, .ch-chat-open { display: none; }
+#ch-log { overflow-y: auto; min-height: 0; font-size: 14px; line-height: 1.55; display: flex; flex-direction: column; text-align: left; word-break: break-all; }
+#ch-log > :first-child { margin-top: auto; } #ch-log b { color: #ffe95a; margin-right: 6px; }
+#ch-form { display: flex; gap: 8px; margin: 0; }
+#ch-form input { flex: 1; min-width: 0; font: 700 15px "Nanum Gothic", sans-serif; border: 0; border-radius: 10px; padding: 8px 12px; background: rgba(255, 255, 255, 0.94); color: #102040; }
+#ch-form button { font: 900 15px "Nanum Gothic", sans-serif; color: #fff; padding: 0 16px; border-radius: 10px; background: #1a6ee8; border: 2px solid #c8ecff; cursor: pointer; }
+/* popups over the 대기실: 혼자놀기, 방만들기 */
+.popup { position: fixed; inset: 0; z-index: 11; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(0, 10, 40, 0.6); }
+.popup[hidden] { display: none; }
+.popup .card { width: min(440px, 100%); text-align: left; display: flex; flex-direction: column; gap: 10px; }
+.popup .card h2 { display: flex; justify-content: space-between; align-items: center; margin: 0; font-size: 21px; }
+.popup .opt { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+.popup .opt > span { width: 64px; flex: none; color: #cfe8ff; }
+.popup .opt input, .popup .opt select { flex: 1; min-width: 0; font: 800 15px "Nanum Gothic", sans-serif; border: 0; border-radius: 10px; padding: 8px 10px; }
+#menu.popup { justify-content: center; padding-top: 12px; }
+
+/* phones held sideways: a narrower left column, cards and chat sized to the short screen */
+@media (max-height: 520px) and (orientation: landscape) {
+  #home { grid-template-columns: 214px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) 82px; gap: 6px;
+    padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
+  .ch-left { gap: 6px; } .ch-panel { border-radius: 14px; border-width: 2px; }
+  .ch-me { padding: 9px; gap: 7px; flex: 1; min-height: 0; }
+  .ch-me .home-figure { height: auto; flex: 1; min-height: 0; place-items: center; } .ch-me #home-char { height: 96%; width: auto; aspect-ratio: 1; }
+  #home-charname { font-size: 11px; padding: 1px 8px; }
+  .ch-name b { font-size: 16px; } .ch-name canvas { width: 18px; height: 16px; } .ttl-badge { font-size: 10px; padding: 1px 6px; }
+  .ch-me #home-rank { padding: 2px 6px; } .ch-me #home-stats { display: none; }
+  .ch-me .home-actions { gap: 6px; } .ch-me .home-actions button { min-height: 0; padding: 7px 2px; font-size: 13px; }
+  .ch-users { flex: none; max-height: 92px; padding: 6px 8px; gap: 3px; } .ch-users h3 { font-size: 12px; }
+  #ch-users { gap: 2px; } #ch-users .u { font-size: 12px; padding: 1px 5px; gap: 5px; } #ch-users .u canvas { width: 15px; height: 13px; } #ch-users .u small { font-size: 10px; }
+  .ch-top { gap: 6px; } .imgbtn canvas { height: 32px; } #ch-practice canvas { height: 28px; }
+  .ch-top .modes button { padding: 5px 7px; font-size: 12px; } .ch-code { display: none; }
+  .ch-pager.top { display: flex; } .ch-pager.bottom { display: none; } .ch-pager { font-size: 14px; gap: 6px; } .ch-pager button { padding: 3px 9px; }
+  .ch-rooms { padding: 6px; gap: 6px; grid-template-rows: minmax(0, 1fr); } .ch-rh { display: none; }
+  #ch-grid { gap: 6px; }
+  .ch-card { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 7px; padding: 7px; border-radius: 11px; }
+  .ch-card .no { font-size: 11px; } .ch-card .tt { font-size: 14px; margin: 0 0 3px; }
+  .ch-card .chips span { font-size: 10px; padding: 1px 6px; } .ch-card .who { margin-top: 5px; } .ch-card .who canvas { width: 17px; height: 16px; } .ch-card .who b { font-size: 13px; }
+  .ch-card .st { font-size: 10px; padding: 1px 7px; top: 5px; right: 5px; }
+  .ch-chat { padding: 5px 10px; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+  .ch-chat h3, #ch-form { display: none; }
+  #ch-log { font-size: 13px; line-height: 1.35; overflow: hidden; }
+  .ch-chat-open { all: unset; display: block; cursor: pointer; padding: 6px 12px; border-radius: 9px; background: #1a6ee8; font-size: 13px; font-weight: 900; margin-bottom: 2px; }
+  .ch-chat.open { position: fixed; z-index: 9; left: 10px; right: 10px; bottom: 8px; height: min(70vh, 280px); grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) auto; align-items: stretch; padding: 10px 12px; }
+  .ch-chat.open h3, .ch-chat.open #ch-form { display: flex; } .ch-chat.open .ch-x { display: grid; } .ch-chat.open .ch-chat-open { display: none; } .ch-chat.open #ch-log { overflow-y: auto; }
+}
+/* phones held upright: one column that scrolls */
+@media (orientation: portrait) and (max-width: 700px) {
+  #home { display: flex; flex-direction: column; overflow-y: auto; gap: 8px; }
+  .ch-top { flex-wrap: wrap; } .imgbtn canvas { height: 40px; } .ch-code { display: none; }
+  #ch-grid { grid-template-columns: 1fr; grid-template-rows: none; } .ch-card { min-height: 110px; }
+  .ch-chat { min-height: 200px; } .ch-users { max-height: 160px; }
+}
+.ch-top .modes button { white-space: nowrap; }
+@media (max-width: 1250px) { .ch-code { display: none; } }
+/* laptops and tablets: a shorter screen keeps the cards roomy */
+@media (max-height: 820px) and (min-height: 521px) {
+  #home { grid-template-rows: auto minmax(0, 1fr) 140px; gap: 10px; }
+  .ch-me #home-stats { display: none; } .ch-me .home-figure { height: 130px; } .ch-me #home-char { width: 124px; height: 124px; }
+  .ch-card .tt { font-size: 16px; } .ch-card .who { margin-top: 5px; }
+}
+@media (max-width: 1100px) and (min-height: 521px) { #home { grid-template-columns: 240px minmax(0, 1fr); } #ch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ch-top .modes button { padding: 6px 9px; font-size: 13px; } }
+#menu.popup { background: rgba(0, 10, 40, 0.6); overflow: visible; }
+.popup .opt input { background: #fff; color: #102040; }

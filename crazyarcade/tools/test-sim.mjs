@@ -7,6 +7,7 @@ import { RoomCore } from '../js/shared/room.js';
 import { HZ } from '../js/shared/const.js';
 import { AccountsCore } from '../js/shared/accounts.js';
 import * as Rewards from '../js/shared/rewards.js';
+import { LobbyCore } from '../js/shared/lobby-core.js';
 import { levelOf, expFor, rankParts, MAX_LEVEL } from '../js/shared/level.js';
 
 let bad = 0;
@@ -331,6 +332,25 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   const r = new RoomCore({ code: '5', send: () => {}, broadcast: () => {} });
   r.join('x', '랭커', { key: 'u:랭커', exp: 0, title: 'weekly' });
   check(r.state().members[0].title === '주간 1위', 'title in the room');
+}
+// The 대기실: rooms report themselves, who is on (here or in a room), the lobby chat.
+{
+  const got = [];
+  const lobby = new LobbyCore({ send: (pid, m) => got.push([pid, m]), broadcast: (m) => got.push(['*', m]) });
+  const r = new RoomCore({ code: '7777', send: () => {}, broadcast: () => {} });
+  r.join('h', '방장', { key: 'u:h', exp: 0, title: 'comeback' });
+  r.message('h', { t: 'settings', title: '빌리지 한판', rule: 'duel' });
+  r.message('h', { t: 'bot' });
+  lobby.roomUpdate(r.summary());
+  lobby.join('p1', { name: '손님', lv: 3 });
+  const hello = got.find(([pid, m]) => pid === 'p1' && m.t === 'hello')[1];
+  const room = hello.rooms[0];
+  check(room.title === '빌리지 한판' && room.rule === 'duel' && room.players === 2 && room.faces.length === 2 && room.people.length === 1, `room summary ${JSON.stringify(room)}`);
+  check(hello.users.some((u) => u.name === '손님' && u.at === 'lobby') && hello.users.some((u) => u.name === '방장' && u.at === '7777'), `users ${JSON.stringify(hello.users)}`);
+  lobby.chat('p1', '안녕');
+  check(got.some(([pid, m]) => pid === '*' && m.t === 'chat' && m.name === '손님' && m.text === '안녕'), 'lobby chat');
+  lobby.roomUpdate({ code: '7777', closed: true });
+  check(lobby.roomList().length === 0, 'room gone');
 }
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {

@@ -56,6 +56,28 @@ export class Online {
   close() { this.closed = true; clearInterval(this.pinger); try { this.ws.close(); } catch { /* already closed */ } }
 }
 
+// The 대기실's live feed: the room list, who is on and the lobby chat. Reconnects by itself
+// while the 대기실 is shown; close() when leaving it.
+export class LobbyFeed {
+  constructor(name, token = null) {
+    this.name = name; this.token = token; this.handlers = []; this.closed = false; this.tries = 0;
+    this.open();
+  }
+  open() {
+    const ws = new WebSocket(`${wsBase()}/api/lobby?name=${encodeURIComponent(this.name)}&pid=${playerId()}${this.token ? `&token=${this.token}` : ''}`);
+    this.ws = ws;
+    ws.onopen = () => { this.tries = 0; };
+    ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } this.emit(m); };
+    ws.onclose = () => { if (!this.closed) setTimeout(() => !this.closed && this.open(), Math.min(8000, 1000 * ++this.tries)); };
+    clearInterval(this.pinger);
+    this.pinger = setInterval(() => this.send({ t: 'ping', c: Date.now() }), 25000);
+  }
+  on(f) { this.handlers.push(f); }
+  emit(m) { for (const f of this.handlers) f(m); }
+  send(msg) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(msg)); }
+  close() { this.closed = true; clearInterval(this.pinger); try { this.ws.close(); } catch { /* closed */ } }
+}
+
 export class Practice {
   // opts: { mode: 'team'|'solo', bots: number of computer players, map, exp: my experience (shows my rank) }.
   constructor(name, opts = {}) {

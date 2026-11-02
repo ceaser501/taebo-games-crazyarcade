@@ -22,30 +22,22 @@ const SIZES = [
   ['team', 1, '팀전 1:1'], ['team', 3, '팀전 2:2'], ['team', 5, '팀전 3:3'], ['team', 7, '팀전 4:4'],
   ['solo', 1, '개인전 2명'], ['solo', 2, '개인전 3명'], ['solo', 3, '개인전 4명'], ['solo', 5, '개인전 6명'], ['solo', 7, '개인전 8명'],
 ];
-export function showMenu(app, status = '') {
+// 혼자놀기: the practice options in a popup over the 대기실.
+export function showPractice(app) {
   $('menu').hidden = false;
   const size = $('practice-size');
   if (!size.options.length) SIZES.forEach(([, , label], i) => size.add(new Option(label, String(i))));
   const need = () => SIZES[Number(size.value)][1] + 1;
   const drawMap = () => mapButton($('practice-map'), practiceMap, () => pickMap(practiceMap, need(), (id) => { practiceMap = id; drawMap(); }));
   drawMap();
-  $('net-status').textContent = status;
   $('practice-start').onclick = () => {
     const [mode, bots] = SIZES[Number(size.value)];
     const map = mapById(practiceMap);
     if (practiceMap !== RANDOM_MAP && bots + 1 > map.spawns.length) { app.toast(`${map.name}은(는) ${map.spawns.length}명까지 하는 맵이에요.`); return; }
     click(); hideMenu(); app.practice({ mode, bots, rule: $('practice-rule').value, map: practiceMap === RANDOM_MAP ? RANDOM_MAP : map.id });
   };
-  $('host').onclick = () => { click(); app.hostRoom(); };
-  const join = () => {
-    const code = $('join-code').value.replace(/\D/g, '');
-    if (code.length !== 4) { $('net-status').textContent = '방 번호 4자리를 입력해 주세요.'; $('join-code').focus(); return; }
-    click(); app.joinRoom(code);
-  };
-  $('join').onclick = join;
-  $('join-code').onkeydown = (e) => { if (e.key === 'Enter') join(); };
-  $('menu-home').onclick = () => { click(); app.toHome(); };
-  $('menu-shop').onclick = () => { click(); app.toShop('menu'); };
+  $('menu-close').onclick = () => { click(); hideMenu(); };
+  $('menu').onclick = (e) => { if (e.target === $('menu')) hideMenu(); };
 }
 export function hideMenu() { $('menu').hidden = true; }
 
@@ -108,7 +100,7 @@ export function renderLobby(app) {
     const nm = el('div', 'nm'), b = el('b', null, m.name);
     if (m.lv) b.prepend(rankCanvas(m.lv, 1));
     nm.append(b);
-    if (m.title) nm.append(el('span', 'ttl', `«${m.title}»`));
+    if (m.title) b.append(el('span', 'ttl-badge', m.title));
     nm.append(el('small', null, m.lv ? `Lv.${m.lv} · ${charById(m.char).name}` : charById(m.char).name));
     s.append(cv, nm);
     const tag = m.id === room.host ? '방장' : m.bot ? '컴퓨터' : m.id === app.me ? '나' : '';

@@ -9,6 +9,9 @@ import { WebSocketServer } from 'ws';
 import { RoomCore } from '../js/shared/room.js';
 import { HZ } from '../js/shared/const.js';
 import { AccountsCore } from '../js/shared/accounts.js';
+import { LobbyCore } from '../js/shared/lobby-core.js';
+import { levelOf } from '../js/shared/level.js';
+import { titleName } from '../js/shared/rewards.js';
 import { gainFor } from '../js/shared/level.js';
 
 // Accounts as on Cloudflare, kept in a file so they survive restarts.
@@ -43,6 +46,7 @@ function room(code) {
     code,
     send: (id, m) => { const ws = r.sockets.get(id); if (ws) deliver(ws, JSON.stringify(m)); },
     broadcast: (m) => { const s = JSON.stringify(m); for (const ws of r.sockets.values()) deliver(ws, s); },
+    onChange: () => report(r),
     onResult: async (list) => {
       for (const x of list) {
         const a = await accounts.award(x.acct, gainFor(x.result, x.kills), x);
@@ -57,6 +61,17 @@ function room(code) {
   return r;
 }
 
+// The 대기실: rooms report themselves, players connect for the list, who is on and the chat.
+const lobbySockets = new Map();
+const lobby = new LobbyCore({
+  send: (pid, m) => { const ws = lobbySockets.get(pid); if (ws) deliver(ws, JSON.stringify(m)); },
+  broadcast: (m) => { const s = JSON.stringify(m); for (const ws of lobbySockets.values()) deliver(ws, s); },
+});
+function report(r) {
+  const humans = [...r.core.members.values()].some((m) => !m.bot);
+  lobby.roomUpdate(humans ? r.core.summary() : { code: r.core.code, closed: true });
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const am = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import|missions|claim|spin|title)$/);
@@ -67,8 +82,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(await accounts.handle(am[1], b))); return;
   }
   if (url.pathname === '/api/rooms') {
-    const list = [...rooms.values()].filter((r) => [...r.core.members.values()].some((m) => !m.bot)).map((r) => r.core.summary());
-    res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ rooms: list })); return;
+    res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ rooms: lobby.roomList() })); return;
   }
   let p = path.join(root, decodeURIComponent(url.pathname));
   if (!p.startsWith(root)) { res.writeHead(403); res.end(); return; }
@@ -83,6 +97,19 @@ const server = http.createServer(async (req, res) => {
 const wss = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
   const url = new URL(req.url, 'http://x');
+  if (url.pathname === '/api/lobby') {
+    wss.handleUpgrade(req, socket, head, async (ws) => {
+      const pid = url.searchParams.get('pid') || `p${Math.random().toString(36).slice(2, 10)}`;
+      const old = lobbySockets.get(pid); if (old) old.close();
+      lobbySockets.set(pid, ws);
+      const a = await accounts.user(url.searchParams.get('token'));
+      const user = a && a.u ? { name: a.u.name, lv: levelOf(a.u.exp), title: titleName(await accounts.titleOf(a.key, a.u)) } : { name: await accounts.guestName(url.searchParams.get('name') || '플레이어') };
+      lobby.join(pid, user);
+      ws.on('message', (data) => { let m; try { m = JSON.parse(data); } catch { return; } if (m.t === 'ping') { ws.send(JSON.stringify({ t: 'pong', c: m.c })); return; } lobby.message(pid, m); });
+      ws.on('close', () => { if (lobbySockets.get(pid) === ws) { lobbySockets.delete(pid); lobby.leave(pid); } });
+    });
+    return;
+  }
   const m = url.pathname.match(/^\/api\/room\/(\d{4})$/);
   if (!m) { socket.destroy(); return; }
   wss.handleUpgrade(req, socket, head, async (ws) => {

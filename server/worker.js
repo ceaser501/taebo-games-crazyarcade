@@ -6,6 +6,9 @@
 import { RoomCore } from '../crazyarcade/js/shared/room.js';
 import { HZ } from '../crazyarcade/js/shared/const.js';
 import { AccountsCore } from '../crazyarcade/js/shared/accounts.js';
+import { LobbyCore } from '../crazyarcade/js/shared/lobby-core.js';
+import { levelOf } from '../crazyarcade/js/shared/level.js';
+import { titleName } from '../crazyarcade/js/shared/rewards.js';
 import { gainFor } from '../crazyarcade/js/shared/level.js';
 
 const GRACE = 20000; // a dropped player keeps the seat this long
@@ -111,18 +114,37 @@ export class Room {
   }
 }
 
+// The 대기실: rooms report themselves here (/update); players connect a WebSocket (/connect) for
+// the room list, who is on and the lobby chat; /list answers the plain room list.
 export class Lobby {
-  constructor(state) { this.state = state; this.rooms = new Map(); }
+  constructor(state, env) {
+    this.state = state; this.env = env; this.sockets = new Map();
+    const send = (pid, m) => { const ws = this.sockets.get(pid); if (ws) try { ws.send(JSON.stringify(m)); } catch { /* closed */ } };
+    this.core = new LobbyCore({ send, broadcast: (m) => { for (const pid of this.sockets.keys()) send(pid, m); } });
+  }
   async fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname === '/update') {
-      const r = await req.json();
-      if (r.closed) this.rooms.delete(r.code); else this.rooms.set(r.code, { ...r, at: Date.now() });
-      return json({ ok: true });
+    if (url.pathname === '/update') { this.core.roomUpdate(await req.json()); return json({ ok: true }); }
+    if (url.pathname === '/connect') {
+      if (req.headers.get('Upgrade') !== 'websocket') return json({ error: 'websocket' }, 426);
+      const [client, server] = Object.values(new WebSocketPair());
+      server.accept();
+      const pid = url.searchParams.get('pid') || `p${Math.random().toString(36).slice(2, 10)}`;
+      const old = this.sockets.get(pid); if (old) try { old.close(); } catch { /* gone */ }
+      this.sockets.set(pid, server);
+      let user = { name: url.searchParams.get('name') || '플레이어' };
+      try {
+        const token = url.searchParams.get('token');
+        const a = token ? await ask(this.env, 'resolve', { token }) : {};
+        user = a.key ? { name: a.name, lv: levelOf(a.exp), title: titleName(a.title) } : { name: (await ask(this.env, 'guest', { name: user.name })).name || user.name };
+      } catch { /* a guest */ }
+      this.core.join(pid, user);
+      server.addEventListener('message', (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.t === 'ping') { try { server.send(JSON.stringify({ t: 'pong', c: m.c })); } catch { /* closed */ } return; } this.core.message(pid, m); });
+      const gone = () => { if (this.sockets.get(pid) === server) { this.sockets.delete(pid); this.core.leave(pid); } };
+      server.addEventListener('close', gone); server.addEventListener('error', gone);
+      return new Response(null, { status: 101, webSocket: client });
     }
-    const now = Date.now();
-    for (const [k, r] of this.rooms) if (now - r.at > 60000) this.rooms.delete(k);
-    return json({ rooms: [...this.rooms.values()].sort((a, b) => a.playing - b.playing || b.at - a.at) });
+    return json({ rooms: this.core.roomList() });
   }
 }
 
@@ -153,6 +175,7 @@ export async function route(req, env) {
     const r = await env.LOBBY.get(env.LOBBY.idFromName('lobby')).fetch('https://lobby/list');
     return new Response(r.body, { headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' } });
   }
+  if (url.pathname === '/api/lobby') return env.LOBBY.get(env.LOBBY.idFromName('lobby')).fetch(new Request(`https://lobby/connect${url.search}`, req));
   const m = url.pathname.match(/^\/api\/room\/(\d{4})$/);
   if (m) return env.ROOMS.get(env.ROOMS.idFromName(m[1])).fetch(req);
   const a = url.pathname.match(/^\/api\/account\/(enter|me|practice|buy|wear|char|import|missions|claim|spin|title)$/);

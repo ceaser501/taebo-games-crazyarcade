@@ -43,9 +43,14 @@ export class RoomCore {
   }
 
   get count() { return [...this.members.values()].length; }
+  // What the 대기실 shows of this room: title, rules, map, who is in it (faces, and the people
+  // with their rank for the list of who is on).
   summary() {
-    return { code: this.code, title: this.title, mode: this.mode, map: this.mapId, players: this.count,
-      seats: this.slots.filter((s) => s.open).length, playing: this.phase === 'game' };
+    const ms = this.players();
+    const map = MAPS.find((x) => x.id === this.mapId);
+    return { code: this.code, title: this.title, mode: this.mode, rule: this.rule, map: this.mapId, players: this.count,
+      seats: Math.min(this.slots.filter((s) => s.open).length, map ? map.spawns.length : 8), playing: this.phase === 'game',
+      faces: ms.map((m) => m.char), people: ms.filter((m) => !m.bot).map((m) => ({ name: m.name, lv: m.exp == null ? null : levelOf(m.exp), title: m.title || null })) };
   }
 
   state() {

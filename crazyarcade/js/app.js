@@ -4,11 +4,11 @@ import { stage, ui, onResize } from './stage.js';
 import * as input from './input.js';
 import { unlock, preload, stopMusic } from './audio.js';
 import { showIntro, introReady, askName, showHome, hideHome, isHomeShown, homeRank } from './home.js';
-import { showMenu, hideMenu, showLobby, hideLobby, renderLobby, lobbyShown, lobbyStatus } from './lobby.js';
+import { hideMenu, showLobby, hideLobby, renderLobby, lobbyShown, lobbyStatus } from './lobby.js';
 import { GameScene } from './scene-game.js';
 import { showShop, hideShop } from './shop.js';
 import * as W from './wallet.js';
-import { Online, Practice, listRooms, randomCode } from './net.js';
+import { Online, Practice } from './net.js';
 import * as Account from './account.js';
 import { mapById } from './shared/room.js';
 import { celebrate } from './rank.js';
@@ -45,22 +45,18 @@ const app = {
   dom(show) { this.setScene(new Backdrop()); hideHome(); hideMenu(); hideLobby(); hideShop(); show(); },
 
   toHome() { this.disconnect(); this.dom(() => showHome(this)); },
-  toMenu(status) { this.disconnect(); this.dom(() => showMenu(this, status)); },
+  // Back to the 대기실 (the menu was folded into it), with a word on why when there is one.
+  toMenu(status) { this.toHome(); if (status) this.toast(status); },
   // The shop opens over the home screen, the menu or the waiting room and goes back to it.
   toShop(from) {
-    const back = () => (from === 'lobby' && this.conn ? this.dom(() => showLobby(this)) : from === 'menu' ? this.toMenu() : this.toHome());
+    const back = () => (from === 'lobby' && this.conn ? this.dom(() => showLobby(this)) : this.toHome());
     this.dom(() => showShop(this, back));
   },
   lookChanged() { if (this.conn) this.send({ t: 'set', look: W.look() }); },
 
-  // A new room number nobody is using.
-  async hostRoom() {
-    let rooms = [];
-    try { rooms = await listRooms(); } catch { /* server unreachable: still try */ }
-    let code;
-    for (let i = 0; i < 20; i++) { code = randomCode(); if (!rooms.some((r) => r.code === code)) break; }
-    this.joinRoom(code);
-  },
+  // A new room under `code` (one nobody uses), set up with opts { title, mode, rule } once we
+  // are its host.
+  hostRoom(code, opts = null) { this.pendingSettings = opts; this.joinRoom(code); },
   joinRoom(code) {
     this.connect(new Online(code, this.name, Account.token()), false);
     this.dom(() => showLobby(this));
@@ -96,6 +92,8 @@ const app = {
     switch (m.t) {
       case 'welcome':
         this.me = m.you; this.room = m.room; this.roomTitle = m.room.title;
+        if (this.pendingSettings && m.room.host === m.you) this.send({ t: 'settings', ...this.pendingSettings });
+        this.pendingSettings = null;
         Chat.clear(); // the room sends its recent lines again after this
         // Our character and decorations.
         this.send({ t: 'set', look: W.look(), char: W.myChar() });
@@ -233,7 +231,7 @@ async function main() {
   const code = new URLSearchParams(location.search).get('room');
   installing();
   if (matchMedia('(pointer: coarse)').matches) {
-    for (const id of ['home-play', 'practice-start', 'host', 'join', 'lobby-start']) $(id).addEventListener('click', landscape);
+    for (const id of ['ch-quick', 'ch-create', 'practice-start', 'join', 'lobby-start']) $(id).addEventListener('click', landscape);
   }
   introReady(() => {
     landscape();

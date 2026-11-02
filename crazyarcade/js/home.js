@@ -8,6 +8,8 @@ import { showSettings } from './settings.js';
 import { CHARACTERS, charById } from './shared/const.js';
 import * as W from './wallet.js';
 import { showMissions, missionBadge } from './missions.js';
+import { showChannel, hideChannel } from './channel.js';
+import { titleName } from './shared/rewards.js';
 import * as Account from './account.js';
 import { drawRank } from './rank.js';
 
@@ -119,16 +121,18 @@ export function showHome(app) {
     };
     requestAnimationFrame(loop);
   });
-  $('home-play').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toMenu(); };
   $('home-shop').onclick = () => { sfx('Bt_c_Pop', 0.6); app.toShop('home'); };
   $('home-chars').onclick = $('home-figure').onclick = () => pickChar(app, () => showHome(app));
   $('home-settings').onclick = () => { sfx('Bt_c_Pop', 0.6); showSettings(); };
   $('home-missions').onclick = () => showMissions(app);
   missionBadge();
+  showChannel(app);
 }
 // My name, lucci, record, rank, level and experience towards the next one.
 export function homeRank(app) {
   $('home-name').textContent = app.name;
+  const ttl = titleName(Account.title());
+  $('home-title').textContent = ttl || ''; $('home-title').hidden = !ttl;
   const st = W.stats();
   $('home-lucci').textContent = `${W.lucci().toLocaleString()}`;
   $('home-record').textContent = st.games ? `${st.wins}승 ${st.games - st.wins - st.draws}패${st.draws ? ` ${st.draws}무` : ''}` : '아직 없음';
@@ -146,7 +150,7 @@ export function homeRank(app) {
   });
 }
 
-export function hideHome() { $('home').hidden = true; $('char-pick').hidden = true; }
+export function hideHome() { $('home').hidden = true; $('char-pick').hidden = true; hideChannel(); }
 export const isHomeShown = () => !$('home').hidden;
 
 // Character choice; done() runs after a pick.

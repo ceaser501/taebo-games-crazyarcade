@@ -5,6 +5,7 @@ export async function onRequest({ request, env }) {
   const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   if (!env.ROOMS || !env.LOBBY) return json({ error: 'room server not bound' }, 503);
   if (url.pathname === '/api/rooms') return env.LOBBY.get(env.LOBBY.idFromName('lobby')).fetch('https://lobby/list');
+  if (url.pathname === '/api/lobby') return env.LOBBY.get(env.LOBBY.idFromName('lobby')).fetch(new Request(`https://lobby/connect${url.search}`, request));
   const m = url.pathname.match(/^\/api\/room\/(\d{4})$/);
   if (m) return env.ROOMS.get(env.ROOMS.idFromName(m[1])).fetch(request);
   // Accounts: sign up or in, read my rank, count a practice game (the room objects use the rest).

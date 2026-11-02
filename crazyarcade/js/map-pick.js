@@ -30,6 +30,12 @@ function thumb(cv, id) {
   });
 }
 
+// A map's picture on a canvas (the 랜덤 card for 전체 랜덤).
+export function mapThumb(cv, id) {
+  if (id === RANDOM_MAP) A.loadGroup('ui').then(() => { const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height); drawRandomCard(c, cv.width, cv.height); });
+  else thumb(cv, mapById(id).id);
+}
+
 // The button showing the current map; enabled when the player may change it.
 export function mapButton(btn, id, onClick) {
   if (id === RANDOM_MAP) { randomButton(btn, onClick); return; }
