@@ -28,12 +28,12 @@ function playerId() {
 }
 
 export class Online {
-  constructor(code, name, token = null) {
-    this.code = code; this.name = name; this.token = token; this.handlers = []; this.rtt = 120; this.closed = false; this.tries = 0;
+  constructor(code, name, token = null, pw = '') {
+    this.code = code; this.name = name; this.token = token; this.pw = pw; this.handlers = []; this.rtt = 120; this.closed = false; this.tries = 0;
     this.open();
   }
   open() {
-    const ws = new WebSocket(`${wsBase()}/api/room/${this.code}?name=${encodeURIComponent(this.name)}&pid=${playerId()}${this.token ? `&token=${this.token}` : ''}`);
+    const ws = new WebSocket(`${wsBase()}/api/room/${this.code}?name=${encodeURIComponent(this.name)}&pid=${playerId()}${this.token ? `&token=${this.token}` : ''}${this.pw ? `&pw=${encodeURIComponent(this.pw)}` : ''}`);
     this.ws = ws;
     ws.onopen = () => { this.tries = 0; this.emit({ t: 'open' }); };
     ws.onmessage = (e) => {

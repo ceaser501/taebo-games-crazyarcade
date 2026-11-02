@@ -352,6 +352,15 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   lobby.roomUpdate({ code: '7777', closed: true });
   check(lobby.roomList().length === 0, 'room gone');
 }
+// A room with a password lets in only those who give it; the lists show only that it is locked.
+{
+  const r = new RoomCore({ code: '8888', send: () => {}, broadcast: () => {} });
+  r.join('h', '방장');
+  r.message('h', { t: 'settings', password: '1234' });
+  check(r.join('x', '손님').error === 'password' && r.join('y', '손님2', null, '0000').error === 'password', 'wrong password refused');
+  check(r.join('z', '친구', null, '1234').ok, 'right password lets in');
+  check(r.summary().locked && !('password' in r.summary()) && r.state().locked && !JSON.stringify(r.state()).includes('1234'), 'password stays secret');
+}
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {
   const css = (await import('node:fs')).readFileSync(new URL('../css/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

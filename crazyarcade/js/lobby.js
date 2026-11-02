@@ -82,6 +82,7 @@ export function renderLobby(app) {
   const host = room.host === app.me;
   const mine = room.members.find((x) => x.id === app.me);
   $('lobby-code').textContent = room.code;
+  $('lobby-lock').hidden = !room.locked;
   for (const b of document.querySelectorAll('#lobby-rule button')) {
     b.classList.toggle('on', b.dataset.rule === (room.rule || 'normal'));
     b.disabled = !host;

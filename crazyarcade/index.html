@@ -104,6 +104,16 @@
     </section>
   </div>
 
+  <!-- A room with a password: asked before going in. -->
+  <div id="room-pw" class="popup" hidden>
+    <form class="card" id="pw-form">
+      <h2>🔒 비밀번호 방 <button type="button" id="pw-close" class="ch-x" aria-label="닫기">✕</button></h2>
+      <p id="pw-msg" class="pw-msg"></p>
+      <input id="pw-input" type="text" maxlength="8" autocomplete="off" placeholder="비밀번호">
+      <button type="submit" class="big-btn">들어가기</button>
+    </form>
+  </div>
+
   <!-- 방만들기: the new room's title and rules. -->
   <div id="create-room" class="popup" hidden>
     <form class="card" id="create-form">
@@ -111,6 +121,7 @@
       <label class="opt"><span>방 제목</span><input id="create-title" type="text" maxlength="24" autocomplete="off"></label>
       <div class="opt"><span>대결</span><div id="create-mode" class="modes"><button type="button" data-v="team" class="on">팀전</button><button type="button" data-v="solo">개인전</button></div></div>
       <div class="opt"><span>규칙</span><div id="create-rule" class="modes"><button type="button" data-v="normal" class="on">일반</button><button type="button" data-v="duel">무한 결투</button></div></div>
+      <label class="opt"><span>비밀번호</span><input id="create-pw" type="text" maxlength="8" autocomplete="off" placeholder="없으면 누구나 들어와요 (선택)"></label>
       <button type="submit" class="big-btn">방 만들기</button>
     </form>
   </div>
@@ -119,7 +130,7 @@
   <div id="lobby" hidden>
     <div class="wr-top">
       <button type="button" id="lobby-leave" class="back" aria-label="나가기">‹</button>
-      <div class="code"><small>방 번호</small><b id="lobby-code">----</b></div>
+      <div class="code"><small>방 번호</small><b id="lobby-code">----</b><span id="lobby-lock" hidden>🔒</span></div>
       <button type="button" id="share-link" class="invite">초대 링크 보내기</button>
       <span id="lobby-title" class="rtitle"></span>
       <div class="grow"></div>

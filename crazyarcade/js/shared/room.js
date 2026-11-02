@@ -31,6 +31,7 @@ export class RoomCore {
     Object.assign(this, { code, send, broadcast, onChange, onResult });
     this.title = title || '즐거운 크레이지아케이드';
     this.mode = 'team'; // 'team' or 'solo'
+    this.password = ''; // set by the host: only those who give it come in
     this.rule = 'normal'; // 'normal', or 'duel' (무한 결투: popped players come back, points decide)
     this.size = 1; // team play: seats shown per team (at least as many as the players need)
     this.mapId = DEFAULT_MAP;
@@ -48,14 +49,14 @@ export class RoomCore {
   summary() {
     const ms = this.players();
     const map = MAPS.find((x) => x.id === this.mapId);
-    return { code: this.code, title: this.title, mode: this.mode, rule: this.rule, map: this.mapId, players: this.count,
+    return { code: this.code, title: this.title, mode: this.mode, rule: this.rule, locked: !!this.password, map: this.mapId, players: this.count,
       seats: Math.min(this.slots.filter((s) => s.open).length, map ? map.spawns.length : 8), playing: this.phase === 'game',
       faces: ms.map((m) => m.char), people: ms.filter((m) => !m.bot).map((m) => ({ name: m.name, lv: m.exp == null ? null : levelOf(m.exp), title: m.title || null })) };
   }
 
   state() {
     return {
-      code: this.code, title: this.title, mode: this.mode, rule: this.rule, size: this.size, map: this.mapId, host: this.host, phase: this.phase,
+      code: this.code, title: this.title, mode: this.mode, rule: this.rule, locked: !!this.password, size: this.size, map: this.mapId, host: this.host, phase: this.phase,
       slots: this.slots.map((s) => ({ open: s.open, id: s.id })),
       members: [...this.members.values()].map(({ id, name, char, color, ready, bot, slot, look, exp, title }) => ({ id, name, char, color, ready, bot, slot, look, title, lv: exp == null ? null : levelOf(exp) })),
     };
@@ -75,7 +76,10 @@ export class RoomCore {
   freeSlot() { return this.slots.findIndex((s) => s.open && s.id === null); }
 
   // acct: { key, exp } for a player signed in to an account (their rank shows; games count).
-  join(id, name, acct = null) {
+  // pw: the password the newcomer gave (a room with one lets in only them; its first member
+  // is the host, who sets it).
+  join(id, name, acct = null, pw = '') {
+    if (this.password && String(pw || '') !== this.password) return { error: 'password' };
     if (this.phase !== 'room') return { error: 'playing' };
     const slot = this.freeSlot();
     if (slot < 0) return { error: 'full' };
@@ -176,6 +180,7 @@ export class RoomCore {
         if (msg.map && (msg.map === RANDOM_MAP || MAPS.some((x) => x.id === msg.map))) this.mapId = msg.map;
         if (Number.isInteger(msg.size) && msg.size >= 1 && msg.size <= 4) this.size = msg.size;
         if (typeof msg.title === 'string' && msg.title.trim()) this.title = msg.title.trim().slice(0, 24);
+        if (typeof msg.password === 'string') this.password = msg.password.trim().slice(0, 8);
         for (const x of this.members.values()) if (!x.bot) x.ready = false;
         this.changed(); break;
       case 'slot': {

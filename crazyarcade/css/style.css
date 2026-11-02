@@ -673,3 +673,10 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 @media (max-width: 1100px) and (min-height: 521px) { #home { grid-template-columns: 240px minmax(0, 1fr); } #ch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ch-top .modes button { padding: 6px 9px; font-size: 13px; } }
 #menu.popup { background: rgba(0, 10, 40, 0.6); overflow: visible; }
 .popup .opt input { background: #fff; color: #102040; }
+
+.ch-card .lock { position: absolute; left: 14px; top: 12px; font-size: 18px; filter: drop-shadow(0 1px 1px #000); }
+#room-pw .card { width: min(360px, 100%); }
+#pw-input { font: 800 18px "Nanum Gothic", sans-serif; letter-spacing: 3px; text-align: center; border: 0; border-radius: 10px; padding: 10px; background: #fff; color: #102040; }
+.pw-msg { margin: 0; font-size: 14px; font-weight: 800; color: #d6efff; }
+.pw-msg.bad { color: #ffb0b0; }
+#lobby-lock { font-size: 16px; }

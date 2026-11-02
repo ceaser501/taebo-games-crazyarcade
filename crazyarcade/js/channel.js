@@ -84,10 +84,12 @@ function card(r) {
   who.append(el('b', null, `${r.players}/${r.seats}`));
   info.append(chips, who);
   b.append(cv, info, el('span', `st ${r.playing ? 'play' : full ? 'full' : 'wait'}`, r.playing ? '게임 중' : full ? '꽉 참' : '대기 중'));
+  if (r.locked) b.append(el('span', 'lock', '🔒'));
   b.onclick = () => {
     if (r.playing) { app.toast('게임 중인 방이에요. 끝나면 들어갈 수 있어요.'); return; }
     if (full) { app.toast('방이 꽉 찼어요.'); return; }
-    click(); app.joinRoom(r.code);
+    click();
+    if (r.locked) askPassword(r.code); else app.joinRoom(r.code);
   };
   return b;
 }
@@ -124,7 +126,7 @@ function wire() {
   wired = true;
   $('ch-quick').onclick = () => {
     click();
-    const open = rooms.filter((r) => !r.playing && r.players < r.seats && (tab !== 'duel' || r.rule === 'duel'));
+    const open = rooms.filter((r) => !r.playing && !r.locked && r.players < r.seats && (tab !== 'duel' || r.rule === 'duel'));
     if (open.length) app.joinRoom(open[Math.floor(Math.random() * open.length)].code);
     else { app.toast('들어갈 방이 없어서 새 방을 만들었어요.'); hostRoom({ title: `${app.name}님의 방`, mode: 'team', rule: tab === 'duel' ? 'duel' : 'normal' }); }
   };
@@ -170,11 +172,12 @@ function wire() {
     const val = (id) => document.querySelector(`#${id} button.on`).dataset.v;
     $('create-room').hidden = true;
     sfx('Bt_c_Success', 0.6);
-    hostRoom({ title: $('create-title').value.trim() || `${app.name}님의 방`, mode: val('create-mode'), rule: val('create-rule') });
+    hostRoom({ title: $('create-title').value.trim() || `${app.name}님의 방`, mode: val('create-mode'), rule: val('create-rule'), password: $('create-pw').value.trim() });
   };
 }
 function openCreate() {
   $('create-title').value = `${app.name}님의 방`;
+  $('create-pw').value = '';
   $('create-room').hidden = false;
 }
 // A room under a number nobody is using, set up as asked once we are its host.
@@ -182,4 +185,22 @@ function hostRoom(opts) {
   let code;
   for (let i = 0; i < 30; i++) { code = randomCode(); if (!rooms.some((r) => r.code === code)) break; }
   app.hostRoom(code, opts);
+}
+
+// A locked room: its password first (wrong: asked again with a word on it).
+export function askPassword(code, wrong = false) {
+  $('pw-msg').textContent = wrong ? '비밀번호가 맞지 않아요. 다시 입력해 주세요.' : `${code}번 방은 비밀번호가 있어요.`;
+  $('pw-msg').classList.toggle('bad', wrong);
+  $('pw-input').value = '';
+  $('room-pw').hidden = false;
+  setTimeout(() => $('pw-input').focus(), 50);
+  $('pw-close').onclick = () => { $('room-pw').hidden = true; };
+  $('room-pw').onclick = (e) => { if (e.target === $('room-pw')) $('room-pw').hidden = true; };
+  $('pw-form').onsubmit = (e) => {
+    e.preventDefault();
+    const pw = $('pw-input').value.trim();
+    if (!pw) { $('pw-input').focus(); return; }
+    $('room-pw').hidden = true;
+    click(); app.joinRoom(code, pw);
+  };
 }

@@ -125,7 +125,7 @@ server.on('upgrade', (req, socket, head) => {
     const lag = Number(process.env.DEV_LAG) || 0;
     const later = (f) => (lag ? setTimeout(f, lag / 2) : f());
     if (!r.core.resync(pid)) {
-      const res = r.core.join(pid, name, acct);
+      const res = r.core.join(pid, name, acct, url.searchParams.get('pw') || '');
       if (res.error) { ws.send(JSON.stringify({ t: 'error', text: res.error })); ws.close(); r.sockets.delete(pid); return; }
     }
     ws.on('message', (data) => later(() => {

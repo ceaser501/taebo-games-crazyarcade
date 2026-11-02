@@ -54,7 +54,7 @@ export class Room {
     this.sockets.set(pid, server);
     if (this.gone.has(pid)) { clearTimeout(this.gone.get(pid)); this.gone.delete(pid); }
     if (!this.core.resync(pid)) {
-      const r = this.core.join(pid, name, acct);
+      const r = this.core.join(pid, name, acct, url.searchParams.get('pw') || '');
       if (r.error) {
         server.send(JSON.stringify({ t: 'error', text: r.error }));
         this.sockets.delete(pid);

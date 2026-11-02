@@ -13,6 +13,7 @@ import * as Account from './account.js';
 import { mapById } from './shared/room.js';
 import { celebrate } from './rank.js';
 import * as Chat from './chat.js';
+import { askPassword } from './channel.js';
 
 // `SITE_PASSWORD=... npm run build` puts a simple password screen in front (hash only).
 /* global PASSWORD_HASH */
@@ -57,8 +58,9 @@ const app = {
   // A new room under `code` (one nobody uses), set up with opts { title, mode, rule } once we
   // are its host.
   hostRoom(code, opts = null) { this.pendingSettings = opts; this.joinRoom(code); },
-  joinRoom(code) {
-    this.connect(new Online(code, this.name, Account.token()), false);
+  joinRoom(code, pw = '') {
+    this.joining = code;
+    this.connect(new Online(code, this.name, Account.token(), pw), false);
     this.dom(() => showLobby(this));
     lobbyStatus('방에 연결하는 중…');
   },
@@ -126,7 +128,10 @@ const app = {
         if (!m.name && lobbyShown()) lobbyStatus(m.text);
         break;
       case 'notice': this.toast(m.text); break;
-      case 'error': this.toMenu(m.text === 'full' ? '방이 꽉 찼어요.' : m.text === 'playing' ? '게임 중인 방이에요. 끝나면 다시 들어와 주세요.' : m.text); break;
+      case 'error':
+        // A locked room: back to the 대기실 and ask for its password.
+        if (m.text === 'password') { const code = this.joining, tried = !!this.conn?.pw; this.toHome(); askPassword(code, tried); break; }
+        this.toMenu(m.text === 'full' ? '방이 꽉 찼어요.' : m.text === 'playing' ? '게임 중인 방이에요. 끝나면 다시 들어와 주세요.' : m.text); break;
       case 'kicked': this.toMenu('방장이 내보냈어요.'); break;
       case 'lost': this.toMenu('서버와 연결이 끊겼어요.'); break;
     }
