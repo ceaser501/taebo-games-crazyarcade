@@ -110,3 +110,48 @@
 - [ ] 클리어 결과: D~SS 랭크, 루찌·경험치 보상, 루찌 비 연출
 - [ ] 첫 버전은 **대왕문어의 습격** 한 테마(3스테이지)로 시작하길 추천
 - [ ] 정할 것: 목숨 방식 (시즌1처럼 닿으면 바로 죽음 vs 시즌2처럼 목숨 3개), 골렘·거북·눈곰 테마의 정식 이름
+
+## 미니게임 3종 (나중에 만들기)
+
+시안: `_kart.html` (로컬 전용, git 제외). `?s=start`, `?s=race`, `?s=result`, `?s=idea`, `&phone=1`.
+그림은 원작에서 꺼낸 것 (`_mock_kart/`), 배경은 Kart05를 실제 게임으로 띄워 캡처한 것.
+카트라이더 같은 다른 게임을 옮기는 게 아니라, **크아 원작 데이터에 있던 모드**를 살리는 것.
+
+### 1. 카트 레이스 (원작 테마 `Theme/Kart`, `Theme/OlympicKart`)
+
+- 맵 8개: `FxMap Map/Kart02, 05, 06, 07, 14, 15, 16, 17` (+ `Hdn_Alche_Kart`), 크기 15×13이라 지금 맵 형식 그대로 변환됨
+  - 확인 방법: `tools/build-maps.mjs`의 `KO`에 `Kart`를 넣고 빌드 → 8개 모두 변환 성공, `npm run ca:assets`로 `Tile12` 타일도 변환됨
+- 트랙 타일 `FxTile Tile12/`: 도로 `Race00~13`, 결승선 `Goal_Horz/Vert`, 체크 칸 `LapTile1~4_Horz/Vert`. 맵에 START 줄, 신호등, 타이어 벽이 있음
+- 그 밖 원작 그림: `FxStage Game/KartSand_*` (카트 뒤 흙먼지, 방향별 6프레임), `fx Item/Kart`, `Game/Rank` (SS·S… 랭크), `Game/FinalFlag`, `Game/First`
+- 규칙 (시안 기준)
+  - [ ] START 줄에 나란히 → 3, 2, 1 신호 뒤 출발
+  - [ ] 체크 칸 1→2→3→4를 순서대로 지나 START를 넘으면 한 바퀴, 3바퀴 먼저 돌면 1등 (순서를 건너뛰면 인정 안 됨)
+  - [ ] 카트는 걷기보다 빠르고 살짝 미끄러짐. 물풍선은 뒤에 떨어뜨려 방해 (갇히면 잠깐 멈춤, 탈락은 없음)
+  - [ ] 화면: 왼쪽에 LAP n/3, 체크 칸 진행(지난 칸 초록, 다음 칸 노란 테두리), 순위와 1위와의 차이, 트랙 위 다음 방향 화살표, "2바퀴째!" 알림
+  - [ ] 결과: 순위, 베스트 랩, 총 기록, 보상 (1위 루찌·경험치, 일일미션 "레이스 1등" 후보)
+- [ ] 정할 것: 카트 그림. 게임 중에 쓰는 원작 카트 그림은 못 찾음 (시안은 테마 카드에서 잘라낸 정면 그림 `_mock_kart/kart.png`).
+  그대로 쓸지, 이미 있는 탈것(부엉이·거북이·UFO, 방향별 그림 있음)을 타고 달릴지
+
+### 2. 골렘런 (장애물 달리기, 원작 테마 `Theme/GolemRun`)
+
+- 맵: `FxMap Map/GolemRun01` (15×101 세로로 긴 코스, 지금 변환기는 크기가 달라 건너뜀), 미니맵 `Etc/GolemRun01_mm`
+- 원작 그림: `FxStage Game/GolemRun_ready` (START! 화면), `Game/EscapeMazeGolem_Walk*` (골렘 방향별), `FxMap Prepare/PRE_NewMapTooltipMonGolemRun`
+- 생각한 규칙 (원작 규칙은 아직 조사 안 함)
+  - [ ] 화면이 코스를 따라 위로 올라감 (세로 스크롤 카메라 새로 필요)
+  - [ ] 뒤에서 골렘이 쫓아옴, 길을 막는 블록은 물풍선으로 뚫음
+  - [ ] 골렘에게 잡히거나 화면 밖으로 밀리면 탈락, 가장 멀리 간 사람이 1등
+- [ ] 15×101 맵 변환 (build-maps의 크기 제한 풀기 + 게임 쪽 큰 맵 지원)
+
+### 3. 탈출 미로 (원작 테마 `Theme/EscapeMaze`)
+
+- 맵: `FxMap Map/EscapeMaze00, 01, 02` (29×25, 화면보다 큰 맵이라 카메라 이동 필요)
+- 원작 그림: 해·달·별 열쇠 `fx Item/EscapeMaze*Key`, 문 열기/닫기 `FxStage Game/EscapeMazeDoor*`, 돌아다니는 골렘 `Game/EscapeMazeGolem_*`,
+  안내 `fx Dialog/DlgMissionEscapeMaze`, `EscapeMazeNotice`, `EscapeMazeEscaped`, 로비 아이콘 `Lobby/New_BigEscapeMaze`
+- 생각한 규칙 (원작 규칙은 아직 조사 안 함)
+  - [ ] 미로에서 열쇠 3개(해·달·별)를 모아 문을 열고 탈출, 순찰하는 골렘을 피함
+  - [ ] 몬스터 모드의 추격 로직을 같이 씀
+
+### 공통
+
+- [ ] 방 설정에 미니게임 선택 추가 (일반 / 무한 결투 / 몬스터 / 미니게임)
+- [ ] 우선순위 추천: 카트 레이스 (맵이 이미 변환되고 지금 구조에 바로 맞음) → 골렘런 → 탈출 미로
