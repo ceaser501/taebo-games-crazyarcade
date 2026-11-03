@@ -691,3 +691,17 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   #lobby:not(.wide) .room-edit { padding: 7px 10px; } #lobby:not(.wide) .room-edit span { display: none; }
   #lobby:not(.wide) .wr-top .modes button { padding: 6px 9px; font-size: 13px; }
 }
+
+/* 대기실 fixes: buttons one size, the figure whole in its box, phones without the filter tab and the who-is-on list */
+.ch-me .home-actions { grid-auto-rows: 40px; } .ch-me .home-actions button { height: 100%; min-height: 0; padding: 0 4px; white-space: nowrap; }
+.ch-pager .ch-page { white-space: nowrap; }
+.ch-me .home-figure { position: relative; } .ch-me .home-figure #home-char { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); height: calc(100% - 6px); width: auto; aspect-ratio: 1; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .ch-users { display: none; }
+  #home { grid-template-columns: 228px minmax(0, 1fr); }
+  .ch-me { gap: 8px; padding: 10px; }
+  .ch-me .home-actions { grid-auto-rows: 36px; gap: 7px; } .ch-me .home-actions button { font-size: 13px; padding: 0 2px; }
+  #ch-tabs button[data-tab="wait"] { display: none; }
+  .ch-chat.open #ch-log { min-height: 0; }
+}
+#lobby-chat.open, .ch-chat.open { transition: top 0.12s, height 0.12s; }

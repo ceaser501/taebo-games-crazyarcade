@@ -157,6 +157,7 @@ function wire() {
   };
   $('ch-chat-open').onclick = () => { click(); $('ch-chat').classList.add('open'); $('ch-input').focus(); renderChat(); };
   $('ch-chat-close').onclick = () => { $('ch-chat').classList.remove('open'); };
+  aboveKeyboard($('ch-chat'));
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' || $('home').hidden || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (document.querySelector('.popup:not([hidden]), #char-pick:not([hidden]), #missions:not([hidden]), #settings:not([hidden])')) return;
@@ -203,4 +204,19 @@ export function askPassword(code, wrong = false) {
     $('room-pw').hidden = true;
     click(); app.joinRoom(code, pw);
   };
+}
+
+// Phones: an open chat popup keeps to the part of the screen the keyboard leaves free, so the
+// lines and the input stay in sight while typing.
+export function aboveKeyboard(box) {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const fit = () => {
+    if (!box.classList.contains('open')) { box.style.top = box.style.height = box.style.bottom = ''; return; }
+    const kb = window.innerHeight - vv.height;
+    if (kb < 80) { box.style.top = box.style.height = box.style.bottom = ''; return; }
+    Object.assign(box.style, { top: `${vv.offsetTop + 6}px`, bottom: 'auto', height: `${vv.height - 12}px` });
+  };
+  vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+  new MutationObserver(fit).observe(box, { attributes: true, attributeFilter: ['class'] });
 }

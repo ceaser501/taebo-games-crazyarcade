@@ -12,6 +12,7 @@ import { pickChar } from './home.js';
 import { mapButton, pickMap, mapById } from './map-pick.js';
 import { rankCanvas } from './rank.js';
 import * as Chat from './chat.js';
+import { aboveKeyboard } from './channel.js';
 
 const $ = (id) => document.getElementById(id);
 const click = () => sfx('Bt_c_Pop', 0.6);
@@ -254,6 +255,7 @@ function setupChat(app) {
   };
   $('chat-open').onclick = () => { click(); open(!box.classList.contains('open')); };
   $('chat-close').onclick = () => open(false);
+  aboveKeyboard(box);
   $('chat-form').onsubmit = (e) => {
     e.preventDefault();
     const text = $('chat-input').value.trim();

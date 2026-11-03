@@ -373,6 +373,14 @@ if (room.phase !== 'room') { bad++; console.log('round did not end'); }
   r.message('h', { t: 'settings', password: '' });
   check(!r.summary().locked, 'password removed');
 }
+// Leaving on purpose takes the player out at once; a room with no people left is closed.
+{
+  let closed = false;
+  const r = new RoomCore({ code: '1212', send: () => {}, broadcast: () => {}, onChange: () => { if (!r.count) closed = true; } });
+  r.join('h', '방장'); r.message('h', { t: 'bot' });
+  r.message('h', { t: 'leave' });
+  check(r.count === 0 && closed, `room empties (${r.count})`);
+}
 // The stylesheet's braces balance (a stray one silently drops the rule after it).
 {
   const css = (await import('node:fs')).readFileSync(new URL('../css/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

@@ -53,7 +53,7 @@ export class Online {
   on(f) { this.handlers.push(f); }
   emit(m) { for (const f of this.handlers) f(m); }
   send(msg) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(msg)); }
-  close() { this.closed = true; clearInterval(this.pinger); try { this.ws.close(); } catch { /* already closed */ } }
+  close() { this.closed = true; clearInterval(this.pinger); this.send({ t: 'leave' }); try { this.ws.close(); } catch { /* already closed */ } }
 }
 
 // The 대기실's live feed: the room list, who is on and the lobby chat. Reconnects by itself

@@ -237,6 +237,9 @@ export class RoomCore {
           this.inputs.set(id, cur);
         }
         break;
+      case 'leave':
+        // Left on purpose (the back button): gone at once, not after the wait for a reconnect.
+        this.leave(id); return;
       case 'chat':
         if (typeof msg.text === 'string' && msg.text.trim()) this.chat(id, msg.text.trim());
         break;
