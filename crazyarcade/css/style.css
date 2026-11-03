@@ -762,3 +762,11 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 @media (max-height: 520px) and (orientation: landscape) {
   .ch-chat:not(.open) #ch-log { align-self: stretch; height: 100%; overflow: hidden; }
 }
+/* cards: lines spaced out over the card's height */
+.ch-card .info { gap: 11px !important; }
+.ch-card .info .chips { margin-top: -2px; }
+.ch-card .who { margin-top: 3px; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .ch-card .info { gap: 6px !important; }
+  .ch-card .bd { padding: 8px 10px; }
+}
