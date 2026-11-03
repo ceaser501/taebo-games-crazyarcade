@@ -931,7 +931,9 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   .ch-me #home-rank { padding: 7px 10px; gap: 10px; } .ch-me #home-lv { font-size: 18px; } .ch-me #home-rank small { font-size: 12px; }
   .ch-me #home-stats { display: grid; gap: 8px; } .ch-me #home-stats div { padding: 6px 10px; } .ch-me #home-stats dt { font-size: 12px; margin-bottom: 2px; } .ch-me #home-stats dd { font-size: 17px; }
   .ch-me .home-actions { grid-auto-rows: 46px; gap: 10px; } .ch-me .home-actions button { font-size: 15px; border-radius: 12px; }
-  .ch-users { flex: none; height: 150px; padding: 10px 12px; }
+  .ch-users { flex: 1; height: auto; min-height: 120px; padding: 10px 12px; }
+  .ch-me { flex: none; } .ch-me .home-figure { flex: none; min-height: 0; height: auto; aspect-ratio: 4 / 3; }
+  .ch-me #home-stats dd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 16px; }
   .ch-rh { font-size: 15px; } .ch-rh b { font-size: 18px; }
   .ch-chat h3 { font-size: 15px; } #ch-log { font-size: 15px; }
 
