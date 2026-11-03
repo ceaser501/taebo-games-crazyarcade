@@ -43,7 +43,7 @@ function wholeFigure(cv, id, frame, look, now) {
   if (x1 < 0) return;
   fit = fit ? [Math.min(fit[0], x0), Math.min(fit[1], y0), Math.max(fit[2], x1), Math.max(fit[3], y1)] : [x0, y0, x1, y1];
   const [fx0, fy0, fx1, fy1] = fit, w = fx1 - fx0 + 1, h = fy1 - fy0 + 1;
-  const k = Math.min(cv.width * 0.94 / w, cv.height * 0.96 / h, 3);
+  const k = Math.min(cv.width * 0.9 / w, cv.height * 0.84 / h, 3);
   const c = cv.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.imageSmoothingEnabled = false;
   c.drawImage(stage, fx0, fy0, w, h, Math.round((cv.width - w * k) / 2), Math.round(cv.height - h * k - cv.height * 0.02), w * k, h * k);
