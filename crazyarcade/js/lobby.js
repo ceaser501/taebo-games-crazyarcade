@@ -189,7 +189,7 @@ export function renderLobby(app) {
   quickChars(app, mine);
   $('rm-team-box').hidden = room.mode !== 'team';
   if (room.mode === 'team') {
-    $('rm-teams').replaceChildren(...[[RED, '빨강팀', 'Prepare/PRE_SelTeam-Basic00'], [BLUE, '파랑팀', 'Prepare/PRE_SelTeam-Basic01']].map(([color, name, spr]) => {
+    $('rm-teams').replaceChildren(...[[RED, '빨강팀', `Prepare/PRE_SelTeam-Basic0${RED}`], [BLUE, '파랑팀', `Prepare/PRE_SelTeam-Basic0${BLUE}`]].map(([color, name, spr]) => {
       const b = el('button', mine && mine.color === color ? 'on' : ''); b.type = 'button';
       const cv = el('canvas'); cv.width = 35; cv.height = 37;
       A.loadGroup('ui').then(() => A.drawAt(cv.getContext('2d'), spr, 0, 0, 0));

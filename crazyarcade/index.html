@@ -51,7 +51,7 @@
   <div id="home" hidden>
     <div class="ch-left">
       <section class="ch-panel ch-me">
-        <button type="button" class="home-figure" id="home-figure" aria-label="캐릭터 바꾸기"><canvas id="home-char" width="180" height="180"></canvas><span id="home-charname"></span></button>
+        <button type="button" class="home-figure" id="home-figure" aria-label="캐릭터 바꾸기"><canvas id="home-char" width="240" height="180"></canvas><span id="home-charname"></span></button>
         <div class="ch-name"><canvas id="home-rank-icon" width="48" height="42"></canvas><b id="home-name"></b><span id="home-title" class="ttl-badge" hidden></span></div>
         <div id="home-rank"><b id="home-lv"></b><div class="exp"><i id="home-exp-bar"></i></div><small id="home-exp"></small></div>
         <dl id="home-stats">
@@ -144,7 +144,7 @@
       <div class="ctl rno"><small>방 번호</small><b id="lobby-code">----</b><span id="lobby-lock" hidden>🔒</span></div>
       <span id="lobby-title" class="rtitle"></span>
       <button type="button" id="share-link" class="ctl chip y">초대 링크</button>
-      <button type="button" id="room-edit-btn" class="ctl chip edit" hidden aria-label="방 설정">✏<span> 방 설정</span></button>
+      <button type="button" id="room-edit-btn" class="ctl chip edit" hidden>방 설정</button>
       <div id="lobby-mode" class="ctl seg"><button type="button" data-mode="team">팀전</button><button type="button" data-mode="solo">개인전</button></div>
       <div id="lobby-rule" class="ctl seg"><button type="button" data-rule="normal">일반</button><button type="button" data-rule="duel">무한 결투</button></div>
       <button type="button" id="chat-open" class="ctl copen" aria-label="채팅">💬<i hidden></i></button>
@@ -157,11 +157,10 @@
     </div>
     <div class="rm-side">
       <section class="rm-panel rm-chars"><h3>캐릭터 선택 <span id="rm-charname"></span></h3><div id="lobby-chars" class="cg"></div></section>
-      <section class="rm-panel" id="rm-team-box"><h3>팀 선택</h3><div id="rm-teams" class="teams"></div></section>
-      <section class="rm-panel"><h3>맵 <span id="rm-maphint"></span></h3>
+      <section class="rm-panel rm-teambox" id="rm-team-box"><h3>팀 선택</h3><div id="rm-teams" class="teams"></div></section>
+      <section class="rm-panel rm-mapbox"><h3>맵 <span id="rm-maphint"></span><button type="button" id="lobby-map" class="imgbtn"><canvas width="123" height="48"></canvas></button></h3>
         <div class="rm-map"><canvas id="rm-mm" width="150" height="130"></canvas>
-          <div class="mi"><b id="rm-mapname"></b><small id="rm-mapinfo"></small><div id="rm-mapchips" class="chips"></div>
-            <button type="button" id="lobby-map" class="imgbtn"><canvas width="123" height="48"></canvas></button></div></div></section>
+          <div class="mi"><b id="rm-mapname"></b><small id="rm-mapinfo"></small><div id="rm-mapchips" class="chips"></div></div></div></section>
       <div class="rm-act">
         <button type="button" id="lobby-shop" class="imgbtn" aria-label="상점"><canvas width="90" height="57"></canvas></button>
         <button type="button" id="lobby-start" class="imgbtn go" aria-label="시작"><canvas width="193" height="57"></canvas></button>

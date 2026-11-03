@@ -18,18 +18,35 @@ const INTRO_CHARS = ['C00', 'C06', 'C01', 'C04', 'C05'];
 let anim = 0;
 
 // Draws a character (and the hat it wears) onto a small canvas, anchored bottom-centre.
-function figure(cv, id, action, frame, scale, look = null, now = performance.now()) {
-  const c = cv.getContext('2d');
-  c.setTransform(1, 0, 0, 1, 0, 0);
-  c.clearRect(0, 0, cv.width, cv.height);
-  c.imageSmoothingEnabled = false;
-  c.setTransform(scale, 0, 0, scale, 0, 0);
-  const ax = cv.width / scale / 2 - 20, ay = cv.height / scale - 4;
-  c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(ax + 20, ay - 2, 15, 4.5, 0, 0, Math.PI * 2); c.fill();
-  if (look?.pet && A.frames(`Pet/${look.pet}_WalkingDown`)) A.draw(c, `Pet/${look.pet}_WalkingDown`, frame, ax + 30, ay + 2);
-  A.drawChar(c, id, action, frame, ax, ay, 0);
+// The 대기실 card: my character with its hat, the pet beside it and the balloon I wear, drawn on
+// a roomy stage and scaled to fit the box whole (the box grows the picture as far as it can).
+const stage = document.createElement('canvas'); stage.width = 220; stage.height = 170;
+let fitKey = '', fit = null;
+function wholeFigure(cv, id, frame, look, now) {
+  const s = stage.getContext('2d', { willReadFrequently: true });
+  s.setTransform(1, 0, 0, 1, 0, 0); s.clearRect(0, 0, stage.width, stage.height); s.imageSmoothingEnabled = false;
+  const ax = 90, ay = 150;
+  s.fillStyle = 'rgba(0,0,0,0.25)'; s.beginPath(); s.ellipse(ax + 20, ay - 2, 15, 4.5, 0, 0, Math.PI * 2); s.fill();
+  if (look?.bomb && A.frames(`BombDeco/${look.bomb}`)) A.draw(s, `BombDeco/${look.bomb}`, Math.floor(now / 140), ax - 38, ay + 8);
+  if (look?.pet && A.frames(`Pet/${look.pet}_WalkingDown`)) A.draw(s, `Pet/${look.pet}_WalkingDown`, frame, ax + 32, ay + 2);
+  A.drawChar(s, id, 'WalkDown', frame, ax, ay, 0);
   const hat = look?.hat && `CharDeco/CharDeco_${look.hat}Down`;
-  if (hat && A.frames(hat)) A.draw(c, hat, A.decoFrame(hat, now), ax, ay);
+  if (hat && A.frames(hat)) A.draw(s, hat, A.decoFrame(hat, now), ax, ay);
+  // The drawn area, widened as frames go by so the picture does not jump.
+  const key = `${id}|${look?.hat}|${look?.pet}|${look?.bomb}`;
+  if (key !== fitKey) { fitKey = key; fit = null; }
+  const d = s.getImageData(0, 0, stage.width, stage.height).data;
+  let x0 = stage.width, y0 = stage.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < stage.height; y++) for (let x = 0; x < stage.width; x++) if (d[(y * stage.width + x) * 4 + 3] > 40) {
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  if (x1 < 0) return;
+  fit = fit ? [Math.min(fit[0], x0), Math.min(fit[1], y0), Math.max(fit[2], x1), Math.max(fit[3], y1)] : [x0, y0, x1, y1];
+  const [fx0, fy0, fx1, fy1] = fit, w = fx1 - fx0 + 1, h = fy1 - fy0 + 1;
+  const k = Math.min(cv.width * 0.94 / w, cv.height * 0.96 / h, 3);
+  const c = cv.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.imageSmoothingEnabled = false;
+  c.drawImage(stage, fx0, fy0, w, h, Math.round((cv.width - w * k) / 2), Math.round(cv.height - h * k - cv.height * 0.02), w * k, h * k);
 }
 
 // ---- intro
@@ -116,7 +133,7 @@ export function showHome(app) {
     const loop = (now) => {
       if ($('home').hidden) return;
       const n = A.charFrames(ch, 'WalkDown');
-      figure(cv, ch, 'WalkDown', n > 1 ? 1 + (Math.floor(now / 160) % (n - 1)) : 0, 2.45, look);
+      wholeFigure(cv, ch, n > 1 ? 1 + (Math.floor(now / 160) % (n - 1)) : 0, look, now);
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);

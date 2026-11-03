@@ -867,7 +867,7 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   .rm-panel { border-width: 2px; border-radius: 12px; }
   .rm-top { gap: 6px; } .rm-top .ctl { --h: 34px; border-radius: 10px; font-size: 12px; }
   .rm-top .back { padding: 0 10px; font-size: 13px; } .rm-top .rno { padding: 0 10px; gap: 4px; } .rm-top .rno small { display: none; } .rm-top .rno b { font-size: 17px; letter-spacing: 2px; }
-  .rm-top .rtitle { font-size: 14px; } .rm-top .chip { padding: 0 10px; } .rm-top .edit span { display: none; }
+  .rm-top .rtitle { font-size: 14px; } .rm-top .chip { padding: 0 10px; } 
   .rm-top .seg button { padding: 0 8px; font-size: 12px; border-radius: 7px; }
   .rm-top .copen { display: flex; width: 34px; justify-content: center; font-size: 15px; position: relative; }
   .rm-top .copen i { position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: #ff4a4a; border: 2px solid #fff; }
@@ -893,4 +893,23 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 }
 @media (orientation: portrait) and (max-width: 700px) {
   #lobby.rm { display: flex; flex-direction: column; overflow-y: auto; } #rm-seats { min-height: 420px; } .rm-top { flex-wrap: wrap; }
+}
+
+/* 대기실 card: the whole figure (hat, pet, balloon) fits the box */
+.ch-me .home-figure #home-char { position: absolute; inset: 4px; left: 4px; bottom: 4px; transform: none; width: calc(100% - 8px); height: calc(100% - 8px); aspect-ratio: auto; object-fit: contain; object-position: center bottom; }
+
+/* room: a gap between the teams, the map button beside the 맵 label, team buttons beside their label on phones */
+#rm-seats.team .row + .th { margin-top: 10px; }
+.rm-mapbox h3 { gap: 8px; } .rm-mapbox h3 #rm-maphint { margin-left: auto; } .rm-mapbox h3 #lobby-map { margin-left: auto; } .rm-mapbox h3 #rm-maphint:not(:empty) + #lobby-map { margin-left: 0; }
+.rm-mapbox h3 #lobby-map canvas { width: 82px; height: 32px; image-rendering: pixelated; }
+.rm-mapbox h3 { margin-bottom: 9px; }
+@media (max-height: 520px) and (orientation: landscape) {
+  #rm-seats.team .row + .th { margin-top: 6px; }
+  .rm-teambox { display: flex; align-items: center; gap: 8px; } .rm-teambox h3 { margin: 0; flex: none; height: auto; }
+  .rm-teambox .teams { flex: 1; }
+  .rm-mapbox h3 { margin-bottom: 5px; height: 26px; } .rm-mapbox h3 #lobby-map canvas { width: 66px; height: 26px; }
+  .rm-map { grid-template-columns: 64px minmax(0, 1fr); } .rm-map #rm-mm { width: 64px; height: 55px; }
+  /* 대기실: the main buttons (바로시작, 방만들기, 혼자놀기) bigger than the card's small buttons */
+  .ch-top .imgbtn canvas { height: 42px; } #ch-practice canvas { height: 38px; }
+  .ch-me .home-actions { grid-auto-rows: 30px; gap: 6px; } .ch-me .home-actions button { font-size: 12px; border-radius: 9px; }
 }
