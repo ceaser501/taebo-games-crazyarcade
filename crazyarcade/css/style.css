@@ -1018,3 +1018,11 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 }
 /* PC room: the map card's picture and facts start at the top */
 @media (min-width: 1100px) and (min-height: 641px) { .rm-mapbox .rm-map { flex: 0 0 auto; margin-top: 4px; } }
+/* PC room: the character picker takes the free height (more characters at once); the map card
+   keeps to its contents just above 상점 / 시작 */
+@media (min-width: 1100px) and (min-height: 641px) {
+  .rm-chars { flex: 1 1 auto; min-height: 0; }
+  .rm .cg { overflow-y: auto; align-content: start; } .rm .cg button:nth-child(n+8):not(.all) { display: grid; }
+  .rm-mapbox { flex: none; display: block; } .rm-mapbox .rm-map { margin-top: 0; }
+  .rm-map { grid-template-columns: 150px minmax(0, 1fr); } .rm-map #rm-mm { width: 150px; height: 130px; }
+}
