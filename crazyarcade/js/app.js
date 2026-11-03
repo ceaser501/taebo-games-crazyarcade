@@ -146,8 +146,8 @@ window.caApp = app;
 const ZOOMED = ['home', 'lobby', 'shop', 'char-pick', 'map-pick', 'menu', 'missions', 'room-edit', 'room-pw', 'create-room', 'settings'];
 function fitWide() {
   const wide = innerWidth >= 1100 && innerHeight >= 641;
-  const k = wide ? Math.max(1, Math.min(innerWidth / 1440, innerHeight / 900, 2)) : 1;
-  const z = Math.round(k * 100) / 100, on = z > 1.01;
+  const k = wide ? Math.max(0.7, Math.min(innerWidth / 1440, innerHeight / 900, 2)) : 1;
+  const z = Math.round(k * 100) / 100, on = Math.abs(z - 1) > 0.01;
   for (const id of ZOOMED) {
     const el = document.getElementById(id);
     if (!el) continue;

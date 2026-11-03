@@ -989,3 +989,32 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   .ch-me .ch-name { margin-top: 6px; }
   .ch-me .home-actions { margin-top: auto; padding-top: 10px; }
 }
+@media (max-height: 520px) and (orientation: landscape) {
+  /* 대기실 card: my name and level sit midway between the picture and the buttons */
+  .ch-me .ch-name { margin-top: auto; }
+  .ch-me .home-actions { margin-top: auto; padding-top: 0; }
+  /* room: the map card takes the free height of the column, a bigger picture and its facts */
+  .rm-mapbox { flex: 1 1 auto; min-height: 0; }
+  .rm-mapbox .rm-map { grid-template-columns: auto minmax(0, 1fr); align-self: center; }
+  .rm-map #rm-mm { height: clamp(44px, calc(100vh - 318px), 100px); width: auto; aspect-ratio: 150 / 130; }
+  .rm-map .mi b { font-size: 15px; } .rm-map .mi small { font-size: 11px; }
+  .rm-map .chips { display: flex; gap: 3px; } .rm-map .chips span { font-size: 9px; padding: 1px 6px; }
+}
+@media (max-height: 370px) and (orientation: landscape) { .rm-map .chips { display: none; } }
+@media (max-height: 520px) and (orientation: landscape) {
+  /* 대기실 room cards: compact enough for two rows above the page arrows */
+  .ch-card .bd { grid-template-columns: 50px minmax(0, 1fr); gap: 7px; padding: 4px 8px; }
+  .ch-card .info { gap: 1px; } .ch-card .tt { font-size: 14px; } .ch-card .info .map { font-size: 10px; }
+  .ch-card .chips span { font-size: 9px; padding: 0 6px; } .ch-card .who { margin-top: 1px; }
+  .ch-card .faces canvas { width: 15px; height: 14px; } .ch-card .cnt em { font-size: 14px; }
+  .ch-card .hd { padding: 2px 8px; } .ch-card .hd .st { font-size: 9px; padding: 0 6px; }
+  .ch-pager.bottom { font-size: 12px; } .ch-pager.bottom button { padding: 0 9px; }
+  .ch-rooms { gap: 4px; }
+  /* room map card: no hint text, two facts at most on one line */
+  .rm-mapbox h3 #rm-maphint { display: none; }
+  .rm-map .chips { flex-wrap: nowrap; overflow: hidden; } .rm-map .chips span:nth-child(n+3) { display: none; }
+  .rm-map .mi b, .rm-map .mi small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rm-map #rm-mm { height: clamp(44px, calc(100vh - 318px), 72px); }
+}
+/* PC room: the map card's picture and facts start at the top */
+@media (min-width: 1100px) and (min-height: 641px) { .rm-mapbox .rm-map { flex: 0 0 auto; margin-top: 4px; } }
