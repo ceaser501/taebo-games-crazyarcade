@@ -770,3 +770,19 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   .ch-card .info { gap: 6px !important; }
   .ch-card .bd { padding: 8px 10px; }
 }
+/* wide screens: the cards use their size (bigger map, words and faces) */
+@media (min-width: 1100px) and (min-height: 700px) {
+  .ch-card .hd { padding: 8px 14px; } .ch-card .hd .no { font-size: 16px; } .ch-card .hd .lock { font-size: 15px; } .ch-card .st { font-size: 13px !important; padding: 3px 11px !important; }
+  .ch-card .bd { grid-template-columns: 150px minmax(0, 1fr) !important; gap: 18px; padding: 14px 18px; }
+  .ch-card .bd .mm, .ch-card .mm { width: 150px !important; height: 130px !important; }
+  .ch-card .info { gap: 12px !important; }
+  .ch-card .tt { font-size: 25px; } .ch-card .info .map { font-size: 16px; }
+  .ch-card .chips span { font-size: 14px; padding: 3px 11px; }
+  .ch-card .faces canvas { width: 36px; height: 35px; } .ch-card .cnt { font-size: 17px; } .ch-card .cnt em { font-size: 28px; }
+}
+@media (min-width: 1100px) and (min-height: 700px) {
+  .ch-card .bd { grid-template-columns: 116px minmax(0, 1fr) !important; gap: 16px; padding: 14px 16px; }
+  .ch-card .bd .mm, .ch-card .mm { width: 116px !important; height: 100px !important; }
+  .ch-card .tt { font-size: 22px; }
+  .ch-card .faces canvas { width: 30px; height: 29px; } .ch-card .cnt em { font-size: 26px; }
+}
