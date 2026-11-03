@@ -913,3 +913,44 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   .ch-top .imgbtn canvas { height: 42px; } #ch-practice canvas { height: 38px; }
   .ch-me .home-actions { grid-auto-rows: 30px; gap: 6px; } .ch-me .home-actions button { font-size: 12px; border-radius: 9px; }
 }
+
+/* PC (wide screens): proportions. The screens are laid out for 1440×900 and zoomed up on bigger
+   monitors (js/app.js fitWide); these rules balance the panels within that. */
+@media (min-width: 1100px) and (min-height: 641px) {
+  #home { grid-template-columns: 290px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) 220px; gap: 14px; }
+  .ch-top { gap: 12px; } .ch-top .imgbtn canvas { height: 64px; } #ch-practice canvas { height: 54px; }
+  .ch-top .modes { padding: 4px; border-radius: 14px; } .ch-top .modes button { padding: 10px 18px; font-size: 16px; border-radius: 10px; }
+  .ch-code { font-size: 15px; padding: 4px 4px 4px 14px; gap: 10px; }
+  .ch-code input { width: 84px; font-size: 17px; padding: 8px 10px; background: #fff; color: #102040; border: 0; }
+  .ch-code input::placeholder { color: #8aa0c0; letter-spacing: 0; }
+  .ch-code button { padding: 8px 16px; font-size: 15px; }
+  .ch-left { gap: 14px; }
+  .ch-me { flex: 1; min-height: 0; padding: 16px; gap: 14px; }
+  .ch-me .home-figure { height: auto; flex: 1; min-height: 190px; }
+  .ch-name { gap: 9px; } .ch-name b { font-size: 21px; }
+  .ch-me #home-rank { padding: 7px 10px; gap: 10px; } .ch-me #home-lv { font-size: 18px; } .ch-me #home-rank small { font-size: 12px; }
+  .ch-me #home-stats { display: grid; gap: 8px; } .ch-me #home-stats div { padding: 6px 10px; } .ch-me #home-stats dt { font-size: 12px; margin-bottom: 2px; } .ch-me #home-stats dd { font-size: 17px; }
+  .ch-me .home-actions { grid-auto-rows: 46px; gap: 10px; } .ch-me .home-actions button { font-size: 15px; border-radius: 12px; }
+  .ch-users { flex: none; height: 150px; padding: 10px 12px; }
+  .ch-rh { font-size: 15px; } .ch-rh b { font-size: 18px; }
+  .ch-chat h3 { font-size: 15px; } #ch-log { font-size: 15px; }
+
+  /* room: a slim character picker, bigger type in the side column */
+  #lobby.rm { grid-template-columns: minmax(0, 1fr) 380px; }
+  .rm-top .ctl { --h: 46px; font-size: 15px; } .rm-top .seg button { font-size: 15px; padding: 0 15px; } .rm-top .rtitle { font-size: 21px; }
+  .rm-side { gap: 12px; } .rm-side .rm-panel { padding: 12px 14px; } .rm-side h3 { font-size: 15px; margin-bottom: 9px; } .rm-side h3 span { font-size: 14px; }
+  .rm-chars { flex: none; }
+  .rm .cg { gap: 7px; overflow: hidden; } .rm .cg button:nth-child(n+8):not(.all) { display: none; } .rm .cg button.all { font-size: 13px; }
+  .rm .teams button { height: 50px; font-size: 16px; gap: 9px; } .rm .teams canvas { width: 32px; height: 34px; }
+  .rm-mapbox { flex: 1; display: flex; flex-direction: column; } .rm-mapbox .rm-map { flex: 1; align-content: center; }
+  .rm-map { grid-template-columns: 190px minmax(0, 1fr); gap: 14px; } .rm-map #rm-mm { width: 190px; height: 165px; }
+  .rm-map .mi { gap: 6px; } .rm-map .mi b { font-size: 22px; } .rm-map .mi small { font-size: 14px; } .rm-map .chips span { font-size: 12px; padding: 2px 9px; }
+  .rm-mapbox h3 #lobby-map canvas { width: 96px; height: 37px; }
+  .rm-act { grid-template-columns: 110px minmax(0, 1fr); gap: 12px; }
+  #lobby.rm #lobby-status { font-size: 15px; }
+  .rm .s .nm .n { font-size: 17px; } .rm .s .nm small { font-size: 13px; } .rm .th { font-size: 16px; } .rm .th b { font-size: 15px; }
+  .rm-chat .log { font-size: 15px; }
+}
+
+/* The shop is a popup over the screen it was opened from. */
+#shop { z-index: 11; background: rgba(0, 10, 40, 0.7); }

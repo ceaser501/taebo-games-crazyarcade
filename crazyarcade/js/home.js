@@ -121,6 +121,7 @@ export function askName(prefill, onDone) {
 }
 
 // ---- home
+let homeRun = 0; // the newest drawing loop of my character (showHome runs again after changes)
 export function showHome(app) {
   $('home').hidden = false;
   playMusic('StageLogin');
@@ -128,10 +129,11 @@ export function showHome(app) {
   homeRank(app);
   $('home-charname').textContent = charById(ch).name;
   const look = W.look();
+  const run = ++homeRun;
   Promise.all([A.loadGroup(`char_${ch}`), W.loadLook(look)]).then(() => {
     const cv = $('home-char');
     const loop = (now) => {
-      if ($('home').hidden) return;
+      if ($('home').hidden || run !== homeRun) return;
       const n = A.charFrames(ch, 'WalkDown');
       wholeFigure(cv, ch, n > 1 ? 1 + (Math.floor(now / 160) % (n - 1)) : 0, look, now);
       requestAnimationFrame(loop);

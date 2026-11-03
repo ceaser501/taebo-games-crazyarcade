@@ -2,7 +2,7 @@
 // grid of goods, and the character wearing the one picked, turning round. Bought with lucci
 // from games (wallet.js); the goods' pictures come from the client's CharTE and fx packs.
 import * as A from './assets.js';
-import { sfx, playMusic } from './audio.js';
+import { sfx } from './audio.js';
 import { CHARACTERS, charById } from './shared/const.js';
 import * as W from './wallet.js';
 import * as Account from './account.js';
@@ -18,7 +18,6 @@ export async function showShop(app, back, over = false) {
   st = { app, back, kind: 'hat', page: 0, sel: null, preview: W.look(), char: W.myChar(), cat: await W.deco() };
   $('shop').hidden = false;
   $('shop').classList.toggle('over', over);
-  if (!over) playMusic('StageChannel');
   $('shop-close').textContent = over ? '← 게임 보기' : '← 나가기';
   for (const g of ['icons_hat', 'icons_bomb', 'icons_pet', 'game']) A.loadGroup(g);
   W.loadLook(st.preview);

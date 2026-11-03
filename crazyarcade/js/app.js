@@ -50,8 +50,9 @@ const app = {
   toMenu(status) { this.toHome(); if (status) this.toast(status); },
   // The shop opens over the home screen, the menu or the waiting room and goes back to it.
   toShop(from) {
-    const back = () => (from === 'lobby' && this.conn ? this.dom(() => showLobby(this)) : this.toHome());
-    this.dom(() => showShop(this, back));
+    showShop(this, () => {
+      if (from === 'lobby') { if (this.conn && lobbyShown()) renderLobby(this); } else if (isHomeShown()) showHome(this);
+    });
   },
   lookChanged() { if (this.conn) this.send({ t: 'set', look: W.look() }); },
 
@@ -139,6 +140,25 @@ const app = {
   },
 };
 window.caApp = app;
+
+// PC: the screens are laid out for 1440×900; bigger monitors zoom them up so every panel keeps
+// its share of the screen (phones and small windows are left as they are).
+const ZOOMED = ['home', 'lobby', 'shop', 'char-pick', 'map-pick', 'menu', 'missions', 'room-edit', 'room-pw', 'create-room', 'settings'];
+function fitWide() {
+  const wide = innerWidth >= 1100 && innerHeight >= 641;
+  const k = wide ? Math.max(1, Math.min(innerWidth / 1440, innerHeight / 900, 2)) : 1;
+  const z = Math.round(k * 100) / 100, on = z > 1.01;
+  for (const id of ZOOMED) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    // A zoomed full-screen layer is sized in its own (smaller) pixels so it still fills the window.
+    Object.assign(el.style, on
+      ? { zoom: String(z), width: `${innerWidth / z}px`, height: `${innerHeight / z}px`, minHeight: '0', right: 'auto', bottom: 'auto' }
+      : { zoom: '', width: '', height: '', minHeight: '', right: '', bottom: '' });
+  }
+}
+addEventListener('resize', fitWide);
+fitWide();
 
 // What the canvas shows behind the DOM screens.
 class Backdrop { draw() { const c = stage.begin(); c.fillStyle = '#0b3f8f'; c.fillRect(0, 0, 800, 600); } }

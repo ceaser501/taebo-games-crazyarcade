@@ -330,7 +330,7 @@ function setupChat(app) {
   };
   $('chat-input').onkeydown = (e) => { if (e.key === 'Escape') { $('chat-input').blur(); open(false); } };
   window.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' || $('lobby').hidden || !WIDE.matches || e.target.tagName === 'INPUT' || !$('char-pick').hidden || !$('map-pick').hidden) return;
+    if (e.key !== 'Enter' || $('lobby').hidden || !WIDE.matches || e.target.tagName === 'INPUT' || !$('char-pick').hidden || !$('map-pick').hidden || !$('shop').hidden) return;
     e.preventDefault(); $('chat-input').focus();
   });
 }
