@@ -43,3 +43,70 @@
 ### 빠진 것
 
 친구와 함께 보너스, 첫 승 경험치 2배, 랜덤 상자 (룰렛으로 합침), 아이템 먹기 미션
+
+## 몬스터 모드 (나중에 만들기)
+
+시안: `_monster.html` (로컬 전용, git 제외). `?s=pick`, `?s=minion`, `?s=minion&ready=1`, `?s=boss`,
+`&phone=1`로 각 화면. 시안 배경은 빌리지10 캡처이고, 그림은 모두 원작 리소스.
+
+### 어떤 모드인가 (조사 결과)
+
+- 사람끼리 싸우지 않는 **협동 PvE**. 1~4명이 한 팀으로 컴퓨터 몬스터와 싸움 (원작은 2006.11 "대왕문어의 습격"부터)
+- 테마 하나 = **3스테이지**: 1·2스테이지는 잡몹 전멸 → 다음으로, 3스테이지는 보스전
+- 스테이지마다 제한 시간 (원작 스크립트 `Time until="120000"` → 2분)
+- 클리어 랭크 D~SS: 처치 수, 걸린 시간(1~3스테이지 합), 구출 횟수, 죽음 여부. 보스 클리어 때 루찌가 화면 가득 떨어짐
+- 몬스터에 닿으면
+  - 시즌1: 갇혀 있든 아니든 바로 죽음
+  - 시즌2: 목숨 3개, 맞을 때마다 1개 줄고 먹은 아이템을 바닥에 뱉음 (바늘로 회복한다는 서술도 있음)
+- 잡몹: 문어 테마(버럭이, 쫄쫄이)는 물줄기 한 방에 죽음. 다른 테마는 모양이 바뀌고 특정 행동을 해야 죽는 것도 있음 (설원은 "!" 지점으로 던져야 처치)
+- 테마와 보스
+  - 대왕문어의 습격: 물보라 발사, 분신(05), 2마리에 체력 절반씩(11), 체력이 줄면 폭주
+  - 황제펭귄의 귀환 (금루찌는 여기부터)
+  - 황제물개의 분노: 좌우 구르기, 맵 전역에 3x3 거대 물풍선, 체력이 적으면 무작위 낙하나 돌진
+  - 라이트닝킹 대공습: G몬·Y몬 두 로봇으로 나뉘어 나오고, 일정 피해를 받으면 합체해 풀체력으로 재등장
+  - 시즌2: 설원의 지배자, 불의 제왕, 샌드킹
+  - 원작 데이터에는 골렘, 거북, 눈곰 테마 카드도 있음 (정식 이름은 아직 미확인)
+- 일부 맵은 사람이 물풍선에 갇히면 몬스터가 움직이기 시작함(문어대습격 04), 무적 잡몹이 나오는 맵도 있음(13)
+- 출처
+  - 나무위키 크레이지 아케이드/몬스터 모드 (+ /시즌2, 문어대습격 09): https://namu.wiki/w/크레이지%20아케이드/몬스터%20모드
+  - 넥슨 공식 가이드: https://ca.nexon.com/Info/Guide/3/8 , https://ca.nexon.com/Info/Guide/3/9
+  - 게임메카: https://www.gamemeca.com/view.php?gid=68807 (72933, 102265)
+  - 인벤: https://m.inven.co.kr/webzine/wznews.php?idx=52190&game=200&iskin=black
+  - 데일리e스포츠 (샌드킹): https://www.dailyesports.com/view.php?ud=201301101128540071832_26
+  - 위키는 직접 열지 못하고 검색 결과의 내용만 봤음. 보스 체력 수치, 루찌 액수는 출처 없음
+
+### 원작 클라이언트에서 찾은 것 (`taebo-games-crazyarcade-assets/pc/PatchData`)
+
+- 몬스터 행동 스크립트: `FxMap` → `MapScriptTemplate/MonAction_*` (XML, 409개)
+  - 형식: `<TriggerTable>`(default, approach, selfdamaged, bossDamaged, bossAnger 트리거) + `<ActionList>`
+    (setState speed, wait, turn, playAnim, attack autokick/rectangle, pattern chase/defense, Say "!"/"?")
+  - 잡몹 `MonAction_05_01_SM_Red_Normal`: 평소 구역 지키기(defense, 범위 3), 2칸 안에 사람이 오면 "!" → 1초 뒤 속도 3으로
+    4칸 안의 사람을 2초씩 6번(약 12초) 추격 → "?" 띄우고 복귀. `SM_Red_Chase`는 8칸 거리로 계속 추격
+  - 대왕문어 `MonAction_00_MonOcto_00`: 상하좌우로 돌며 물줄기(autokick, 위력 3) → 5칸 안 추격 2초×5 →
+    사방 3칸 물보라(rectangle dist 3) → 추격. 맞으면(bossDamaged) 3초간 속도 5, 화나면(bossAnger) Angry 동작
+- 몬스터 전용 맵: `FxMap` → `Map/Fm_Monster01..`, `Fm_MonGolem0x`, `Fm_MonSeal0x`, `Fm_MonSnowBear0x` 등 + `Etc/*_mm` 미니맵 (아직 변환 안 함)
+- 그림
+  - 잡몹·보스 (한 장짜리): `fx` → `TileCustom/Mon_*` (basicMon_barak 버럭이, jjoljjol 쫄쫄이, tangerine, idol,
+    bossMon1_Oct 대왕문어, bossMon1_pen, BossMon2_seal, bossRobot_King/G/Y, bossgolem2, BossTurtle, minigolem, iceMon, eggMon,
+    fluid_* 물줄기, bombmissile_* 등)
+  - 대왕문어 동작: `FxTile` → `Tile17/Octop_L00Off/L01On/L02Drop/L03Wait` (그 밖 Tile29 펭귄·물개, Tile35 StoneOctopus)
+  - 걷는 몬스터: `FxStage` → `Game/Mst_H_*`, `Mst_N_*`, `Mst_T_*` (방향별 5~6프레임), `Game/Ghost*`
+  - UI: `FxStage Game/Bg_BossGage` (보스 체력바), `StageClear/StageChangeMonster` 등 (테마별 READY 배너),
+    `Lobby/Monster_bt01`, `Monster2_bt01` (몬스터모드 버튼), `FxMap Theme/Mon*` (테마 카드),
+    `fx Dialog/DlgMonS2Start`, `DlgMonS2FinalStart` (START!!, WARNING), `CustomMap/Tab_Monster`
+
+### 만들 것
+
+- [ ] 방 설정에 **몬스터** 규칙 추가 (일반 / 무한 결투 / 몬스터). 몬스터면 팀 선택 숨김, 자리 4개, 맵 대신 테마 선택
+- [ ] 테마 선택 팝업 (시안 1번): 테마 카드 8장, 아래에 규칙 설명과 나오는 몬스터
+- [ ] 몬스터 전용 맵 변환 (build-maps에 Fm_Mon* 추가) + 스테이지 1~3 연결
+- [ ] 스테이지 시작 READY 배너 (시안 2번), 스테이지 클리어 → 다음 스테이지
+- [ ] 몬스터 시뮬레이션: MonAction 스크립트를 해석하거나, 우선 잡몹 2종(지키기→"!"→추격→"?")과 대왕문어 패턴을 직접 구현
+  - 물줄기에 맞으면 잡몹 사망, 보스는 체력 감소. 몬스터에 닿으면 물풍선에 갇힘 (팀원이 터뜨려 구출)
+  - 서버(RoomCore/게임 시뮬레이션)에서 계산해서 모두에게 같게
+- [ ] 게임 화면 (시안 3~5번): 왼쪽에 테마, 스테이지 진행 칸, 남은 몬스터, 팀원별 처치·구출. 보스전은 위쪽에 원작 보스 체력바,
+  곧 물보라가 터질 칸은 빨간 점선으로 미리 표시
+- [ ] 몬스터 움직임: 걷는 그림이 없는 것은 통통 튀는 효과로
+- [ ] 클리어 결과: D~SS 랭크, 루찌·경험치 보상, 루찌 비 연출
+- [ ] 첫 버전은 **대왕문어의 습격** 한 테마(3스테이지)로 시작하길 추천
+- [ ] 정할 것: 목숨 방식 (시즌1처럼 닿으면 바로 죽음 vs 시즌2처럼 목숨 3개), 골렘·거북·눈곰 테마의 정식 이름
