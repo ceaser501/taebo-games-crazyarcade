@@ -956,3 +956,25 @@ canvas.rank { image-rendering: pixelated; flex: none; }
 
 /* The shop is a popup over the screen it was opened from. */
 #shop { z-index: 11; background: rgba(0, 10, 40, 0.7); }
+
+/* phones: the page arrows go under the room list so the top row (the main buttons and the filter) fits */
+@media (max-height: 520px) and (orientation: landscape) {
+  .ch-pager.top { display: none; } .ch-pager.bottom { display: flex; }
+  .ch-rooms { grid-template-rows: minmax(0, 1fr) auto; }
+  .ch-pager.bottom { font-size: 13px; gap: 8px; } .ch-pager.bottom button { padding: 2px 10px; }
+  .ch-top { min-width: 0; } .ch-top .modes { flex: none; margin-left: auto; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  /* the notch side's safe area is wider than the notch itself: use less of it */
+  #home, #lobby.rm { padding-left: max(8px, calc(env(safe-area-inset-left) - 18px)); padding-right: max(8px, calc(env(safe-area-inset-right) - 18px)); }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  /* the map card in one row: picture, name, 맵선택 (no label line), so it fits short screens */
+  .rm-mapbox { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; flex: none; }
+  .rm-mapbox h3 { display: contents; } .rm-mapbox h3 .lbl { display: none; }
+  .rm-mapbox .rm-map { grid-column: 1; grid-row: 1; grid-template-columns: 54px minmax(0, 1fr); gap: 7px; }
+  .rm-map #rm-mm { width: 54px; height: 47px; }
+  .rm-mapbox h3 #lobby-map, .rm-mapbox h3 #rm-maphint { grid-column: 2; grid-row: 1; margin: 0; }
+  .rm-mapbox h3 #rm-maphint { font-size: 10px; color: #9fd0f5; white-space: nowrap; }
+  .rm-act { margin-top: auto; }
+}
