@@ -969,12 +969,15 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   #home, #lobby.rm { padding-left: max(8px, calc(env(safe-area-inset-left) - 18px)); padding-right: max(8px, calc(env(safe-area-inset-right) - 18px)); }
 }
 @media (max-height: 520px) and (orientation: landscape) {
-  /* the map card in one row: picture, name, 맵선택 (no label line), so it fits short screens */
-  .rm-mapbox { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; flex: none; }
-  .rm-mapbox h3 { display: contents; } .rm-mapbox h3 .lbl { display: none; }
-  .rm-mapbox .rm-map { grid-column: 1; grid-row: 1; grid-template-columns: 54px minmax(0, 1fr); gap: 7px; }
-  .rm-map #rm-mm { width: 54px; height: 47px; }
-  .rm-mapbox h3 #lobby-map, .rm-mapbox h3 #rm-maphint { grid-column: 2; grid-row: 1; margin: 0; }
-  .rm-mapbox h3 #rm-maphint { font-size: 10px; color: #9fd0f5; white-space: nowrap; }
+  /* the map card like the team row: the 맵 label, then picture and name; tapping it opens the map list */
+  .rm-mapbox { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; flex: none; }
+  .rm-mapbox.pick { cursor: pointer; } .rm-mapbox.pick:active { filter: brightness(1.1); }
+  .rm-mapbox h3 { display: contents; }
+  .rm-mapbox h3 .lbl { display: block; grid-column: 1; grid-row: 1; font-size: 11px; color: #9fd0f5; font-weight: 900; white-space: nowrap; }
+  .rm-mapbox .rm-map { grid-column: 2; grid-row: 1; grid-template-columns: 66px minmax(0, 1fr); gap: 8px; }
+  .rm-map #rm-mm { width: 66px; height: 57px; }
+  .rm-mapbox h3 #lobby-map { display: none; }
+  .rm-mapbox h3 #rm-maphint { grid-column: 3; grid-row: 1; margin: 0; font-size: 10px; color: #9fd0f5; white-space: nowrap; }
+  .rm-mapbox.pick h3 #rm-maphint::after { content: '›'; font-size: 20px; color: #ffe95a; font-weight: 900; }
   .rm-act { margin-top: auto; }
 }

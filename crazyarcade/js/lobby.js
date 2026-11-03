@@ -209,7 +209,12 @@ export function renderLobby(app) {
   const selMap = $('lobby-map');
   selMap.hidden = !host;
   A.loadGroup('ui').then(() => { const c = selMap.querySelector('canvas').getContext('2d'); c.clearRect(0, 0, 123, 48); A.drawAt(c, 'Prepare/PRE_Bt_Selectmap', 0, 0, 0); });
-  selMap.onclick = () => { if (host) { click(); pickMap(room.map, room.members.length, (id) => app.send({ t: 'settings', map: id })); } };
+  const openMaps = () => { if (host) { click(); pickMap(room.map, room.members.length, (id) => app.send({ t: 'settings', map: id })); } };
+  selMap.onclick = (e) => { e.stopPropagation(); openMaps(); };
+  // The whole map card opens the list too (phones show no 맵선택 button).
+  const mapBox = document.querySelector('#lobby .rm-mapbox');
+  mapBox.classList.toggle('pick', host);
+  mapBox.onclick = host ? openMaps : null;
   // 상점 and 시작 / 준비.
   drawShop($('lobby-shop').querySelector('canvas'));
   $('lobby-shop').onclick = () => { click(); app.toShop('lobby'); };
