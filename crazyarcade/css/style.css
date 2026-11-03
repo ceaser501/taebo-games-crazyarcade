@@ -981,3 +981,11 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   .rm-mapbox.pick h3 #rm-maphint::after { content: '›'; font-size: 20px; color: #ffe95a; font-weight: 900; }
   .rm-act { margin-top: auto; }
 }
+@media (max-height: 520px) and (orientation: landscape) {
+  /* 대기실 card: the picture box as tall as the figure needs, my name and level as one group,
+     the four buttons as another at the bottom, with clear space between them */
+  .ch-me { justify-content: flex-start; gap: 6px; }
+  .ch-me .home-figure { flex: none; height: auto; aspect-ratio: 4 / 3; min-height: 0; }
+  .ch-me .ch-name { margin-top: 6px; }
+  .ch-me .home-actions { margin-top: auto; padding-top: 10px; }
+}
