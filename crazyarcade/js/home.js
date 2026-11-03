@@ -116,7 +116,7 @@ export function showHome(app) {
     const loop = (now) => {
       if ($('home').hidden) return;
       const n = A.charFrames(ch, 'WalkDown');
-      figure(cv, ch, 'WalkDown', n > 1 ? 1 + (Math.floor(now / 160) % (n - 1)) : 0, 2.1, look);
+      figure(cv, ch, 'WalkDown', n > 1 ? 1 + (Math.floor(now / 160) % (n - 1)) : 0, 2.45, look);
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);

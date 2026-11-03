@@ -64,27 +64,34 @@ function renderRooms() {
   }
   grid.replaceChildren(...list.slice(page * PER, page * PER + PER).map(card));
 }
+// A room card: a strip with its number, lock and state; under it the map, the title, the rules,
+// and who is in with the count.
 function card(r) {
   const full = r.players >= r.seats, b = el('button', `ch-card${r.playing ? ' play' : full ? ' full' : ''}`);
   b.type = 'button';
+  const head = el('div', 'hd');
+  head.append(el('span', 'no', `No.${r.code}`));
+  if (r.locked) head.append(el('span', 'lock', '🔒'));
+  head.append(el('span', `st ${r.playing ? 'play' : full ? 'full' : 'wait'}`, r.playing ? '게임 중' : full ? '꽉 참' : '대기 중'));
   const cv = el('canvas', 'mm'); cv.width = 150; cv.height = 130;
   mapThumb(cv, r.map);
   const info = el('div', 'info');
-  info.append(el('span', 'no', `No.${r.code}`), el('b', 'tt', r.title || '즐거운 크레이지아케이드'));
   const chips = el('div', 'chips');
   chips.append(el('span', null, r.mode === 'solo' ? '개인전' : '팀전'));
   if (r.rule === 'duel') chips.append(el('span', 'd', '무한 결투'));
-  chips.append(el('span', null, r.map === RANDOM_MAP ? '전체 랜덤' : mapById(r.map).name));
+  info.append(el('b', 'tt', r.title || '즐거운 크레이지아케이드'), el('span', 'map', r.map === RANDOM_MAP ? '전체 랜덤' : mapById(r.map).name), chips);
   const who = el('div', 'who');
+  const faces = el('div', 'faces');
   for (const ch of (r.faces || []).slice(0, 8)) {
     const f = el('canvas'); f.width = 45; f.height = 43;
     A.loadGroup(`char_${ch}`).then(() => { const c = f.getContext('2d'); c.imageSmoothingEnabled = false; A.drawChar(c, ch, 'Portrait', 0, 0, 0, 0); });
-    who.append(f);
+    faces.append(f);
   }
-  who.append(el('b', null, `${r.players}/${r.seats}`));
-  info.append(chips, who);
-  b.append(cv, info, el('span', `st ${r.playing ? 'play' : full ? 'full' : 'wait'}`, r.playing ? '게임 중' : full ? '꽉 참' : '대기 중'));
-  if (r.locked) b.append(el('span', 'lock', '🔒'));
+  const n = el('b', 'cnt'); n.append(el('em', null, String(r.players)), ` / ${r.seats}`);
+  who.append(faces, n);
+  info.append(who);
+  const body = el('div', 'bd'); body.append(cv, info);
+  b.append(head, body);
   b.onclick = () => {
     if (r.playing) { app.toast('게임 중인 방이에요. 끝나면 들어갈 수 있어요.'); return; }
     if (full) { app.toast('방이 꽉 찼어요.'); return; }
