@@ -138,31 +138,35 @@
   </div>
 
   <!-- Waiting room: room number and invite link, team or solo, who sits where, map, start. -->
-  <div id="lobby" hidden>
-    <div class="wr-top">
-      <button type="button" id="lobby-leave" class="back" aria-label="나가기">‹</button>
-      <div class="code"><small>방 번호</small><b id="lobby-code">----</b><span id="lobby-lock" hidden>🔒</span></div>
-      <button type="button" id="share-link" class="invite">초대 링크 보내기</button>
-      <button type="button" id="room-edit-btn" class="room-edit" hidden aria-label="방 설정">✏<span> 방 설정</span></button>
+  <div id="lobby" class="rm" hidden>
+    <div class="rm-top">
+      <button type="button" id="lobby-leave" class="ctl back">‹ 나가기</button>
+      <div class="ctl rno"><small>방 번호</small><b id="lobby-code">----</b><span id="lobby-lock" hidden>🔒</span></div>
       <span id="lobby-title" class="rtitle"></span>
-      <div class="grow"></div>
-      <div id="lobby-mode" class="modes"><button type="button" data-mode="team">팀전</button><button type="button" data-mode="solo">개인전</button></div>
-      <div id="lobby-rule" class="modes"><button type="button" data-rule="normal">일반</button><button type="button" data-rule="duel">⚔ 무한결투</button></div>
-      <button type="button" id="chat-open" class="chat-btn" aria-label="채팅">💬<i hidden></i></button>
+      <button type="button" id="share-link" class="ctl chip y">초대 링크</button>
+      <button type="button" id="room-edit-btn" class="ctl chip edit" hidden aria-label="방 설정">✏<span> 방 설정</span></button>
+      <div id="lobby-mode" class="ctl seg"><button type="button" data-mode="team">팀전</button><button type="button" data-mode="solo">개인전</button></div>
+      <div id="lobby-rule" class="ctl seg"><button type="button" data-rule="normal">일반</button><button type="button" data-rule="duel">무한 결투</button></div>
+      <button type="button" id="chat-open" class="ctl copen" aria-label="채팅">💬<i hidden></i></button>
     </div>
-    <div id="seats"></div>
-    <p id="lobby-status"></p>
-    <div class="bar">
-      <button type="button" id="lobby-map" class="tile map-tile"><canvas width="300" height="260"></canvas><span class="t"><small>맵 · 누르면 바꿔요</small><b></b><small class="sub"></small></span><span class="chips"></span><span class="chev">›</span></button>
-      <button type="button" id="lobby-char" class="tile"><canvas width="45" height="43"></canvas><span class="t"><small>내 캐릭터</small><b></b><small>누르면 바꿔요</small></span><span class="chev">›</span></button>
-      <div id="lobby-chars" class="chars"><h3>내 캐릭터 <span></span></h3><div class="cgrid"></div></div>
-      <button type="button" id="lobby-shop" class="tile"><span class="bag">🛍</span><span class="t"><small>꾸미기 · 펫</small><b>상점</b><small>루찌로 사기</small></span><span class="chev">›</span></button>
-      <button type="button" id="lobby-start" class="start">게임 시작</button>
-    </div>
-    <div id="lobby-chat" class="chatbox">
-      <h3>채팅 <button type="button" id="chat-close" class="x" aria-label="닫기">✕</button></h3>
+    <div id="rm-seats" class="rm-panel"></div>
+    <div id="lobby-chat" class="rm-panel rm-chat">
+      <h3>채팅 <button type="button" id="chat-close" class="ch-x" aria-label="닫기">✕</button></h3>
       <div id="chat-log" class="log"></div>
-      <form id="chat-form" class="say"><input id="chat-input" maxlength="80" autocomplete="off" enterkeyhint="send" placeholder="할 말을 쓰고 Enter"><button>보내기</button></form>
+      <form id="chat-form" class="say"><input id="chat-input" maxlength="80" autocomplete="off" enterkeyhint="send" placeholder="Enter 키로 채팅"><button>보내기</button></form>
+    </div>
+    <div class="rm-side">
+      <section class="rm-panel rm-chars"><h3>캐릭터 선택 <span id="rm-charname"></span></h3><div id="lobby-chars" class="cg"></div></section>
+      <section class="rm-panel" id="rm-team-box"><h3>팀 선택</h3><div id="rm-teams" class="teams"></div></section>
+      <section class="rm-panel"><h3>맵 <span id="rm-maphint"></span></h3>
+        <div class="rm-map"><canvas id="rm-mm" width="150" height="130"></canvas>
+          <div class="mi"><b id="rm-mapname"></b><small id="rm-mapinfo"></small><div id="rm-mapchips" class="chips"></div>
+            <button type="button" id="lobby-map" class="imgbtn"><canvas width="123" height="48"></canvas></button></div></div></section>
+      <div class="rm-act">
+        <button type="button" id="lobby-shop" class="imgbtn" aria-label="상점"><canvas width="90" height="57"></canvas></button>
+        <button type="button" id="lobby-start" class="imgbtn go" aria-label="시작"><canvas width="193" height="57"></canvas></button>
+      </div>
+      <p id="lobby-status"></p>
     </div>
   </div>
 

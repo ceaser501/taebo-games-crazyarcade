@@ -90,7 +90,7 @@ const THEME_DESC = {
   Space: '우주 기지 블록 사이를 누비는 우주 맵이에요.', Aqua: '물방울 기둥이 있는 아쿠아 맵이에요.',
 };
 // The short facts shown as chips: players, modes, theme, what is special.
-function mapChips(m) {
+export function mapChips(m) {
   const name = (THEMES.find(([p]) => p === themeOf(m.id)) || THEMES[0])[1];
   return [`최대 ${m.spawns.length}명`, m.spawns.length >= 4 ? '팀전·개인전' : '1:1 · 개인전', name, ...features(m)];
 }

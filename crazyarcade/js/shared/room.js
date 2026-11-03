@@ -258,6 +258,9 @@ export class RoomCore {
     const map = MAPS.find((x) => x.id === this.mapId) || MAPS[0];
     if (ps.length > map.spawns.length) return `${map.name}은(는) ${map.spawns.length}명까지 하는 맵이에요. 맵을 바꿔 주세요.`;
     if (this.mode === 'team' && this.teamSize(RED) !== this.teamSize(BLUE)) return '팀 인원을 맞춰 주세요. (1:1, 2:2, 3:3, 4:4)';
+    // As in the client: everyone but the host presses 준비 first.
+    const waiting = ps.filter((m) => !m.bot && m.id !== this.host && !m.ready);
+    if (waiting.length) return waiting.length === 1 ? `${waiting[0].name}님이 아직 준비 안 했어요` : `${waiting.length}명이 아직 준비 안 했어요`;
     return null;
   }
 

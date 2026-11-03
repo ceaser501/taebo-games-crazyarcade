@@ -9,7 +9,7 @@ import { MAPS } from './shared/maps.js';
 import { RED, BLUE, RANDOM_MAP } from './shared/room.js';
 import * as W from './wallet.js';
 import { pickChar } from './home.js';
-import { mapButton, pickMap, mapById } from './map-pick.js';
+import { mapButton, mapThumb, mapChips, pickMap, mapById } from './map-pick.js';
 import { rankCanvas } from './rank.js';
 import * as Chat from './chat.js';
 import { aboveKeyboard } from './channel.js';
@@ -112,19 +112,25 @@ export function renderLobby(app) {
     b.disabled = !host;
     b.onclick = () => { if (host && room.mode !== b.dataset.mode) { click(); app.send({ t: 'settings', mode: b.dataset.mode }); } };
   }
-  const player = (m, big) => {
-    const s = el('div', `s p${big ? ' big' : ''}${m.id === app.me ? ' me' : ''}`);
+  $('lobby-title').textContent = room.title || '';
+  $('lobby-leave').onclick = () => { click(); app.leaveRoom(); };
+  $('share-link').onclick = () => share(room.code);
+  // A player's seat: the whole character, the client's 방장 / 준비 band across it, the name.
+  const player = (m) => {
+    const s = el('div', `s p${m.id === app.me ? ' me' : ''}`);
     s.style.setProperty('--c', TEAMS[m.color].css);
-    const cv = el('canvas', big ? 'fig' : 'face');
-    if (big) { cv.width = 60; cv.height = 70; figure(cv, m); } else { cv.width = 45; cv.height = 43; portrait(cv, m); }
-    const nm = el('div', 'nm'), b = el('b', null, m.name);
-    if (m.lv) b.prepend(rankCanvas(m.lv, 1));
-    nm.append(b);
-    if (m.title) b.append(el('span', 'ttl-badge', m.title));
-    nm.append(el('small', null, m.lv ? `Lv.${m.lv} · ${charById(m.char).name}` : charById(m.char).name));
-    s.append(cv, nm);
-    const tag = m.id === room.host ? '방장' : m.bot ? '컴퓨터' : m.id === app.me ? '나' : '';
-    if (tag) s.append(el('span', 'tag', tag));
+    const fig = el('div', 'fig');
+    const body = el('canvas', 'body'); body.width = 60; body.height = 70; figure(body, m);
+    const band = el('canvas', 'band'); band.width = 94; band.height = 16;
+    A.loadGroup('ui').then(() => { const c = band.getContext('2d'); c.imageSmoothingEnabled = false; A.drawAt(c, 'Prepare/PRE_Img', m.id === room.host ? 2 : m.ready || m.bot ? 1 : 0, 0, 0); });
+    fig.append(body, band);
+    const nm = el('div', 'nm'), n = el('div', 'n');
+    if (m.lv) n.append(rankCanvas(m.lv, 1));
+    n.append(el('span', 'nw', m.name));
+    if (m.title) n.append(el('span', 'ttl-badge', m.title));
+    nm.append(n, el('small', null, m.lv ? `Lv.${m.lv} · ${charById(m.char).name}` : charById(m.char).name));
+    s.append(fig, nm);
+    if (m.bot) s.append(el('span', 'tag', '컴퓨터'));
     if (host && m.id !== app.me) {
       const k = el('button', 'kick', m.bot ? '빼기' : '내보내기');
       k.type = 'button'; k.onclick = () => { click(); app.send({ t: 'kick', id: m.id }); };
@@ -145,73 +151,133 @@ export function renderLobby(app) {
       add.onclick = () => { click(); app.send({ t: 'bot', color: room.mode === 'team' ? color : undefined }); };
       s.append(add);
     }
-    if (!s.children.length) s.textContent = '친구를 기다리는 중…';
     return s;
   };
-  const wide = WIDE.matches;
-  $('lobby').classList.toggle('wide', wide);
-  $('lobby-title').textContent = room.title || '';
-  // A seat not open yet (wide layout): the host opens the seats up to it.
+  // A seat not open yet: the host opens the seats up to it.
   const closed = (i) => {
-    const b = el('button', 's closed', host ? '+ 자리 열기' : '닫힌 자리'); b.type = 'button';
+    const b = el('button', `s x${host ? ' open' : ''}`); b.type = 'button';
+    const d = el('div', null, '✕'); d.append(el('small', null, host ? '눌러서 열기' : '닫힌 자리')); b.append(d);
     b.disabled = !host;
     b.onclick = () => { if (host) { click(); app.send({ t: 'settings', size: i + 1 }); } };
     return b;
   };
-  const seats = $('seats');
-  seats.className = room.mode;
+  const head = (color, name, text) => {
+    const h = el('div', 'th'), i = el('i'); i.style.background = TEAMS[color].css;
+    h.append(i, name, el('b', null, text));
+    return h;
+  };
+  const seats = $('rm-seats');
+  seats.className = `rm-panel ${room.mode}`;
   const members = [...room.members].sort((a, b) => a.slot - b.slot);
   if (room.mode === 'team') {
     const n = seatsPerTeam(room);
-    const team = (color, name) => {
+    const out = [];
+    for (const [color, name] of [[RED, '빨강팀'], [BLUE, '파랑팀']]) {
       const list = members.filter((m) => m.color === color);
-      const box = el('div', 'tm');
-      box.style.setProperty('--c', TEAMS[color].css);
-      const h = el('h3', null, name); h.append(el('b', null, `${list.length}/${n}`));
-      const g = el('div', 'seatsg'); g.style.gridTemplateRows = `repeat(${n}, minmax(0, 1fr))`;
-      for (let i = 0; i < (wide ? 4 : n); i++) g.append(list[i] ? player(list[i], wide || n === 1) : i < n ? empty(color) : closed(i));
-      box.append(h, g);
-      return box;
-    };
-    const vs = el('div', 'vs');
-    vs.append(el('b', null, 'VS'), el('span', 'size', `${n}:${n}`));
-    if (host && n < 4) {
-      const grow = el('button', 'addrow'); grow.type = 'button'; grow.innerHTML = '+ 자리<br>늘리기';
-      grow.onclick = () => { click(); app.send({ t: 'settings', size: n + 1 }); };
-      vs.append(grow);
+      const row = el('div', 'row');
+      for (let i = 0; i < 4; i++) row.append(list[i] ? player(list[i]) : i < n ? empty(color) : closed(i));
+      out.push(head(color, name, `${list.length} / ${n}`), row);
     }
-    seats.replaceChildren(team(RED, '빨강팀'), vs, team(BLUE, '파랑팀'));
+    seats.replaceChildren(...out);
   } else {
-    const n = wide ? 8 : Math.min(8, Math.max(2, members.length + 1));
-    seats.replaceChildren(...Array.from({ length: n }, (_, i) => (members[i] ? player(members[i], wide) : empty(0))));
+    const h = el('div', 'th'); h.append('개인전', el('b', null, `${members.length} / 8`));
+    const rows = [el('div', 'row'), el('div', 'row')];
+    for (let i = 0; i < 8; i++) rows[i >> 2].append(members[i] ? player(members[i]) : empty(0));
+    seats.replaceChildren(h, ...rows);
   }
-  // The room's map pictures load while waiting, so the round opens with them ready.
+  // My character (the ones I own, 전체 for the whole list) and my team.
+  quickChars(app, mine);
+  $('rm-team-box').hidden = room.mode !== 'team';
+  if (room.mode === 'team') {
+    $('rm-teams').replaceChildren(...[[RED, '빨강팀', 'Prepare/PRE_SelTeam-Basic00'], [BLUE, '파랑팀', 'Prepare/PRE_SelTeam-Basic01']].map(([color, name, spr]) => {
+      const b = el('button', mine && mine.color === color ? 'on' : ''); b.type = 'button';
+      const cv = el('canvas'); cv.width = 35; cv.height = 37;
+      A.loadGroup('ui').then(() => A.drawAt(cv.getContext('2d'), spr, 0, 0, 0));
+      b.append(cv, name);
+      b.onclick = () => { if (mine && mine.color !== color) { click(); app.send({ t: 'set', color }); } };
+      return b;
+    }));
+  }
+  // The map (the host chooses). Its pictures load while waiting, so the round opens with them ready.
   if (room.map !== RANDOM_MAP) for (const t of mapById(room.map).sets) A.loadGroup(`tile_${t}`);
-  // Map (the host chooses), my character, the shop.
-  mapButton($('lobby-map'), room.map, host ? () => pickMap(room.map, room.members.length, (id) => app.send({ t: 'settings', map: id })) : null);
-  if (mine) {
-    portrait($('lobby-char').querySelector('canvas'), mine);
-    $('lobby-char').querySelector('b').textContent = charById(mine.char).name;
-  }
-  $('lobby-char').onclick = () => pickChar(app, (id) => app.send({ t: 'set', char: id }));
-  if (wide) quickChars(app, mine);
+  mapThumb($('rm-mm'), room.map);
+  const rnd = room.map === RANDOM_MAP, mp = mapById(room.map);
+  $('rm-mapname').textContent = rnd ? '전체 랜덤' : mp.name;
+  $('rm-mapinfo').textContent = rnd ? '시작할 때 정해져요' : `최대 ${mp.spawns.length}명`;
+  $('rm-mapchips').replaceChildren(...(rnd ? ['모든 테마'] : mapChips(mp).slice(1)).map((t) => el('span', null, t)));
+  $('rm-maphint').textContent = host ? '' : '방장이 바꿔요';
+  const selMap = $('lobby-map');
+  selMap.hidden = !host;
+  A.loadGroup('ui').then(() => { const c = selMap.querySelector('canvas').getContext('2d'); c.clearRect(0, 0, 123, 48); A.drawAt(c, 'Prepare/PRE_Bt_Selectmap', 0, 0, 0); });
+  selMap.onclick = () => { if (host) { click(); pickMap(room.map, room.members.length, (id) => app.send({ t: 'settings', map: id })); } };
+  // 상점 and 시작 / 준비.
+  drawShop($('lobby-shop').querySelector('canvas'));
   $('lobby-shop').onclick = () => { click(); app.toShop('lobby'); };
-  $('lobby-leave').onclick = () => { click(); app.leaveRoom(); };
-  $('share-link').onclick = () => share(room.code);
-  // Start: the host, once the room is ready.
   const why = whyNot(room);
-  const start = $('lobby-start');
-  start.classList.toggle('wait', !host);
-  start.textContent = host ? '게임 시작' : '방장이 시작해요';
-  start.disabled = !host || !!why;
-  start.onclick = () => { if (host && !why) { sfx('Bt_c_GameStart'); app.send({ t: 'start' }); } };
-  lobbyStatus(why || (host ? '준비됐어요. 게임 시작을 누르세요!' : '방장이 게임을 시작하길 기다리는 중…'));
+  const start = $('lobby-start'), sc = start.querySelector('canvas');
+  clearInterval(shineTimer);
+  const paint = (name, f) => A.loadGroup('ui').then(() => { const c = sc.getContext('2d'); c.imageSmoothingEnabled = false; c.clearRect(0, 0, sc.width, sc.height); A.drawAt(c, name, f, 0, 0); });
+  start.classList.toggle('shine', host && !why);
+  if (host) {
+    // 시작 stays dim until everyone is ready, then shines (the client's frames 3-5 in turn).
+    if (why) paint('Prepare/PRE_Bt_Start', 2);
+    else { let f = 0; paint('Prepare/PRE_Bt_Start', 3); shineTimer = setInterval(() => { f = (f + 1) % 3; paint('Prepare/PRE_Bt_Start', 3 + f); }, 180); }
+    start.setAttribute('aria-label', '시작');
+    start.onclick = () => { if (!why) { sfx('Bt_c_GameStart'); app.send({ t: 'start' }); } else { sfx('Bt_c_Pop', 0.4); app.toast(why); } };
+  } else {
+    const ready = !!(mine && mine.ready);
+    paint('Prepare/PRE_Bt_Ready', ready ? 1 : 0);
+    start.setAttribute('aria-label', ready ? '준비 취소' : '준비');
+    start.onclick = () => { click(); app.send({ t: 'ready', on: !ready }); };
+  }
+  lobbyStatus(host ? why || '모두 준비됐어요! 시작을 눌러 주세요'
+    : mine && mine.ready ? '준비 완료! 방장이 시작하길 기다리는 중…' : '준비를 누르면 방장이 시작할 수 있어요');
+}
+let shineTimer = 0;
+
+// [상 점] rebuilt from the client's button at the height of 시작: the frame's ends and its
+// middle stretched (nine pieces, the thin top highlight kept thin), the two letters at the
+// same scale but closer together.
+const PHONE = matchMedia('(max-height: 520px) and (orientation: landscape)');
+let shopDrawn = null;
+function drawShop(cv) {
+  const key = PHONE.matches ? 'p' : 'w';
+  if (shopDrawn === key) return;
+  A.loadGroup('ui').then(() => {
+    const [sw0, sh0] = A.size('GlobalUI/BtShop');
+    if (!sw0) return;
+    const img = document.createElement('canvas'); img.width = sw0; img.height = sh0;
+    const ic = img.getContext('2d'); A.drawAt(ic, 'GlobalUI/BtShop', 0, 0, 0);
+    const c = cv.getContext('2d'), W = cv.width, H = cv.height, k = H / sh0;
+    c.imageSmoothingEnabled = false; c.clearRect(0, 0, W, H);
+    const e = 1.8, T = 6, B = 5, L = 4, R = 4, mid = sw0 >> 1;
+    const sx = [0, L, sw0 - R, sw0], dx = [0, L * e, W - R * e, W];
+    const sy = [0, T, sh0 - B, sh0], dy = [0, T * 0.9, H - B * e, H];
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      const sxa = i === 1 ? mid : sx[i], sw = i === 1 ? 1 : sx[i + 1] - sx[i];
+      c.drawImage(img, sxa, sy[j], sw, sy[j + 1] - sy[j], dx[i], dy[j], dx[i + 1] - dx[i], dy[j + 1] - dy[j]);
+    }
+    // The letters alone: pixels that differ from the button's plain middle on the same row.
+    const id = ic.getImageData(0, 0, sw0, sh0), d = id.data;
+    for (let y = 0; y < sh0; y++) {
+      const b = (y * sw0 + mid) * 4;
+      for (let x = 0; x < sw0; x++) {
+        const i = (y * sw0 + x) * 4;
+        if (Math.abs(d[i] - d[b]) + Math.abs(d[i + 1] - d[b + 1]) + Math.abs(d[i + 2] - d[b + 2]) < 40) d[i + 3] = 0;
+      }
+    }
+    ic.putImageData(id, 0, 0);
+    const g = k * (PHONE.matches ? 0.6 : 0.72), gw = 14 * g, gh = 16 * g, gap = 8, gy = Math.round((H - gh) / 2 + 1);
+    c.drawImage(img, 12, 4, 14, 16, Math.round(W / 2 - gap / 2 - gw), gy, gw, gh);
+    c.drawImage(img, 36, 4, 14, 16, Math.round(W / 2 + gap / 2), gy, gw, gh);
+    shopDrawn = key;
+  });
 }
 
-// Wide layout: the characters I own to switch with one click, and 전체 for the whole list.
+// The characters I own to switch with one click, and 전체 for the whole list.
 function quickChars(app, mine) {
   const cur = mine ? mine.char : W.myChar();
-  $('lobby-chars').querySelector('h3 span').textContent = charById(cur).name;
+  $('rm-charname').textContent = charById(cur).name;
   const owned = CHARACTERS.filter((c) => W.owns('char', c.id)).slice(0, 14);
   const pick = (id) => { if (id === cur) return; click(); W.setChar(id); app.send({ t: 'set', char: id }); };
   const bs = owned.map((c) => {
@@ -223,7 +289,7 @@ function quickChars(app, mine) {
   });
   const all = el('button', 'all', '전체 ›'); all.type = 'button';
   all.onclick = () => pickChar(app, (id) => app.send({ t: 'set', char: id }));
-  $('lobby-chars').querySelector('.cgrid').replaceChildren(...bs, all);
+  $('lobby-chars').replaceChildren(...bs, all);
 }
 
 // Chat: a panel on wide screens (Enter anywhere starts typing), a popup from 💬 on phones with
@@ -279,6 +345,8 @@ function whyNot(room) {
     const r = room.members.filter((m) => m.color === RED).length, b = room.members.filter((m) => m.color === BLUE).length;
     if (r !== b) return `팀 인원을 맞춰 주세요. (지금 ${r}:${b})`;
   }
+  const waiting = room.members.filter((m) => !m.bot && m.id !== room.host && !m.ready);
+  if (waiting.length) return waiting.length === 1 ? `${waiting[0].name}님이 아직 준비 안 했어요` : `${waiting.length}명이 아직 준비 안 했어요`;
   return null;
 }
 
@@ -290,7 +358,7 @@ async function share(code) {
   } catch (err) { if (err?.name === 'AbortError') return; }
   try {
     await navigator.clipboard.writeText(`${text}\n${url}`);
-    $('share-link').textContent = '복사됨! 카톡에 붙여넣기';
-    setTimeout(() => { $('share-link').textContent = '초대 링크 보내기'; }, 2000);
+    $('share-link').textContent = '복사됨!';
+    setTimeout(() => { $('share-link').textContent = '초대 링크'; }, 2000);
   } catch { lobbyStatus(`이 링크를 보내 주세요: ${url}`); }
 }
