@@ -251,11 +251,15 @@ function drawShop(cv) {
     const c = cv.getContext('2d'), W = cv.width, H = cv.height, k = H / sh0;
     c.imageSmoothingEnabled = false; c.clearRect(0, 0, W, H);
     const e = 1.8, T = 6, B = 5, L = 4, R = 4, mid = sw0 >> 1;
-    const sx = [0, L, sw0 - R, sw0], dx = [0, L * e, W - R * e, W];
-    const sy = [0, T, sh0 - B, sh0], dy = [0, T * 0.9, H - B * e, H];
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
-      const sxa = i === 1 ? mid : sx[i], sw = i === 1 ? 1 : sx[i + 1] - sx[i];
-      c.drawImage(img, sxa, sy[j], sw, sy[j + 1] - sy[j], dx[i], dy[j], dx[i + 1] - dx[i], dy[j + 1] - dy[j]);
+    const sx = [0, L, sw0 - R, sw0], dx = [0, L * e, W - R * e, W].map(Math.round);
+    const sy = [0, T, sh0 - B, sh0], dy = [0, T * 0.9, H - B * e, H].map(Math.round);
+    // Whole-pixel pieces only, and the middle drawn a column at a time (Safari drops a 1-pixel
+    // source stretched wide).
+    for (let j = 0; j < 3; j++) {
+      const shj = sy[j + 1] - sy[j], dyj = dy[j], dhj = dy[j + 1] - dy[j];
+      c.drawImage(img, 0, sy[j], L, shj, 0, dyj, dx[1], dhj);
+      c.drawImage(img, sx[2], sy[j], R, shj, dx[2], dyj, W - dx[2], dhj);
+      for (let x = dx[1]; x < dx[2]; x++) c.drawImage(img, mid, sy[j], 1, shj, x, dyj, 1, dhj);
     }
     // The letters alone: pixels that differ from the button's plain middle on the same row.
     const id = ic.getImageData(0, 0, sw0, sh0), d = id.data;
