@@ -112,6 +112,7 @@ export function renderLobby(app) {
     b.disabled = !host;
     b.onclick = () => { if (host && room.mode !== b.dataset.mode) { click(); app.send({ t: 'settings', mode: b.dataset.mode }); } };
   }
+  placeRules();
   $('lobby-title').textContent = room.title || '';
   $('lobby-leave').onclick = () => { click(); app.leaveRoom(); };
   $('share-link').onclick = () => share(room.code);
@@ -281,6 +282,15 @@ function drawShop(cv) {
     c.drawImage(img, 36, 4, 14, 16, Math.round(W / 2 + gap / 2), gy, gw, gh);
     shopDrawn = key;
   });
+}
+
+// PC: 팀전/개인전 and 일반/무한 결투 sit in a 게임 방식 panel at the top of the side column;
+// phones keep them in the top bar.
+function placeRules() {
+  const box = $('rm-rules'), rows = box.querySelectorAll('.rr'), wide = WIDE.matches;
+  box.hidden = !wide;
+  if (wide) { rows[0].append($('lobby-mode')); rows[1].append($('lobby-rule')); }
+  else if ($('lobby-mode').closest('#rm-rules')) $('chat-open').before($('lobby-mode'), $('lobby-rule'));
 }
 
 // The characters I own to switch with one click, and 전체 for the whole list.
