@@ -1039,3 +1039,17 @@ canvas.rank { image-rendering: pixelated; flex: none; }
   .rm-chars { flex: none; } .rm-chars .cg { overflow: hidden; } .rm-chars .cg button:nth-child(n+8):not(.all) { display: none; }
   .rm-mapbox { flex: 1 1 auto; }
 }
+
+/* PC room: the map card keeps its full height (picture inside the card); the character picker gives way */
+@media (min-width: 1100px) and (min-height: 641px) {
+  .rm-mapbox { flex: none; }
+  .rm-chars { flex: 1 1 0; min-height: 96px; overflow: hidden; }
+}
+@media (min-width: 1100px) and (min-height: 641px) {
+  /* the side column fits whole: five characters a row (nine and 전체), a smaller map picture */
+  .rm-chars { flex: none; min-height: 0; }
+  .rm .cg { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  .rm .cg button:nth-child(n+8):not(.all) { display: grid; } .rm .cg button:nth-child(n+10):not(.all) { display: none; }
+  .rm-map { grid-template-columns: 128px minmax(0, 1fr); } .rm-map #rm-mm { width: 128px; height: 111px; }
+}
+@media (min-width: 1100px) and (min-height: 641px) { .rm-chars { flex: 1 0 auto; } }

@@ -253,33 +253,35 @@ function drawShop(cv) {
     const [sw0, sh0] = A.size('GlobalUI/BtShop');
     if (!sw0) return;
     const img = document.createElement('canvas'); img.width = sw0; img.height = sh0;
-    const ic = img.getContext('2d'); A.drawAt(ic, 'GlobalUI/BtShop', 0, 0, 0);
+    const ic = img.getContext('2d', { willReadFrequently: true }); A.drawAt(ic, 'GlobalUI/BtShop', 0, 0, 0);
     const c = cv.getContext('2d'), W = cv.width, H = cv.height, k = H / sh0;
-    c.imageSmoothingEnabled = false; c.clearRect(0, 0, W, H);
     const e = 1.8, T = 6, B = 5, L = 4, R = 4, mid = sw0 >> 1;
     const sx = [0, L, sw0 - R, sw0], dx = [0, L * e, W - R * e, W].map(Math.round);
     const sy = [0, T, sh0 - B, sh0], dy = [0, T * 0.9, H - B * e, H].map(Math.round);
-    // Whole-pixel pieces only, and the middle drawn a column at a time (Safari drops a 1-pixel
-    // source stretched wide).
-    for (let j = 0; j < 3; j++) {
-      const shj = sy[j + 1] - sy[j], dyj = dy[j], dhj = dy[j + 1] - dy[j];
-      c.drawImage(img, 0, sy[j], L, shj, 0, dyj, dx[1], dhj);
-      c.drawImage(img, sx[2], sy[j], R, shj, dx[2], dyj, W - dx[2], dhj);
-      for (let x = dx[1]; x < dx[2]; x++) c.drawImage(img, mid, sy[j], 1, shj, x, dyj, 1, dhj);
+    // Built a pixel at a time (Safari mangles stretched drawImage pieces): the frame's ends and
+    // its middle column stretched, the top highlight kept thin.
+    const src = ic.getImageData(0, 0, sw0, sh0).data;
+    const piece = (v, from, to, n) => { for (let j = 0; j < 3; j++) if (v < to[j + 1]) return Math.min(from[j + 1] - 1, from[j] + Math.floor((v - to[j]) * (from[j + 1] - from[j]) / Math.max(1, to[j + 1] - to[j]))); return n - 1; };
+    const mapX = (x) => (x >= dx[1] && x < dx[2] ? mid : piece(x, sx, dx, sw0));
+    const out = c.createImageData(W, H), o = out.data;
+    for (let y = 0; y < H; y++) {
+      const ry = piece(y, sy, dy, sh0);
+      for (let x = 0; x < W; x++) { const si = (ry * sw0 + mapX(x)) * 4, di = (y * W + x) * 4; o[di] = src[si]; o[di + 1] = src[si + 1]; o[di + 2] = src[si + 2]; o[di + 3] = src[si + 3]; }
     }
-    // The letters alone: pixels that differ from the button's plain middle on the same row.
-    const id = ic.getImageData(0, 0, sw0, sh0), d = id.data;
-    for (let y = 0; y < sh0; y++) {
-      const b = (y * sw0 + mid) * 4;
-      for (let x = 0; x < sw0; x++) {
-        const i = (y * sw0 + x) * 4;
-        if (Math.abs(d[i] - d[b]) + Math.abs(d[i + 1] - d[b + 1]) + Math.abs(d[i + 2] - d[b + 2]) < 40) d[i + 3] = 0;
+    // The letters alone (pixels that differ from the plain middle on the same row), the same
+    // scale as before but closer together.
+    const letter = (x, y) => { const i = (y * sw0 + x) * 4, b0 = (y * sw0 + mid) * 4; return Math.abs(src[i] - src[b0]) + Math.abs(src[i + 1] - src[b0 + 1]) + Math.abs(src[i + 2] - src[b0 + 2]) >= 40; };
+    const g = k * (PHONE.matches ? 0.6 : 0.72), gw = Math.round(14 * g), gh = Math.round(16 * g), gap = 8, gy = Math.round((H - gh) / 2 + 1);
+    for (const [x0, gx] of [[12, Math.round(W / 2 - gap / 2 - gw)], [36, Math.round(W / 2 + gap / 2)]]) {
+      for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+        const px = x0 + Math.floor(x * 14 / gw), py = 4 + Math.floor(y * 16 / gh);
+        if (!letter(px, py) || src[(py * sw0 + px) * 4 + 3] < 40) continue;
+        const si = (py * sw0 + px) * 4, di = ((gy + y) * W + gx + x) * 4;
+        if (gx + x < 0 || gx + x >= W || gy + y >= H) continue;
+        o[di] = src[si]; o[di + 1] = src[si + 1]; o[di + 2] = src[si + 2]; o[di + 3] = 255;
       }
     }
-    ic.putImageData(id, 0, 0);
-    const g = k * (PHONE.matches ? 0.6 : 0.72), gw = 14 * g, gh = 16 * g, gap = 8, gy = Math.round((H - gh) / 2 + 1);
-    c.drawImage(img, 12, 4, 14, 16, Math.round(W / 2 - gap / 2 - gw), gy, gw, gh);
-    c.drawImage(img, 36, 4, 14, 16, Math.round(W / 2 + gap / 2), gy, gw, gh);
+    c.putImageData(out, 0, 0);
     shopDrawn = key;
   });
 }
